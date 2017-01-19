@@ -61,9 +61,6 @@ always @ ( * ) begin
 			dec_c = dec_c | ALU_out[7] & (|ALU_out[6:5]);
 		end
 
-		// $display("half_carry: %b", half_dec_c);
-		// $display("dec_carry: %b", dec_c);
-		// $display("dec_carry: %b", dec_c);
 		if(D_flag & (dec_c|ALU_COUT)) begin
 			{dec_c,ALU_out[7:4]} = {1'b0,ALU_out[7:4]} + 5'd6;
 			ALU_COUT = dec_c | ALU_COUT;
