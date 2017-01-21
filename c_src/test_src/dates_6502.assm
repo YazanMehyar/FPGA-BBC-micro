@@ -1,0 +1,39 @@
+		 org $0000
+		 db $00
+         org $0400
+tmp      equ 6     ; temporary storage
+
+weekday
+         cpx #3          ; year starts in march to bypass
+         bcs march       ; leap year problem
+         dey             ; if jan or feb, decrement year
+march
+		 eor #$7f        ; invert a so carry works right
+         cpy #200        ; carry will be 1 if 22nd century
+         adc mtab-1,x    ; a is now day+month offset
+         sta tmp
+         tya             ; get the year
+         jsr mod7        ; do a modulo to prevent overflow
+         sbc tmp         ; combine with day+month
+         sta tmp
+         tya             ; get the year again
+         lsr a           ; divide it by 4
+         lsr a
+         clc             ; add it to y+m+d and fall through
+         adc tmp
+mod7
+         adc #7          ; returns (a+3) modulo 7
+         bcc mod7        ; for a in 0..255
+         rts
+mtab     db 1,5,6,3,1,5,3,0,4,2,6,4   	; month offsets
+
+         org  $0900
+main
+		 lda #12
+		 ldx #9
+		 ldy #95
+		 jsr weekday
+		 sta reset
+
+         org $fffc
+reset	 db $00, $09, $ff, $ff

@@ -1,0 +1,71 @@
+		org $0000
+		db $00
+
+		org  $0900
+main
+		cld      ; binary mode (binary addition: 88 + 70 + 1 = 159)
+		sec      ; note: carry is set, not clear!
+		lda #$58 ; 88
+		adc #$46 ; 70 (after this instruction, c = 0, a = $9f = 159)
+		sta $fffe
+
+		sed      ; decimal mode (bcd addition: 58 + 46 + 1 = 105)
+		sec      ; note: carry is set, not clear!
+		lda #$58
+		adc #$46 ; after this instruction, c = 1, a = $05
+		sta $fffe
+
+		sed      ; decimal mode (bcd addition: 12 + 34 = 46)
+		clc
+		lda #$12
+		adc #$34 ; after this instruction, c = 0, a = $46
+		sta $fffe
+
+		sed      ; decimal mode (bcd addition: 15 + 26 = 41)
+		clc
+		lda #$15
+		adc #$26 ; after this instruction, c = 0, a = $41
+		sta $fffe
+
+		sed      ; decimal mode (bcd addition: 81 + 92 = 173)
+		clc
+		lda #$81
+		adc #$92 ; after this instruction, c = 1, a = $73
+		sta $fffe
+
+
+
+		sed      ; decimal mode (bcd subtraction: 46 - 12 = 34)
+		sec
+		lda #$46
+		sbc #$12 ; after this instruction, c = 1, a = $34)
+		sta $fffe
+
+		sed      ; decimal mode (bcd subtraction: 40 - 13 = 27)
+		sec
+		lda #$40
+		sbc #$13 ; after this instruction, c = 1, a = $27)
+		sta $fffe
+
+		sed      ; decimal mode (bcd subtraction: 32 - 2 - 1 = 29)
+		clc      ; note: carry is clear, not set!
+		lda #$32
+		sbc #$02 ; after this instruction, c = 1, a = $29)
+		sta $fffe
+
+		sed      ; decimal mode (bcd subtraction: 12 - 21)
+		sec
+		lda #$12
+		sbc #$21 ; after this instruction, c = 0, a = $91)
+		sta $fffe
+
+		sed      ; decimal mode (bcd subtraction: 21 - 34)
+		sec
+		lda #$21
+		sbc #$34 ; after this instruction, c = 0, a = $87)
+		sta $fffe
+
+		sta reset
+
+		org $fffc
+reset	 db $00, $09, $ff, $ff

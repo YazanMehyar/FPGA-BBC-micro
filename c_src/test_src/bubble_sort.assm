@@ -1,0 +1,48 @@
+;this subroutine arranges the 8-bit elements of a list in ascending
+;order.  the starting address of the list is in locations $30 and
+;$31.  the length of the list is in the first byte of the list.  location
+;$32 is used to hold an exchange flag.
+
+         org $0000
+		 db  $00
+		 org $0800
+sort8    ldy #$00      ;turn exchange flag off (= 0)
+         sty $32
+         lda ($30),y   ;fetch element count
+         tax           ; and put it into x
+         iny           ;point to first element in list
+         dex           ;decrement element count
+nxtel    lda ($30),y   ;fetch element
+         iny
+         cmp ($30),y   ;is it larger than the next element?
+         bcc chkend
+         beq chkend
+                       ;yes. exchange elements in memory
+         pha           ; by saving low byte on stack.
+         lda ($30),y   ; then get high byte and
+         dey           ; store it at low address
+         sta ($30),y
+         pla           ;pull low byte from stack
+         iny           ; and store it at high address
+         sta ($30),y
+         lda #$ff      ;turn exchange flag on (= -1)
+         sta $32
+chkend   dex           ;end of list?
+         bne nxtel     ;no. fetch next element
+         bit $32       ;yes. exchange flag still off?
+         bmi sort8     ;no. go through list again
+         rts           ;yes. list is now ordered
+
+         org $0a00
+main     lda #$00
+         sta $30
+		 lda #$0c
+		 sta $31
+		 jsr sort8
+		 sta stop
+
+		 org $0c00
+		 db  $07, $78, $23, $01, $67, $2, $0, $f0
+
+		 org $fffc
+stop     db  $00, $0a, $ff, $ff

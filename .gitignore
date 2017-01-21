@@ -1,3 +1,4 @@
 bin/*
 sim_dump/*
-
+*.vvp
+*.vcd
