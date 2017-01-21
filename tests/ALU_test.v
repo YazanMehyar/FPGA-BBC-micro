@@ -26,6 +26,32 @@ module ALU_test ();
 	.ALU_ZOUT(ALU_ZOUT)
 	);
 
+/******************************************************************************/
+
+reg [255:0] error_prefix;
+
+task error;
+input [255:0] msg;
+begin
+	$display("\n***************************************");
+	$display("ERROR @ %d: %s ", $stime, error_prefix);
+	$display("MESSAGE: %s", msg);
+	$display("***************************************\n");
+	#1 $stop;
+end
+endtask
+
+task display_arithm;
+begin
+if(ALU_FUNC == `ALU_ADD)
+	$display("%h + %h + %b = %h __ Cout is %b", SB, ALU_B, CARRY_IN, ALU_out, ALU_COUT);
+else
+	$display("%h - %h - %b = %h __ Cout is %b", SB, ALU_B, ~CARRY_IN, ALU_out, ALU_COUT);
+end
+endtask
+
+/******************************************************************************/
+
 initial begin
 	// test Decimal mode
 
@@ -121,14 +147,5 @@ initial begin
 	#5 display_arithm;
 	$finish;
 end
-
-task display_arithm;
-begin
-if(ALU_FUNC == `ALU_ADD)
-	$display("%h + %h + %b = %h __ Cout is %b", SB, ALU_B, CARRY_IN, ALU_out, ALU_COUT);
-else
-	$display("%h - %h - %b = %h __ Cout is %b", SB, ALU_B, ~CARRY_IN, ALU_out, ALU_COUT);
-end
-endtask
 
 endmodule // ALU_test

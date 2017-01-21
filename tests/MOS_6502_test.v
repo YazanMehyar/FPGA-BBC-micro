@@ -2,8 +2,8 @@ module MOS_6502_test ();
 
 `define CLK_PEROID 10
 `define KiB64 65535
-`define TEST_DIR "/home/zen/FinalYearProject/Software/test_bin"
 `define STOP_ADR 16'hFFFC
+`define TEST_FILE "./c_src/test_bin/bubble_sort.bin"
 `define NULL 0
 
 initial begin
@@ -46,11 +46,14 @@ always @ ( Data_bus, PHI_2, RnW, Address_bus ) begin
 	end
 end
 
+/******************************************************************************/
+
 integer f;
 reg [7:0] c;
 reg [16:0] adr;
 task init_mem; begin
-	f = $fopen({`TEST_DIR,"/bubble_sort.bin"}, "r");
+
+	f = $fopen(`TEST_FILE, "r");
 	if (f == `NULL) begin
         $display("ERROR: Could not open file");
         $finish;
@@ -61,7 +64,24 @@ task init_mem; begin
 		if(!$feof(f)) mem[adr] = c;
 		adr = adr + 1;
 	end
+	$fclose(f);
+
 end endtask
+
+integer j;
+task print_results;
+begin
+
+	j = 0;
+	while (j < 8) begin
+		$display("%d: %h", j, mem[16'h0c00 + j]);
+		j = j + 1;
+	end
+
+end
+endtask
+
+/******************************************************************************/
 
 integer i;
 initial begin
@@ -72,15 +92,13 @@ initial begin
 	READY <= 1;
 	init_mem;
 	repeat (5) @(posedge clk);
+
 	nRES <= 1;
 	while(!STOP_SIG && $time < 50000) @(posedge clk);
 
-	i = 0;
-	while (i < 8) begin
-		$display("%d: %h", i, mem[16'h0c00 + i]);
-		i = i + 1;
-	end
+	print_results;
 	$finish;
+
 end
 
 endmodule // MOS_6502_test

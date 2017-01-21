@@ -33,11 +33,6 @@ write6502(uint16_t address, uint8_t value){
 	mem[address] = value;
 	if(address == RESET_VEC)
 		stop = true;
-	else if(address == INT_VEC)
-		printf("ACC: %02hhX,  PSR: %c%c%c%c\n", a, status&0x80? 'N':'.',
-													status&0x02? 'Z':'.',
-													status&0x40? 'V':'.',
-													status&0x01? 'C':'.');
 }
 
 static char sbuffer[127];
