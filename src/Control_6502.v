@@ -58,7 +58,7 @@ module Control_6502 (
 	assign PC_inc = T_state[0]&NMI_T0&IRQ_T0 | T_state[1]&NMI_req&IRQ_req | ~|T_state[1:0];
 	assign SYNC_pin = T_state[0] & ~NEXT_T;
 	assign BUFF_en = READY;
-	assign PSR_out = {PSR[7:5],IRQ_req&NMI_req,PSR[3:0]};
+	assign PSR_out = {PSR[7:6],1'b1,IRQ_req&NMI_req,PSR[3:0]};
 
 	// PHI_1 & PHI_2 cannot be high simultaneously
 	assign PHI_1 = clk? ~PHI_2 : 0;
