@@ -4,7 +4,7 @@ BIN=./bin/
 SIMDMP=./sim_dump/
 INC=./inc
 VPI=./vpi
-VPIm=
+VPIm=-m 6502sim
 
 VC=iverilog
 VCFLAGS=-Wall -I$(INC) -t vvp
@@ -29,7 +29,7 @@ bn=$(addsuffix $(2),$(basename $(1)))
 %.sim: $(BIN)%.vvp
 	$(VI) $(VIFLAGS) $< \
 	test -e dump.vcd && mv dump.vcd $(SIMDMP)$(call bn,$@,.vcd)
-#	&& gtkwave -O /dev/null $(SIMDMP)$(call bn,$@,.vcd) & 
+#	&& gtkwave -O /dev/null $(SIMDMP)$(call bn,$@,.vcd) &
 
 $(BIN)%.vvp: $(TEST)%.v $(SRCF)
 	$(VC) $(VCFLAGS) -s $(call bn,$(notdir $@),) -o $@ \

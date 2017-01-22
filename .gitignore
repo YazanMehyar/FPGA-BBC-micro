@@ -1,4 +1,3 @@
-bin/*
-sim_dump/*
 *.vvp
 *.vcd
+*.vpi
