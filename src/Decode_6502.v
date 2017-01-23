@@ -4,7 +4,7 @@
 * @Email:  stcyazanerror@gmail.com
 * @Filename: Decode_6502.v
 * @Last modified by:   zen
-* @Last modified time: 01-Jan-2017
+* @Last modified time: 22-Jan-2017
 */
 
 `include "Decode_6502.vh"
@@ -126,7 +126,7 @@ always @ ( * ) begin
 		else SB_SEL = `SB_iY;
 	end else if(T_state[2]) begin
 		if(ZPG&T_1)                         SB_SEL = `SB_ACC;
-		else if(ABSy|ZPG&T_3|LDST&ZPGi&T_2) SB_SEL = `SB_iY;
+		else if(ABSy|ZPG&T_3|LDST&(ZPGi|ABSi)&T_2) SB_SEL = `SB_iY;
 		else SB_SEL = `SB_iX;
 	end else if(T_state[3]) begin
 		if(INDy|T_3) SB_SEL = `SB_iY;
@@ -276,7 +276,7 @@ always @ ( * ) begin
 	end else if(T_state[2]) begin
 		RnW = ~(ZPG&STORE|STACK&~IR[5]|JSR|BRK);
 	end else if(T_state[3]) begin
-		RnW = ~((ZPG|ABS)&STORE|JSR|BRK);
+		RnW = ~((ZPGi|ABS)&STORE|JSR|BRK);
 	end else if(T_state[4]) begin
 		RnW = ~(ABSi&STORE|BRK);
 	end else if(T_state[5]) begin
@@ -294,7 +294,7 @@ always @ ( * ) begin
 		else if(BRANCH&~BX) NEXT_T = branch_taken(IR[7:6]);
 		else NEXT_T = 0;
 	end else if(T_state[1]) begin
-		NEXT_T = TWO_CYCLE;
+		NEXT_T = TWO_CYCLE&RESET_req;
 	end else if(T_state[2]) begin
 		NEXT_T  = ZPG | ABS&CONTROL&~IR[5] | STACK&~IR[5];
 		CLEAR_T = ZPG & RMW;

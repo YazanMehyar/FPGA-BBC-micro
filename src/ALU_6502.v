@@ -56,10 +56,10 @@ always @ ( * ) begin
 		ALU_VOUT = (SB[7]~^ALU_B[7])&(ALU_out[7]^SB[7]);
 
 		if(D_flag & half_dec_c) begin // Decimal mode
-			{half_dec_c,ALU_out[3:0]} = {1'b0,ALU_out[3:0]} + 5'd6;
-			{dec_c,ALU_out[7:4]} = {1'b0,ALU_out[7:4]} + half_dec_c;
-			dec_c = dec_c | ALU_out[7] & (|ALU_out[6:5]);
+			{dec_c,ALU_out} = {1'b0,ALU_out} + 9'd6;
 		end
+		
+		dec_c = dec_c | ALU_out[7] & (|ALU_out[6:5]);
 
 		if(D_flag & (dec_c|ALU_COUT)) begin
 			{dec_c,ALU_out[7:4]} = {1'b0,ALU_out[7:4]} + 5'd6;

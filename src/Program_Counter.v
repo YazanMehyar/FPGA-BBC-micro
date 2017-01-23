@@ -16,7 +16,7 @@ always @ (posedge clk) begin
 		PCH <= 8'h00;
 	end else if(PC_en) begin
 		PCL <= ADB_lo + PC_inc;
-		PCH <= ADB_hi + (&PCL? PC_inc : 0);
+		PCH <= ADB_hi + (&ADB_lo? PC_inc : 0);
 	end
 end
 

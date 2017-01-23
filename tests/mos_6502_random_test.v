@@ -1,9 +1,11 @@
 module mos_6502_random_test ();
 
-`define CLK_PEROID 10
+`define CLK_PEROID 50
 `define KiB64 65535
+`define RESET_VEC 16'hFFFC
 `define NULL 0
-`define TIME_LIMIT 100000
+`define TIME_LIMIT 10000000
+integer SEED = 4;
 
 initial $dumpvars(0, mos_6502_random_test);
 
@@ -14,12 +16,17 @@ always clk = #(`CLK_PEROID/2) ~clk;
 
 reg nRES, nIRQ, nNMI;
 reg SO, READY;
+reg [2:0] test_reg_select;
 
 wire [15:0] Address_bus;
+wire [7:0] test_value;
 wire PHI_1, PHI_2;
 wire SYNC, RnW;
 
 wire [7:0] Data_bus = PHI_2 & RnW? mem_out : 8'hzz;
+
+reg written = 0;
+reg [15:0] waddr;
 MOS_6502 mos6502(
 	.clk(clk),
 	.nRES(nRES), .nIRQ(nIRQ), .nNMI(nNMI),
@@ -29,7 +36,9 @@ MOS_6502 mos6502(
 	.PHI_1(PHI_1),
 	.PHI_2(PHI_2),
 	.RnW(RnW),
-	.SYNC(SYNC)
+	.SYNC(SYNC),
+	.test_reg_select(test_reg_select),
+	.test_value(test_value)
 	);
 
 integer mem_val;
@@ -46,7 +55,11 @@ always @ ( Data_bus, PHI_2, RnW, Address_bus ) begin
 				mem[Address_bus] = mem_out;
 				$write_mem(Address_bus, mem_out);
 			end
-		end else mem[Address_bus] = Data_bus;
+		end else begin
+			mem[Address_bus] = Data_bus;
+			written = ~RnW;
+			waddr = Address_bus;
+		end
 	end
 end
 
@@ -89,49 +102,83 @@ task get_IR;
 output [7:0] opcode;
 begin
 
-	opcode = $urandom_range(255,0);
-	if(opcode < 50) begin
-		// higher probability to store
-		case(opcode[1:0])
-			2'b11: opcode = 8'h08; // PHP
-			2'b10: opcode = 8'h8C; // STY
-			2'b01: opcode = 8'h8E; // STX
-			default: opcode = 8'h8D; // STA
-		endcase
-	end else begin
-		while(!is_valid(opcode)) opcode = $urandom_range(255,0);
-	end
+	opcode = $urandom(SEED) % 256;
+	while(!is_valid(opcode)) opcode = $urandom(SEED) % 256;
 
 end
 endtask
 
+reg [15:0] start_point;
 task init_mem; begin
-
 	for(i = 0; i <= `KiB64; i = i + 1) begin
-		mem_val = $urandom_range(255,0);
+		mem_val = $urandom(SEED) % 256;
+		if(i == `RESET_VEC) begin
+			start_point[7:0] = mem_val;
+		end else if(i == `RESET_VEC + 1) begin
+			start_point[15:8] = mem_val;
+		end
 		mem[i] = mem_val;
 		$write_mem(i, mem_val);
 	end
+	mem[start_point] = 8'hA9; $write_mem(start_point, 8'hA9); start_point = start_point + 1;
+	mem[start_point] = `NULL; $write_mem(start_point, `NULL); start_point = start_point + 1;// LDA #00
+	mem[start_point] = 8'hA0; $write_mem(start_point, 8'hA0); start_point = start_point + 1;
+	mem[start_point] = `NULL; $write_mem(start_point, `NULL); start_point = start_point + 1;// LDY #00
+	mem[start_point] = 8'hA2; $write_mem(start_point, 8'hA2); start_point = start_point + 1;
+	mem[start_point] = `NULL; $write_mem(start_point, `NULL); // LDX #00
 
 end
 endtask
 
+reg [31:0] reg_names [2:0];
+initial begin
+	reg_names[0] = "Acc";
+	reg_names[1] = "iX";
+	reg_names[2] = "iY";
+	reg_names[3] = "SP";
+	reg_names[4] = "PSR";
+	reg_names[5] = "PCL";
+	reg_names[6] = "PCH";
+end
+
+reg [7:0] state;
+integer model_v, actual_v;
 task error;
+input [127:0] error_type;
 begin
 	$display("\n***************************************");
-	$display("ERROR @ %d ", $stime);
+	$display("ERROR - %s @ %d ", error_type, $stime);
+	$display("Address: %04H",i[15:0]);
+	$display("Model Value:  %02H", model_v[7:0]);
+	$display("Actual Value: %02H\n", actual_v[7:0]);
+	$display("Internal state IND: %s", reg_names[i[2:0]]);
+	$display("MODEL: %02H\tACTUAL:%02H", state, test_value);
+	$read_mem_cmd();
 	$display("***************************************\n");
 	#1 $stop;
 end
 endtask
 
-integer model_v, actual_v;
 task check_mem; begin
 
-	for(i = 0; i <= `KiB64; i = i + 1) begin
-		model_v = $read_mem(i);
-		actual_v = mem[i];
-		if(actual_v != model_v) error;
+	if(written) begin
+		$read_mem(waddr, model_v);
+		actual_v = mem[waddr];
+		if(actual_v !== model_v) error("MEMORY MISMATCH");
+		// check stack
+		for(i = 16'h0100; i <= 16'h01ff; i = i + 1) begin
+			$read_mem(i, model_v);
+			actual_v = mem[i];
+			if(actual_v !== model_v) error("MEMORY MISMATCH");
+		end
+	end
+
+	written = 0;
+
+	for(i = 0; i < 5; i = i + 1) begin
+		test_reg_select = i;
+		$get_internal_state(i, state);
+		#1 if(test_value !== state) error("STATE MISMATCH");
 	end
 
 end
@@ -148,10 +195,12 @@ initial begin
 	repeat (5) @(posedge clk);
 
 	nRES <= 1;
+	// SET VALUES OF iX, iY, ACC
 	while(!SYNC) @(posedge clk);
 	$reset_6502();
 	while($time < `TIME_LIMIT) begin
 		@(posedge clk) if(SYNC) begin
+			@(posedge clk);
 			$run_step();
 			check_mem;
 		end

@@ -14,7 +14,28 @@ module MOS_6502 (
 	output PHI_1,
 	output PHI_2,
 	output RnW,
-	output SYNC);
+	output SYNC,
+
+	// Test pins
+	input [2:0] test_reg_select,
+	output reg [7:0] test_value
+	);
+
+/**************************************************************************************************/
+
+always @ ( * ) begin
+	case(test_reg_select)
+	3'b000: test_value = Acc;
+	3'b001: test_value = iX;
+	3'b010: test_value = iY;
+	3'b011: test_value = SP;
+
+	3'b100: test_value = PSR;
+	3'b101: test_value = PCL;
+	3'b110: test_value = PCH;
+	default: test_value = 8'hxx;
+	endcase
+end
 
 /**************************************************************************************************/
 

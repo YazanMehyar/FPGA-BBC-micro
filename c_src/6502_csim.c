@@ -178,6 +178,7 @@ uint8_t opcode, oldstatus;
 
 //externally supplied functions
 extern uint8_t read6502(uint16_t address);
+extern uint8_t fetch6502(uint16_t address);
 extern void write6502(uint16_t address, uint8_t value);
 
 //a few general functions used by various other functions
@@ -208,7 +209,7 @@ void reset6502(void) {
     x = 0;
     y = 0;
     sp = 0xFD;
-    status |= FLAG_CONSTANT;
+    status |= (FLAG_CONSTANT|FLAG_BREAK|FLAG_INTERRUPT);
 }
 
 
@@ -319,6 +320,8 @@ static void adc(void) {
     value = getvalue();
     result = (uint16_t)a + value + (uint16_t)(status & FLAG_CARRY);
 
+	uint8_t prev_carry = status&FLAG_CARRY;
+
     carrycalc(result);
     zerocalc(result);
     overflowcalc(result, a, value);
@@ -327,10 +330,10 @@ static void adc(void) {
     #ifndef NES_CPU
     if (status & FLAG_DECIMAL) {
 
-        if ((result & 0x0F) > 0x09) {
+        if ((a&0xf) + (value&0xf) + (prev_carry) > 0x9) {
             result += 0x06;
         }
-        if ((result & 0xF0) > 0x90 || status & FLAG_CARRY) {
+        if ((result & 0xFF0) > 0x90 || status & FLAG_CARRY) {
             result += 0x60;
             carrycalc(result);
         }
@@ -647,7 +650,7 @@ static void pla(void) {
 }
 
 static void plp(void) {
-    status = pull8() | FLAG_CONSTANT;
+    status = pull8() | (FLAG_CONSTANT|FLAG_BREAK);
 }
 
 static void rol(void) {
@@ -674,7 +677,7 @@ static void ror(void) {
 }
 
 static void rti(void) {
-    status = pull8();
+    status = pull8()|(FLAG_BREAK|FLAG_CONSTANT);
     value = pull16();
     pc = value;
 }
@@ -689,6 +692,8 @@ static void sbc(void) {
     value = getvalue() ^ 0x00FF;
     result = (uint16_t)a + value + (uint16_t)(status & FLAG_CARRY);
 
+	uint8_t prev_carry = status&FLAG_CARRY;
+
     carrycalc(result);
     zerocalc(result);
     overflowcalc(result, a, value);
@@ -696,16 +701,13 @@ static void sbc(void) {
 
     #ifndef NES_CPU
     if (status & FLAG_DECIMAL) {
-        clearcarry();
-
-        result -= 0x66;
-        if ((result & 0x0F) > 0x09) {
-            result += 0x06;
+		// vpi_printf("A : %02hhX, value: %04hX, Carry: %01hhx\n", a, value, status&FLAG_CARRY);
+        if ((a&0xf) + (value&0xf) + (prev_carry) <= 0xf) {
+            result = (result&0xfff0) | ((result+0x0A)&0xf);
         }
-        if ((result & 0xF0) > 0x90) {
-            result += 0x60;
-            setcarry();
-        }
+		if (!(status&FLAG_CARRY)) {
+			result += 0xA0;
+		}
     }
     #endif
 
@@ -899,14 +901,14 @@ static const uint32_t ticktable[256] = {
 
 void nmi6502(void) {
     push16(pc);
-    push8(status);
+    push8(status & (~FLAG_BREAK));
     status |= FLAG_INTERRUPT;
     pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
 }
 
 void irq6502(void) {
     push16(pc);
-    push8(status);
+    push8(status & (~FLAG_BREAK));
     status |= FLAG_INTERRUPT;
     pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 }
@@ -919,7 +921,7 @@ void exec6502(uint32_t tickcount) {
 
     while (clockticks6502 < clockgoal6502) {
         opcode = read6502(pc++);
-        status |= FLAG_CONSTANT;
+        status |= (FLAG_CONSTANT|FLAG_BREAK);
 
         penaltyop = 0;
         penaltyaddr = 0;
@@ -937,8 +939,8 @@ void exec6502(uint32_t tickcount) {
 }
 
 void step6502(void) {
-    opcode = read6502(pc++);
-    status |= FLAG_CONSTANT;
+    opcode = fetch6502(pc++);
+    status |= (FLAG_CONSTANT|FLAG_BREAK);
 
     penaltyop = 0;
     penaltyaddr = 0;
