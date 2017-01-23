@@ -1,13 +1,14 @@
 module MOS_6502_test ();
 
-`define CLK_PEROID 10
+`define CLK_PEROID 2
 `define KiB64 65535
 `define STOP_ADR 16'hFFFC
-`define TEST_FILE "./c_src/test_bin/bubble_sort.bin"
+`define TEST_FILE "./c_src/test_bin/6502_functional_test.bin"
 `define NULL 0
+`define TIME_LIMIT 100000
 
 initial begin
-	$dumpvars(0, MOS_6502_test);
+	//$dumpvars(0, MOS_6502_test);
 end
 
 reg clk = 0;
@@ -37,6 +38,7 @@ MOS_6502 mos6502(
 reg [7:0] mem [0:`KiB64];
 reg [7:0] mem_out;
 reg STOP_SIG = 0;
+integer last_adr = 16'hFFFC;
 always @ ( Data_bus, PHI_2, RnW, Address_bus ) begin
 	if(PHI_2) begin
 		if(RnW) mem_out = mem[Address_bus];
@@ -46,11 +48,21 @@ always @ ( Data_bus, PHI_2, RnW, Address_bus ) begin
 	end
 end
 
+
+always @ (posedge clk) begin
+	if(SYNC) begin
+		if(last_adr == Address_bus) begin
+			$display("ERROR");
+			$finish;
+		end
+		last_adr <= Address_bus;
+	end
+end
 /******************************************************************************/
 
 integer f;
 reg [7:0] c;
-reg [16:0] adr;
+integer adr;
 task init_mem; begin
 
 	f = $fopen(`TEST_FILE, "r");
@@ -71,13 +83,7 @@ end endtask
 integer j;
 task print_results;
 begin
-
-	j = 0;
-	while (j < 8) begin
-		$display("%d: %h", j, mem[16'h0c00 + j]);
-		j = j + 1;
-	end
-
+	$display("SUCCESS, Congratulations!");
 end
 endtask
 
@@ -94,7 +100,7 @@ initial begin
 	repeat (5) @(posedge clk);
 
 	nRES <= 1;
-	while(!STOP_SIG && $time < 50000) @(posedge clk);
+	while(!STOP_SIG) @(posedge clk);
 
 	print_results;
 	$finish;

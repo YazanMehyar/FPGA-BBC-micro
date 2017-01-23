@@ -108,7 +108,7 @@ get_internal_state(char *date){
 }
 
 int
-read_mem_cmd(char *data){
+print_last_read(char *data){
 	vpi_printf("Last address read is %04hX\n", last_read_addr);
 	vpi_printf("Memory @ addr is %02hX\n", mem[last_read_addr]);
 	return 0;
@@ -131,7 +131,7 @@ mos6502_register(void){
 		{.type=vpiSysTask,.tfname="$reset_6502",.calltf=reset_6502,.sizetf=0,.user_data=0},
 		{.type=vpiSysTask,.tfname="$run_step",.calltf=run_step,.sizetf=0,.user_data=0},
 		{.type=vpiSysTask,.tfname="$get_internal_state",.calltf=get_internal_state,.sizetf=0,.user_data=0},
-		{.type=vpiSysTask,.tfname="$read_mem_cmd",.calltf=read_mem_cmd,.sizetf=0,.user_data=0}
+		{.type=vpiSysTask,.tfname="$print_last_read",.calltf=print_last_read,.sizetf=0,.user_data=0}
     };
 
 	for(uint8_t i = 0; i < 6; i++){

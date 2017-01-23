@@ -205,11 +205,8 @@ uint8_t pull8(void) {
 
 void reset6502(void) {
     pc = (uint16_t)read6502(0xFFFC) | ((uint16_t)read6502(0xFFFD) << 8);
-    a = 0;
-    x = 0;
-    y = 0;
     sp = 0xFD;
-    status |= (FLAG_CONSTANT|FLAG_BREAK|FLAG_INTERRUPT);
+    status = (FLAG_CONSTANT|FLAG_BREAK|FLAG_INTERRUPT);
 }
 
 
@@ -332,6 +329,7 @@ static void adc(void) {
 
         if ((a&0xf) + (value&0xf) + (prev_carry) > 0x9) {
             result += 0x06;
+            signcalc(result);
         }
         if ((result & 0xFF0) > 0x90 || status & FLAG_CARRY) {
             result += 0x60;

@@ -4,8 +4,9 @@ module mos_6502_random_test ();
 `define KiB64 65535
 `define RESET_VEC 16'hFFFC
 `define NULL 0
-`define TIME_LIMIT 10000000
-integer SEED = 4;
+`define TIME_LIMIT 1000000
+`define SEEDs 10
+integer SEED = 0;
 
 initial $dumpvars(0, mos_6502_random_test);
 
@@ -153,7 +154,7 @@ begin
 	$display("Actual Value: %02H\n", actual_v[7:0]);
 	$display("Internal state IND: %s", reg_names[i[2:0]]);
 	$display("MODEL: %02H\tACTUAL:%02H", state, test_value);
-	$read_mem_cmd();
+	$print_last_read();
 	$display("***************************************\n");
 	#1 $stop;
 end
@@ -185,25 +186,27 @@ end
 endtask
 
 /******************************************************************************/
+integer my_time = `TIME_LIMIT;
 initial begin
-	nRES <= 0;
-	nNMI <= 1;
-	nIRQ <= 1;
-	SO <= 1;
-	READY <= 1;
-	init_mem;
-	repeat (5) @(posedge clk);
+	repeat(`SEEDs) begin
+		SEED = SEED + 1;
+		nRES <= 0;
+		nNMI <= 1;
+		nIRQ <= 1;
+		SO <= 1;
+		READY <= 1;
+		init_mem;
+		repeat (5) @(posedge clk);
+		nRES <= 1;
 
-	nRES <= 1;
-	// SET VALUES OF iX, iY, ACC
-	while(!SYNC) @(posedge clk);
-	$reset_6502();
-	while($time < `TIME_LIMIT) begin
-		@(posedge clk) if(SYNC) begin
-			@(posedge clk);
-			$run_step();
-			check_mem;
+		while(!SYNC) @(posedge clk);
+		$reset_6502();
+		while($time < my_time) begin
+			@(posedge clk) if(SYNC) begin
+				@(posedge clk); $run_step(); check_mem;
+			end
 		end
+		my_time = my_time+`TIME_LIMIT;
 	end
 
 	$finish;

@@ -303,7 +303,7 @@ always @ ( * ) begin
 		CLEAR_T = NEXT_T & RMW;
 		NEXT_T  = NEXT_T | STACK | ABSi&~(COUT|STORE|RMW);
 	end else if(T_state[4]) begin
-		NEXT_T  = ABSi | JSR | ABS | INDy&~(STORE|COUT);
+		NEXT_T  = ABSi | ABS | INDy&~(STORE|COUT);
 		CLEAR_T = ABSi & RMW;
 	end else if(T_state[5]) begin
 		NEXT_T  = ~BRK;
@@ -382,6 +382,9 @@ always @ ( * ) begin
 		DIR_en = ~JSR;
 	end else if(T_state[3]) begin
 		AOR_en = ~STACK;
+		DIR_en = ~JSR;
+	end else if(T_state[5]) begin
+		AOR_en = ~JSR;
 		DIR_en = ~JSR;
 	end else begin
 		AOR_en = 1;
