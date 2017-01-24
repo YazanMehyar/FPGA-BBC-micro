@@ -1,3 +1,5 @@
+`include "Decode_6502.vh"
+
 module ALU_6502 (
 	input [3:0] ALU_FUNC,
 	input D_flag,

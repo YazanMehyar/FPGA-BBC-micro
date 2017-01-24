@@ -1,4 +1,4 @@
-
+`include "Decode_6502.vh"
 
 module MOS_6502 (
 	input clk,
@@ -23,22 +23,6 @@ module MOS_6502 (
 
 /**************************************************************************************************/
 
-always @ ( * ) begin
-	case(test_reg_select)
-	3'b000: test_value = Acc;
-	3'b001: test_value = iX;
-	3'b010: test_value = iY;
-	3'b011: test_value = SP;
-
-	3'b100: test_value = PSR;
-	3'b101: test_value = PCL;
-	3'b110: test_value = PCH;
-	default: test_value = 8'hxx;
-	endcase
-end
-
-/**************************************************************************************************/
-
 	wire ALU_COUT, ALU_VOUT, ALU_ZOUT, ALU_NOUT;
 	wire [2:0] iDB_SEL, SB_SEL;
 	wire [3:0] ADBL_SEL,ADBH_SEL;
@@ -56,18 +40,44 @@ end
 	wire [7:0] iY;
 	wire [7:0] SP;
 	wire [7:0] ALU_out;
+	
+	wire [7:0] ADBL;
+    wire [7:0] ADBH;
+
+    wire [7:0] Address_bus_lo;
+    wire [7:0] Address_bus_hi;
+    
+    
+    reg [7:0] ALU_B;
+    reg [7:0] SB;
+    reg [7:0] iDB;
+    
+    reg [7:0] DIR;
+    reg [7:0] AOR;
 
 /**************************************************************************************************/
 
-	reg [7:0] DIR;
-	reg [7:0] AOR;
+always @ ( * ) begin
+	case(test_reg_select)
+	3'b000: test_value = Acc;
+	3'b001: test_value = iX;
+	3'b010: test_value = iY;
+	3'b011: test_value = SP;
+
+	3'b100: test_value = PSR;
+	3'b101: test_value = PCL;
+	3'b110: test_value = PCH;
+	default: test_value = 8'hxx;
+	endcase
+end
+
+/**************************************************************************************************/
 
 	always @ (posedge clk) begin
 		if(DIR_en) DIR <= Data_bus;
 		if(AOR_en) AOR <= ALU_out;
 	end
 
-	reg [7:0] iDB;
 	always @ ( * ) begin
 		case (iDB_SEL)
 			`iDB_PCL: iDB = PCL;
@@ -80,7 +90,6 @@ end
 		endcase
 	end
 
-	reg [7:0] SB;
 	always @ ( * ) begin
 		case (SB_SEL)
 			`SB_iDB: SB = iDB;
@@ -92,8 +101,7 @@ end
 			default: SB = 8'hxx;
 		endcase
 	end
-
-	reg [7:0] ALU_B;
+	
 	always @ ( * ) begin
 		case (ALU_B_SEL)
 			`ALUB_iDB: ALU_B = iDB;
@@ -102,11 +110,6 @@ end
 		endcase
 	end
 
-	wire [7:0] ADBL;
-	wire [7:0] ADBH;
-
-	wire [7:0] Address_bus_lo;
-	wire [7:0] Address_bus_hi;
 /**************************************************************************************************/
 
 	assign Address_bus = {Address_bus_hi, Address_bus_lo};
