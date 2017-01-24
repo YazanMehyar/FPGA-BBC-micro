@@ -56,7 +56,7 @@ always @ ( * ) begin
 
 		if(half_dec_c|ALU_out[3]&(|ALU_out[2:1]))
 			{dec_c,ALU_out} = {1'b0,ALU_out} + 9'd6;
-		
+
 		ALU_NOUT = ALU_out[7]; // weird confirmed behaviour
 		ALU_COUT = dec_c | ALU_out[7] & (|ALU_out[6:5]) | ALU_COUT;
 		if(ALU_COUT) ALU_out[7:4] = ALU_out[7:4] + 5'd6;
