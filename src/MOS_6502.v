@@ -18,7 +18,7 @@ module MOS_6502 (
 
 	// Test pins
 	input [2:0] test_reg_select,
-	output reg [7:0] test_value
+	output reg [7:0] test_value_out
 	);
 
 /**************************************************************************************************/
@@ -40,18 +40,18 @@ module MOS_6502 (
 	wire [7:0] iY;
 	wire [7:0] SP;
 	wire [7:0] ALU_out;
-	
+
 	wire [7:0] ADBL;
     wire [7:0] ADBH;
 
     wire [7:0] Address_bus_lo;
     wire [7:0] Address_bus_hi;
-    
-    
+
+
     reg [7:0] ALU_B;
     reg [7:0] SB;
     reg [7:0] iDB;
-    
+
     reg [7:0] DIR;
     reg [7:0] AOR;
 
@@ -59,15 +59,15 @@ module MOS_6502 (
 
 always @ ( * ) begin
 	case(test_reg_select)
-	3'b000: test_value = Acc;
-	3'b001: test_value = iX;
-	3'b010: test_value = iY;
-	3'b011: test_value = SP;
+	3'b000: test_value_out = Acc;
+	3'b001: test_value_out = iX;
+	3'b010: test_value_out = iY;
+	3'b011: test_value_out = SP;
 
-	3'b100: test_value = PSR;
-	3'b101: test_value = PCL;
-	3'b110: test_value = PCH;
-	default: test_value = 8'hxx;
+	3'b100: test_value_out = PSR;
+	3'b101: test_value_out = PCL;
+	3'b110: test_value_out = PCH;
+	default:test_value_out = 8'hxx;
 	endcase
 end
 
@@ -101,7 +101,7 @@ end
 			default: SB = 8'hxx;
 		endcase
 	end
-	
+
 	always @ ( * ) begin
 		case (ALU_B_SEL)
 			`ALUB_iDB: ALU_B = iDB;
