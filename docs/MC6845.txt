@@ -1,0 +1,154 @@
+/**********************************************************************
+*
+*	MC6845 CRT controller
+*
+*	Yazan Mehyar - 26/01/2017
+*
+**********************************************************************/
+
+Pin Layout
+-----------
+
+		-------------------------
+		|						|
+		> nRES					|
+		|				  VSYNC >
+		> LPSTB					|
+		|				  HSYNC >
+		|						|
+		< MA [13:0]				|
+		|				RA[4:0]	>
+		|						|
+		< Display En			|
+		|					DB	<>
+		|						|
+		< Cursor				|
+		|					nCS	<
+		|						|
+		|					RS	<
+		> CLK					|
+		|					E	<
+		|						|
+		|					Rnw	<
+		|						|
+		--------------------------
+
+
+
+nRES:	Resets the crtc when low, (active low).
+		- All counters are cleared
+		- Stop display operation
+		- All outputs are driven low
+		- Control registers remain unchanged !!
+
+LPSTB:  Active High. Light Pen Strobe, when active, the current MA in light pen reg
+		is latched. (synchronised with clock)
+
+MA:		Memory address [13:0]. They refresh CRT screen with pages of data in 16KiB block
+
+DE: 	Display Enable, Active High signal indicating the CRTC is addressing
+		data to be shown in the active area (area visible to us).
+
+Cursor: Active high. Indicates to video ULA a valid cursor address is being output
+
+CLK:	Synchronise all CRT functions (except for processor interface !!)
+		It is synonymous to character rate with regards to the CRTC.
+		Active tranisition: NEGEDGE.
+
+VSYNC:	Active High. It determines the vertical position of the displayed text.
+
+HSYNC:	Active High. It determines the horizontal position of the displayed text.
+
+RA:		Row Address, output by internal RA counter used to address the character
+		generator ROM.
+
+DB:		Bi-directional Databus, allows processor access to CRTC register file.
+		They are left in high impedence (by CRTC drivers) unless READ operation
+		requested by MPU.
+
+nCS:	Active Low Chip Select, Signal is active when accessing the CRTC register file.
+		Should be active when address decoding is stable & valid.
+
+RS:		Register Select, select Address Register (RS = 0) or one of the 
+		Data Registers (RS = 1).
+
+E:		Enable databus tri-buffers & clocks data to and from CRTC (Synchronises
+		processor interface).
+		Active transition: NEGEDGE
+
+RnW:	Read not Write, Specify type of access to CRTC internal register file
+
+
+*NB Display EN is not activated after reset until the first VSYNC pulse
+*NB The BBC micro has the system clock and CLK the same thing.
+
+
+Operation
+----------
+
+All CRTC timing is derived from CLK.
+Coincidence circuits continuously compare counter contents to the contents
+of the programmable register file (R0-R17).
+
+Hz Sync: frequency, position & width are determined by registers
+Hz display: frequency, position & duration
+Hz counter produces H_CLK that drives scanline counter and vertical control
+
+Raster counter content 'always' compared with max. scanline register.
+on coincidence (equality) resets the raster counter and clocks vertical counter.
+
+vertical counter vs vertical registers
+Vt Sync: frequency, position & width determined by registers
+Vt display: frequency & position.
+
+	Vertical control logic
+	- They generate Row addressing (RA0-RA4) from raster count
+	- Increase the number of scanlines in vertical total by the contents
+	  of the vertical total adjust register
+
+Linear address register locates the relative positions of characters in memory
+with their positions on the screen.
+
+The linear address generator repeats the same sequence of addresses for each scan line
+of a character row. (Same row same characters, same memory. It takes more than one scan
+to display a multirow character.)
+
+The cursor logic determines the cursor location, size & blink rate.
+
+The light pen strobe going high causes the current contents of the address counter
+to be latched to the light pen register. (Which are subsequently read by the processor)
+
+
+Register File Description
+--------------------------
+
+19 registers in total
+2  memory locations (1 as indirect pointer to reg file,
+   the other serves as the data port to the contents).
+
+	CS	RS	REG			ADR_REG		Wr/Rd	ACTIVE_BITS		COMMENT
+-----------------------------------------------------------------------------------
+	1	X	X				XX		X		----_----	chip not active
+	0	0	ADR_REG			XX		1/0		---#_####	18 reg.s -> 5 bits
+	0	1	R0(Htotal)		00		1/0		####_####	no. of chars on line*
+	0	1	R1(Hdisplay)	01		1/0		####_####	no. of chars on displayed line
+	0	1	R2(Hsync_pos)	02		1/0		####_####	defines front and back porch
+	0	1	R3(SyncWidth)	03		1/0		VVVV_HHHH	defines width of VSync & HSync*
+	0	1	R4(Vtotal)		04		1/0		-###_####	no. of chars on vertical line
+	0	1	R5(Vadjust)		05		1/0		---#_####	no. of scan lines (fraction 
+														of char) to get exactly 50/60Hz
+
+	0	1	R6(VDisplayed)	06		1/0		-###_####	no. of V displayed chars*
+	0	1	R7(Vsync_pos)	07		1/0		-###_####	delay of Sync pulse (screen 
+														vertical shift)
+
+	0	1	R8(Interlace)	08		1/0		CCDD_--II	
+
+
+
+
+
+*NB R1 + R2 + R3  < R0, undefined function o/w
+*NB R3 VVVV: vertical pulse width 1-15, if zeroed -> 16
+	R3 HHHH: horizontal pulse width 1-15, if zeroed -> no pulse
+*NB R6 < R4
