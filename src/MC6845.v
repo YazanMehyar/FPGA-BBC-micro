@@ -90,8 +90,8 @@ reg [6:0] current_char_row;
 
 always @ (negedge char_clk) begin
 	if(~nRESET) begin
-		framestore_adr <= start_address;
-		scanline_start <= start_address;
+		framestore_adr <= 14'h0000;
+		scanline_start <= 14'h0000;
 	end else begin
 		if(framestore_adr[7:0] == horz_total) begin // change to reflect +1
 			if()
