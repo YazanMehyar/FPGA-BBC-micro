@@ -142,7 +142,7 @@ Register File Description
 	0	1	R7(Vsync_pos)	07		1/0		-###_####	delay of Sync pulse (screen 
 														vertical shift)
 
-	0	1	R8(Interlace)	08		1/0		CCDD_--II	
+	0	1	R8(Interlace)	08		1/0		CCDD_--II	// Checkpoint v1
 
 
 
@@ -152,3 +152,45 @@ Register File Description
 *NB R3 VVVV: vertical pulse width 1-15, if zeroed -> 16
 	R3 HHHH: horizontal pulse width 1-15, if zeroed -> no pulse
 *NB R6 < R4
+
+
+Version 1
+----------
+	Missing features:
+	-	Interlace Modes
+	-	Cursor & Display enable delay
+	-	Cursor Blink (& Blink rate)
+	-	Light Pen Strobe feature
+	
+	Timing:
+	The main external timing signals are CLK and En.
+	CLK controls operation assuming no processor interference
+	while En (With nCS) control processor interface.
+
+	* There is no assumption that the En is related to CLK in any way.
+	* nCS is the actual signal that enables the reg file.
+	* En controls the In/Out buffers, however.
+	
+	
+	In this first version, if an attempt by the processor to modify any of the registers
+	then that is done irrespective of the state of the CTRC. Consequences would be a jitter
+	in the display for every write that does shape the screen. Many of the state transitions
+	are dependant on equality of an active register and one of the parameters. Therefore
+	introducing such an untimely change would leave the state machine in an unexpected
+	space. Though various implementations can greatly limit that.
+
+	Horizontal State Machine:
+
+	start_address  : 16-bit, The start address of the frame store.
+	framestore_adr : 16-bit, The pointer to the current character to be displayed.
+	horz_display :  8-bit, The last character in the scan line to be displayed.
+	horz_syncpos :  8-bit, The amount of delay introduced before a sync pulse is set.
+	horz_pulsew  :  4-bit, The length of the sync pulses in characters.
+	horz_total*  :  8-bit, The number of characters before the framestore_adr recycles.
+
+
+*NB actual value = programmed value + 1
+*NB horz_display + horz_syncpos + horz_pulsew < horz_total (actual value).
+
+	
+	Vertical State Machine:
