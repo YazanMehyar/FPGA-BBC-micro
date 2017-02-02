@@ -1,3 +1,13 @@
+/*
+TODO
+	- Interlace modes
+	- Display skew
+	- Cursor skew
+	- Cursor blink rate
+	- Light strobe
+*/
+
+
 module MC6845 (
 	input char_clk,
 	input en,
