@@ -36,7 +36,10 @@ reg [6:0] vert_total;
 reg [4:0] vert_fraction;
 
 reg [4:0] max_scanline;
+reg [4:0] cursor_start;
+reg [4:0] cursor_end;
 
+reg [1:0] cursor_blink_mode;
 // wires
 reg [7:0] data_bus_out;
 
@@ -68,8 +71,8 @@ always @ (negedge en) begin
 				5'h07: vert_syncpos  <= data_bus[6:0];
 				5'h08:;
 				5'h09: max_scanline  <= data_bus[4:0];
-				5'h0A:;
-				5'h0B:;
+				5'h0A: {cursor_blink_mode, cursor_start} <= data_bus[6:0];
+				5'h0B: cursor_end <= data_bus[4:0];
 				5'h0C: start_address[13:8]<= data_bus[5:0];
 				5'h0D: start_address[7:0] <= data_bus;
 				5'h0E: cursor_adr[13:8]   <= data_bus[5:0];
@@ -175,10 +178,10 @@ always @ (negedge char_clk) begin
 	end else if(screen_end) begin
 		framestore_adr		<= start_address;
 		scanline_start_adr	<= start_address;
-	end else if(next_row) begin
+	end else if(next_row & |vt_display_count) begin
 		framestore_adr		<= scanline_start_adr + horz_display;
 		scanline_start_adr	<= scanline_start_adr + horz_display;
-	end else if(scanline_end) begin
+	end else if(scanline_end & |vt_display_count) begin
 		framestore_adr		<= scanline_start_adr;
 	end else begin
 		framestore_adr		<= framestore_adr + 14'h0001;
@@ -190,14 +193,20 @@ always @ (negedge char_clk) begin
 	else if(scanline_end)			char_scanline <= char_scanline + 5'h01;
 end
 
-always @ (*) display_en = |hz_display_count & |vt_display_count;
+always @ (*) display_en = nRESET & |hz_display_count & |vt_display_count;
+always @ (*) cursor = nRESET & (framestore_adr == cursor_adr) & (char_scanline >= cursor_start) & (char_scanline <= cursor_end);
 
 always @ (negedge char_clk) begin
-	h_sync;
-	v_sync;
-	cursor;
+	if(~nRESET) begin
+		h_sync <= 0; v_sync <= 0;
+	end else begin
+		if(h_sync)
+			h_sync <= |hz_pulsew_count[3:1];
+		else
+			h_sync <= ~|hz_syncpos_count & ~|hz_display_count & |hz_pulsew_count;
+
+		if(scanline_end)
+			v_sync <= ~|vt_syncpos_count & ~|vt_display_count & |vt_pulsew_count;
+	end
 end
-
-
-
 endmodule // MC6845
