@@ -137,7 +137,7 @@ wire vt_display_end		= nxt_vt_total_count == vert_display;
 wire vt_sync_start		= nxt_vt_total_count == vert_syncpos && next_row;
 wire vt_sync_end		= vt_pulse_count == vert_pulse;
 wire vt_fraction_start	= last_row & next_row & |vert_fraction;
-wire vt_fraction_end	= nxt_vt_fraction_count == vert_fraction;
+wire vt_fraction_end	= vt_fraction_count == vert_fraction;
 
 wire screen_end 		= last_row & next_row & ~|vert_fraction
 							| vt_fraction_end & fraction_sync_phase & scanline_end;
@@ -184,7 +184,7 @@ end
 
 always @ (negedge char_clk) begin
 	if(~nRESET)	v_sync <= 0;
-	else if(scanline_end & vt_display)
+	else if(scanline_end)
 		if(vt_sync_start)		v_sync <= 1;
 		else if(vt_sync_end)	v_sync <= 0;
 end
@@ -192,7 +192,7 @@ end
 always @ (negedge char_clk) begin
 	if(~nRESET)	display_en <= 0;
 	else if(display_en)	display_en <= ~hz_display_end;
-	else				display_en <= scanline_end & vt_display | screen_end;
+	else				display_en <= scanline_end & vt_display & ~(vt_display_end&next_row) | screen_end;
 end
 
 /**************************************************************************************************/
@@ -230,8 +230,10 @@ wire cursor_point = framestore_adr == cursor_adr;
 reg cursor_poximity;
 always @ (negedge char_clk) begin
 	if(scanline_end)
-		if(cursor_start_row == nxt_scanline_row) cursor_poximity <= 1;
-		else if(cursor_end_row == scanline_row)  cursor_poximity <= 0;
+		if((screen_end|next_row) & |cursor_start_row || cursor_end_row == scanline_row)
+			cursor_poximity <= 0;
+		else if(cursor_start_row == nxt_scanline_row)
+			cursor_poximity <= 1;
 end
 
 always @ ( * ) cursor = cursor_poximity & cursor_point & nRESET;
