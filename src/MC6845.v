@@ -185,13 +185,12 @@ always @ (negedge char_clk) begin
 	if(~nRESET)	v_sync <= 0;
 	else if(scanline_end & vt_display)
 		if(vt_sync_start)		v_sync <= 1;
-		else if(vt_sync_end)	v_sync <= 0
+		else if(vt_sync_end)	v_sync <= 0;
 end
-
 
 always @ (negedge char_clk) begin
 	if(~nRESET)	display_en <= 0;
-	else if(display_en)	display_en <= hz_display_end;
+	else if(display_en)	display_en <= ~hz_display_end;
 	else				display_en <= scanline_end & vt_display | screen_end;
 end
 
