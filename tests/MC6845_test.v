@@ -86,25 +86,25 @@ endtask
 initial begin
 	nRESET <= 0;
 	@(posedge en);
-	set_reg(`H_TOTAL, 24);
-	set_reg(`H_DISPLAY, 16);
-	set_reg(`H_SYNCPOS, 20);
+	set_reg(`H_TOTAL, 16);
+	set_reg(`H_DISPLAY, 10);
+	set_reg(`H_SYNCPOS, 12);
 	set_reg(`VH_PULSE, 3);
 	set_reg(`V_TOTAL, 18);
 	set_reg(`V_FRACTION, 20);
 	set_reg(`V_DISPLAY, 12);
 	set_reg(`V_SYNCPOS, 16);
 	set_reg(`INTERLACE, 0);
-	set_reg(`MAX_SCANLINE, 9);
+	set_reg(`MAX_SCANLINE, 3);
 	set_reg(`CURSOR_START, 0);
-	set_reg(`CURSOR_END, 9);
+	set_reg(`CURSOR_END, 3);
 	set_reg(`START_ADDRESS_HI, 0);
 	set_reg(`START_ADDRESS_LO, 128);
 	set_reg(`CURSOR_ADDRESS_HI, 0);
 	set_reg(`CURSOR_ADDRESS_LO, 128);
 	nRESET <= 1;
 	nCS <= 1;
-	repeat(200) @(posedge en);
+	repeat(2000) @(posedge en);
 	$finish;
 end
 

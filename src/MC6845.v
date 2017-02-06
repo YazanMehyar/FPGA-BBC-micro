@@ -1,9 +1,8 @@
 /*
 TODO
-	- Interlace modes
-	- Display reset delay
 	- Cursor blink rate
 	- Light strobe
+	- Interlace modes
 	- Display skew
 	- Cursor skew
 */
@@ -135,7 +134,7 @@ wire [4:0] nxt_vt_fraction_count = vt_fraction_count + 1;
 wire next_row			= scanline_row == max_scanline && scanline_end;
 wire last_row			= vt_total_count == vert_total;
 wire vt_display_end		= nxt_vt_total_count == vert_display;
-wire vt_sync_start		= nxt_vt_total_count == vert_syncpos;
+wire vt_sync_start		= nxt_vt_total_count == vert_syncpos && next_row;
 wire vt_sync_end		= vt_pulse_count == vert_pulse;
 wire vt_fraction_start	= last_row & next_row & |vert_fraction;
 wire vt_fraction_end	= nxt_vt_fraction_count == vert_fraction;
@@ -162,12 +161,14 @@ end
 
 always @ (negedge char_clk) begin
 	if(~nRESET)		fraction_sync_phase <= 0;
-	else if(vt_fraction_start)	fraction_sync_phase <= 1;
-	else if(vt_fraction_end)	fraction_sync_phase <= 0;
+	else if(scanline_end)
+		if(vt_fraction_start)		fraction_sync_phase <= 1;
+		else if(vt_fraction_end)	fraction_sync_phase <= 0;
 end
 
 always @ (negedge char_clk) begin
-	if(~nRESET | screen_end)		vt_display <= 1;
+	if(~nRESET)				vt_display <= 0;
+	else if(screen_end)		vt_display <= 1;
 	else if(vt_display & next_row)	vt_display <= ~vt_display_end;
 end
 
@@ -216,7 +217,7 @@ always @ (negedge char_clk) begin
 	end
 end
 
-wire nxt_scanline_row = (next_row|screen_end)? 0 : scanline_row + 1;
+wire [4:0] nxt_scanline_row = (next_row|screen_end)? 0 : scanline_row + 1;
 always @ (negedge char_clk) begin
 	if(~nRESET)				scanline_row <= 0;
 	else if(scanline_end)	scanline_row <= nxt_scanline_row;
