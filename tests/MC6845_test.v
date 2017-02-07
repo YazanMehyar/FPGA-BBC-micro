@@ -96,7 +96,7 @@ initial begin
 	set_reg(`V_SYNCPOS, 14);
 	set_reg(`INTERLACE, 0);
 	set_reg(`MAX_SCANLINE, 3);
-	set_reg(`CURSOR_START, 1);
+	set_reg(`CURSOR_START, 8'h41);
 	set_reg(`CURSOR_END, 2);
 	set_reg(`START_ADDRESS_HI, 0);
 	set_reg(`START_ADDRESS_LO, 128);
@@ -104,7 +104,7 @@ initial begin
 	set_reg(`CURSOR_ADDRESS_LO, 128);
 	nRESET <= 1;
 	nCS <= 1;
-	repeat(3000) @(posedge en);
+	repeat(35000) @(posedge en);
 	$finish;
 end
 

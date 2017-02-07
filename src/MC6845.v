@@ -1,6 +1,5 @@
 /*
 TODO
-	- Cursor blink rate
 	- Light strobe
 	- Interlace modes
 	- Display skew
@@ -227,6 +226,23 @@ end
 // Cursor
 wire cursor_point = framestore_adr == cursor_adr;
 
+reg [4:0] cursor_blink_count;
+reg cursor_display;
+always @ (negedge char_clk) begin
+	if(~nRESET) begin
+		cursor_blink_count <= 0;
+	end else if(screen_end) begin
+		cursor_blink_count <= cursor_blink_count + 1;
+		case (cursor_blink_mode)
+			2'b00: cursor_display <= 1;
+			2'b01: cursor_display <= 0;
+			2'b10: cursor_display <= cursor_blink_count[3];
+			2'b11: cursor_display <= cursor_blink_count[4];
+			default: cursor_display <= 1'bx;
+		endcase
+	end
+end
+
 reg cursor_poximity;
 always @ (negedge char_clk) begin
 	if(scanline_end)
@@ -236,6 +252,6 @@ always @ (negedge char_clk) begin
 			cursor_poximity <= 1;
 end
 
-always @ ( * ) cursor = cursor_poximity & cursor_point & nRESET;
+always @ ( * ) cursor = cursor_poximity & cursor_point & nRESET & cursor_display;
 
 endmodule // MC6845
