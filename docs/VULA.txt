@@ -1,0 +1,196 @@
+/**********************************************************************
+*
+*	BBC micro Video ULA
+*	
+*	7-02-2017	Yazan Mehyar
+*
+**********************************************************************/
+
+Function:
+---------
+
+	The Video ULA, also known as Video Proc, has 2 functions:
+
+	1. Serialise the display memory into RGB video signal.
+	2. Divide 16 MHz Master clock into 8, 4, 2, 1 MHz signals.
+
+
+Pin Layout:
+-----------
+	
+	The IC has 28 pins. (25 shown as excluding GND, VCC & VZ (2nd ref supply)).
+	
+
+		---------------------
+		|					|
+		> A0				|
+		|			 CURSOR <
+		> nCS				|
+		|			  DISEN <
+		< 8MHz				|
+		|				INV <
+		< 4MHz				|
+		|		  DATA[7:0] <
+		< 2MHz				|
+		|		   CRTC_CLK >
+		< 1MHz				|
+		|			RED_out >
+		> RED_in			|
+		|		  GREEN_out >
+		> GREEN_in			|
+		|		   BLUE_out >
+		> BLUE_in			|
+		|					|
+		---------------------
+
+	The interface with the MPU concerns: nCS, A0, and the DATA pins.
+	A0 is the address line out of the MPU (LSB).
+	nCS is low if (A[15:8] == 8'hFE) && ~RnW && A4 == 0;
+
+	This allows access to 2 Registers:
+	* Control register
+	* Palette register
+
+	~A0 -> Control register (mapped @ FE20)
+	A0  -> Palette register (mapped @ FE21)
+
+
+Control Register:
+-----------------
+	This register is mapped @ address FE20 and is write-only.
+	Register bits:
+
+	bit	| significance
+	--------------------
+	7-5	| Cursor segment 0-2
+	4	| Clock rate
+	3-2	| No. of columns
+	1	| Teletext
+	0	| Flash
+
+	Cursor segments: Once the CRTC has signalled the start of the cursor,
+					 The video ULA draws each segment in turn if its bit
+					 was set.
+	
+					 segment: 0: #, 1: %, 2: &
+
+					 if bit4 == 0	 ##%%&&&&
+
+					 if bit4 == 1	 #%&&
+
+	
+	Clock rate:		Controls character rate of CRTC.
+					1 -> 2MHz	80 bytes per scanline
+					0 -> 1MHz	40 bytes per scanline
+
+
+	No. of columns: Defines the number of characters per scanline
+					
+					bit 3 | bit 2 | columns	| pixel rate
+					------------------------------------
+						0 |		0 |  10		|	2MHz
+						0 |		1 |	 20		|	4MHz
+						1 |		0 |	 40		|	8MHz
+						1 |		1 |	 80		|	16MHz
+
+	NB* clocking the CRTC at 1MHz will not be enough to fill the scanline in time
+		for 80 chars. The result is TBTBTBTB. where T is the text and B is palette
+		colour at adr 15.
+
+	Teletext:	Use Teletext chip output
+	Flash:		Invert colours in palette set as 'FLASHING', must be toggled to give
+				blinking effect.
+
+
+	
+Palette Register:
+-----------------
+	
+	This register is mapped @ FE21 and is write-only.
+	
+	Register bits:
+
+		bits | significance
+		----------------------
+		 7-4 | Address
+		   3 | 'FLASHING'
+		   2 | ~BLUE
+		   1 | ~GREEN
+		   0 | ~RED
+
+	When a write occurs the bits 3-0 are written @ adr specified by 7-4.
+	When the palette colour is to be displayed, bits 2-0 are inverted before
+	feeding them to video output circuitry (indicated by ~).
+
+
+RGB in:
+-------
+
+	These inputs are directly connected to the outputs of the Teletext chip.
+	To select these instead of the output from the colour palette, simply
+	set the teletext bit in the control register.
+
+
+INVERT, DISEN & CURSOR:
+-----------------------
+
+	INVERT: If set simply inverts output of RGB.
+
+	DISEN : If cleared RGB out will always be high (white),
+			unless CURSOR or INVERT are set. In any case RGB variations
+			will not affect the RGB out. From the BBC schematic
+			the DISEN signal input is ~(~D_EN|RA3) = D_en & ~RA3,
+			where RA3 is the ROW_ADDRESS[3] out of the CRTC and
+			D_en is the Disply_enable out of the CRTC.
+
+	CURSOS: This is connected to the cursor output pin on the crtc
+			indicating the cursor is placed at the fetched address.
+
+
+VIDEO OPERATION:
+----------------
+
+	If the teletext bit is set then RGB out simply repeats that of the teletext
+	chip. Otherwise, memory addressed by the CRTC are latched to a shift register.
+	The shift registers operates at a rate of 16MHz. Not all cycles cause a left
+	shift, however. 
+
+	column bits		:	00		01		10		11
+	effective rate	:	2MHz	4MHz	8MHz	16MHz
+
+	These settings work with the configured crtc_clk to provide the variety of colours
+	in every mode.
+
+	example: Take modes 2 & 5, they have the control register set to the following
+			 configuration:
+			 
+			 Mode 5:	110 0 01 0 0
+			 Mode 2:	111 1 01 0 0
+
+			 They use the same number of columns but set the crtc_clk rate and cursor
+			 differently.
+
+			 let's say 2 bytes were addressed after one another by crtc: X then Y.
+			 
+			 Both modes work at 4MHz, but Mode 2 gets a new byte @ 2MHz
+			 and Mode 5 @ 1MHz.
+
+			MODE 2					MODE 5
+4MHz step	----_----				----_----
+			XXXX_XXXX				XXXX_XXXX
+			XXXX_XXX1				XXXX_XXX1
+			YYYY_YYYY				XXXX_XX11
+			YYYY_YYY1				XXXX_X111
+									YYYY_YYYY
+
+			Mode 2 allows 16 colours while mode 5 is meant for 4.
+			Since the pixel rate is the same, they produce the same number
+			of columns per line.
+
+			The bits 7_5_-3_1_ are used to address the palette when displaying.
+			Mode 5 (as well as all other modes) can use the whole palette (16 colours)
+			but that can result in inconsistent colouring so it is avoided by giving
+			the same colour to a bunch of palettes depending on the Mode.
+
+			for example mode 5 has 1x1x in the palette storing the same colour &
+			1x0x another (only bits 7 & 3 are significant here).
