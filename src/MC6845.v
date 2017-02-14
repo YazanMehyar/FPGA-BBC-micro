@@ -56,7 +56,7 @@ reg [7:0] data_bus_out;
 
 /**************************************************************************************************/
 
-assign data_bus = ~nCS&en&RnW? data_bus_out : 8'hzz;
+assign data_bus = ~nCS&en&RnW&nRESET? data_bus_out : 8'hzz;
 
 always @ ( * ) begin
 	case ({address_reg[4],address_reg[0]})

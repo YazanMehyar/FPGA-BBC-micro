@@ -62,9 +62,6 @@ MC6845 crtc(
 
 /**************************************************************************************************/
 
-// The test will cover intended useage only: en & char_clk are derived from the same clock.
-// While essentially they may be completely independent.
-
 initial en = 0;
 always #(`CLK_PEROID/2) en = ~en;
 

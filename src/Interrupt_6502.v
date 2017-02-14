@@ -4,7 +4,7 @@
 * @Email:  stcyazanerror@gmail.com
 * @Filename: Interrupt_6502.v
 * @Last modified by:   zen
-* @Last modified time: 29-Dec-2016
+* @Last modified time: 13-Feb-2017
 */
 
 module Interrupt_6502 (
@@ -30,7 +30,7 @@ module Interrupt_6502 (
 		.clk(clk),
 		.LEVEL_pin(IRQ_pin),
 		.RESET_pin(RESET_pin),
-		.T0(T0),
+		.nEn(T0),
 		.LEVEL(IRQ_out)
 		);
 
