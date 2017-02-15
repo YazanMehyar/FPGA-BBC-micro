@@ -28,7 +28,7 @@ wire [7:0] Data_bus = PHI_2 & RnW? mem_out : 8'hzz;
 
 reg written = 0;
 reg [15:0] waddr;
-MOS_6502 mos6502(
+MOS6502 mos6502(
 	.clk(clk),
 	.nRES(nRES), .nIRQ(nIRQ), .nNMI(nNMI),
 	.SO(SO), .READY(READY),

@@ -1,6 +1,6 @@
 `include "Decode_6502.vh"
 
-module MOS_6502 (
+module MOS6502 (
 	input clk,
 	input nRES,
 	input nIRQ,

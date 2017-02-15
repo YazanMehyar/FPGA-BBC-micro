@@ -176,9 +176,8 @@ end
 
 always @ (negedge char_clk) begin
 	if(~nRESET)	h_sync <= 0;
-	else if(vt_display)
-		if(hz_sync_start)		h_sync <= 1;
-		else if(hz_sync_end)	h_sync <= 0;
+	else if(hz_sync_start)	h_sync <= 1;
+	else if(hz_sync_end)	h_sync <= 0;
 end
 
 always @ (negedge char_clk) begin

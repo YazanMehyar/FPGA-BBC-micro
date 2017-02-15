@@ -163,15 +163,17 @@ module MOS6522 (
 
 /****************************************************************************************/
 
-	assign PORTA = {DDRA[7]? OUTA[7]: 1'bz, DDRA[6]? OUTA[6]: 1'bz,
+	assign PORTA = nRESET?
+					{DDRA[7]? OUTA[7]: 1'bz, DDRA[6]? OUTA[6]: 1'bz,
 					DDRA[5]? OUTA[5]: 1'bz, DDRA[4]? OUTA[4]: 1'bz,
 					DDRA[3]? OUTA[3]: 1'bz, DDRA[2]? OUTA[2]: 1'bz,
-					DDRA[1]? OUTA[1]: 1'bz, DDRA[0]? OUTA[0]: 1'bz};
+					DDRA[1]? OUTA[1]: 1'bz, DDRA[0]? OUTA[0]: 1'bz} : 8'hzz;
 
-	assign PORTB = {DDRB[7]? OUTB[7]: 1'bz, DDRB[6]? OUTB[6]: 1'bz,
+	assign PORTB = nRESET?
+					{DDRB[7]? OUTB[7]: 1'bz, DDRB[6]? OUTB[6]: 1'bz,
 					DDRB[5]? OUTB[5]: 1'bz, DDRB[4]? OUTB[4]: 1'bz,
 					DDRB[3]? OUTB[3]: 1'bz, DDRB[2]? OUTB[2]: 1'bz,
-					DDRB[1]? OUTB[1]: 1'bz, DDRB[0]? OUTB[0]: 1'bz};
+					DDRB[1]? OUTB[1]: 1'bz, DDRB[0]? OUTB[0]: 1'bz} : 8'hzz;
 
 	always @ (posedge PHI_2) begin
 		nIRQ <= ~|(IFR&IER);
