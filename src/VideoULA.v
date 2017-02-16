@@ -67,7 +67,7 @@ module VideoULA (
 
 /****************************************************************************************/
 
-	wire PALETTE_out = PALETTE_mem[{SHIFT_reg[7],SHIFT_reg[5],SHIFT_reg[3],SHIFT_reg[1]}];
+	wire [3:0] PALETTE_out = PALETTE_mem[{SHIFT_reg[7],SHIFT_reg[5],SHIFT_reg[3],SHIFT_reg[1]}];
 	always @ (posedge clk2MHz) begin
 		if(~nCS)
 		 	if(A0)  PALETTE_mem[DATA[7:4]] <= DATA[3:0];
@@ -76,6 +76,8 @@ module VideoULA (
 
 /****************************************************************************************/
 
-	assign {REDout,GREENout,BLUEout} = ;
+	wire FLASH = ~(PALETTE_out[3]&CONTROL[0]);
+	assign {BLUEout,GREENout,REDout} = DISEN? FLASH? ~PALETTE_out[2:0] : PALETTE_out[2:0]
+											: 3'b000;
 
 endmodule // VideoULA
