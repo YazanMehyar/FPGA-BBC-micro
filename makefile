@@ -4,7 +4,7 @@ BIN=./bin/
 SIMDMP=./sim_dump/
 INC=./inc
 VPI=./vpi
-VPIm=-m vpi_6502sim
+VPIm=-m vpi_top
 
 VC=iverilog
 VCFLAGS=-Wall -I$(INC) -t vvp

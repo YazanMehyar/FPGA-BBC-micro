@@ -1,7 +1,9 @@
 module TOP_test();
 
-	`define KiB16 65535
-	`define KiB32 131071
+	`define KiB16 16383
+	`define KiB32 32767
+	`define KiB64 65535
+	`define CLK16MHzPERIOD 10
 
 	initial $dumpvars(0, TOP_test);
 
@@ -14,7 +16,7 @@ module TOP_test();
 	wire [15:0] pADDRESSBUS;
 	wire [13:0] cFRAMESTORE;
 	wire [4:0] cROWADDRESS;
-	wire [7:0] DATABUS = SHEILA? ;
+	wire [7:0] DATABUS = RnW&~SHEILA? MEM_DATA:8'hzz;
 
 	wire clk2MHz, clk4MHz, clkCRTC;
 	wire cDISPLAYen, DISPLAYen;
@@ -31,14 +33,15 @@ module TOP_test();
 	reg [7:0] RAM [0:`KiB32];
 	reg [7:0] MEM_DATA;
 		
-	always @ ( posedge clk4MHz ) begin
-		if(clk2MHz & pADDRESSBUS[15]) begin
+	always @ ( negedge clk4MHz ) begin
+		if(~clk2MHz & pADDRESSBUS[15]) begin
 			if(OSBANKen) MEM_DATA <= OSROM[pADDRESSBUS[13:0]];
 			else if(BASICBANKen) MEM_DATA <= BASICROM[pADDRESSBUS[13:0]];
 			else MEM_DATA <= 8'hxx;
 		end else begin
-			if(clk2MHz) // respond to processor
-				MEM_DATA <= RAM[pADDRESSBUS[14:0];
+			if(~clk2MHz) // respond to processor
+				if(RnW)	MEM_DATA <= RAM[pADDRESSBUS[14:0]];
+				else	RAM[pADDRESSBUS[14:0]] <= DATABUS;
 			else		// respond to CRTC
 				MEM_DATA <= RAM[{cFRAMESTORE[7:4],adr_sum[2:0],cFRAMESTORE[3:0],cROWADDRESS[2:0]}];
 		end
@@ -53,7 +56,7 @@ module TOP_test();
 	wire B4 = ~&{B3,cFRAMESTORE[12]};
 	reg [3:0] adr_sum;
 	
-	always ( * ) begin
+	always @ ( * ) begin
 		adr_sum = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1;
 	end
 
@@ -83,20 +86,22 @@ module TOP_test();
 	wire SHEILA = &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 
 	wire nVIA = ~(SHEILA & ~pADDRESSBUS[7] & pADDRESSBUS[6] & ~pADDRESSBUS[5]);
-	wire nVIDPROC = ~(SHEILA & ~&pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
-	wire nCRTC = ~(SHEILA & ~&pADDRESSBUS[7:3]);
+	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
+	wire nCRTC = ~(SHEILA & ~|pADDRESSBUS[7:3]);
 
 /******************************************************************************/
-	reg nRESEt;
+	reg nRESET;
 	initial begin
-		$stop;
 		$start_screen;
-		$readmemh("./software/OS12.ROM", OSROM);
-		$readmemh("./software/BASIC2.ROM", BASICROM);
+		$stop;
+		$readmemh("./software/OS12.mem", OSROM);
+		$readmemh("./software/BASIC2.mem", BASICROM);
 		nRESET <= 0;
 		repeat (10) @(posedge clk2MHz);
 		
 		nRESET <= 1;
+		repeat (200000) @(posedge clk2MHz);
+		$finish;
 	end
 
 /******************************************************************************/
@@ -118,8 +123,8 @@ module TOP_test();
 
 	// Virtual Screen
 	always @ (posedge clk16MHz) begin
-		if(V_SYNC) $v_sync;
-		else if(H_SYNC) $h_sync;
+		if(V_SYNC) 		begin $v_sync; $stop; end
+		else if(H_SYNC) begin $h_sync; $stop; end
 		else if(cDISPLAYen) $pixel_scan(colour);
 	end
 
@@ -167,11 +172,12 @@ module TOP_test();
 	.data_bus(DATABUS),
 
 	.framestore_adr(cFRAMESTORE),
-	.cROWADDRESS(cROWADDRESS),
+	.scanline_row(cROWADDRESS),
 	.display_en(cDISPLAYen),
 	.h_sync(H_SYNC),
 	.v_sync(V_SYNC));
 
+wire [7:0] VCC_8 = 8'hFF;
 // Versatile Interface Adapter
 	MOS6522 via(
 	.CS1(VCC),
@@ -184,7 +190,9 @@ module TOP_test();
 	.CA2(VCC),
 
 	.DATA(DATABUS),
-	.PORTB({{4{VCC}},LS259_D,LS259_A}),
-	.PORTA({8{VCC}}),
+	.PORTB({VCC_8[3:0],LS259_D,LS259_A}),
+	.PORTA(VCC_8),
 
 	.nIRQ(nIRQ));
+	
+endmodule

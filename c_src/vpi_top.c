@@ -128,7 +128,7 @@ top_register(void){
 		{.type=vpiSysTask,.tfname="$h_sync",.calltf=h_sync,.sizetf=0,.user_data=0}
     };
 
-	for(uint8_t i = 0; i < sizeof(tf_data); i++){
+	for(uint8_t i = 0; i < 4; i++){
 		vpi_register_systf(&tf_data[i]);
 	}
 }

@@ -10,7 +10,7 @@ module VideoULA (
 	output clk8MHz,
 	output clk4MHz,
 	output clk2MHz,
-	output clk1Mhz,
+	output clk1MHz,
 	output clkCRTC,
 	output REDout,
 	output GREENout,
@@ -31,7 +31,7 @@ module VideoULA (
 
 /****************************************************************************************/
 
-	reg [3:0] clk_COUNTER;
+	reg [3:0] clk_COUNTER = 0;
 
 	assign clk8MHz = clk_COUNTER[0];
 	assign clk4MHz = clk_COUNTER[1];
@@ -40,8 +40,7 @@ module VideoULA (
 	assign clkCRTC = CONTROL[4]? clk2MHz : clk1MHz;
 
 	always @ (posedge clk16MHz) begin
-		if(~nRESET) clk_COUNTER <= 0;
-		else 		clk_COUNTER <= clk_COUNTER + 1;
+		clk_COUNTER <= clk_COUNTER + 1;
 	end
 
 /****************************************************************************************/
