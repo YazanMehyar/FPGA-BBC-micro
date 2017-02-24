@@ -26,9 +26,9 @@ module TOP_test();
 
 /*****************************************************************************/
 	// ROM Bank Select
-	reg [1:0] ROM_BANK;
+	reg [3:0] ROM_BANK;
 	always @ ( posedge clk2MHz ) begin
-		if(~nROMSEL) ROM_BANK <= DATABUS[1:0];
+		if(~nROMSEL) ROM_BANK <= DATABUS[3:0];
 	end
 
 	// ROM
@@ -63,7 +63,12 @@ module TOP_test();
 	wire nACIA = ~(SHEILA & ~|pADDRESSBUS[7:4] & pADDRESSBUS[3]);
 	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
 	wire nROMSEL  = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & pADDRESSBUS[4] & ~RnW);
+
 	wire nVIA = ~(SHEILA & ~pADDRESSBUS[7] & pADDRESSBUS[6] & ~pADDRESSBUS[5]);
+	wire nUVIA= ~(SHEILA & ~pADDRESSBUS[7] & &pADDRESSBUS[6:5]);
+	wire nFDC = ~(SHEILA & pADDRESSBUS[7] & ~|pADDRESSBUS[6:5]);
+	wire nADC = ~(SHEILA & &pADDRESSBUS[7:6] & ~pADDRESSBUS[5]);
+	wire nTUBE= ~(SHEILA & &pADDRESSBUS[7:5]);
 
 /******************************************************************************/
 
@@ -75,14 +80,16 @@ module TOP_test();
 
 		// -- Skip Ram initialisation -- //
 		$readmemh("./software/RAMinit.mem", RAM);
-		OSROM[14'h19DD] <= 8'h1F; // Branch over code
+		OSROM[14'h19E8] <= 8'h80; // Mark as 32KiB model
+		OSROM[14'h19E9] <= 8'hD0; // Branch over code
+		OSROM[14'h19EA] <= 8'h12;
 		// -- Skip Ram initialisation -- //
 
 		nRESET <= 0;
 		repeat (10) @(posedge clk2MHz);
 
 		nRESET <= 1;
-		repeat (120000) @(posedge clk2MHz);
+		repeat (20000) @(posedge clk2MHz);
 		$finish;
 	end
 
@@ -180,6 +187,10 @@ wire [3:0] PORTB_lo;
 	.RnW(RnW),
 	.nRESET(nRESET),
 	.nVIA(nVIA),
+	.nFDC(nFDC),
+	.nADC(nADC),
+	.nTUBE(nTUBE),
+	.nUVIA(nUVIA),
 	.nACIA(nACIA),
 	.cFRAMESTORE(cFRAMESTORE),
 	.cROWADDRESS(cROWADDRESS[2:0]),

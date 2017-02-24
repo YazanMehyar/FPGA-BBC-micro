@@ -3,7 +3,11 @@ module EXTRA_PERIPHERALS (
 	input nRESET,
 	input RnW,
 	input nVIA,
+	input nFDC,
+	input nADC,
+	input nTUBE,
 	input nACIA,
+	input nUVIA,
 	input [13:0] cFRAMESTORE,
 	input [2:0] cROWADDRESS,
 	input LS259_D,
@@ -12,7 +16,9 @@ module EXTRA_PERIPHERALS (
 	inout  [7:0] DATABUS,
 	output [14:0] CRTC_adr);
 
-	assign DATABUS = (~nACIA&RnW&nRESET&~clk2MHz)? ACIA_status : 8'hzz;
+	assign DATABUS = (RnW&nRESET&~clk2MHz)? (~nACIA)?	ACIA_status
+											: (~(nUVIA&nFDC&nTUBE&nADC))?	8'h00
+											: 8'hzz : 8'hzz;
 
 // CRTC address correction
 	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
