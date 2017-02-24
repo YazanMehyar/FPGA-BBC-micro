@@ -6,6 +6,7 @@ module VideoULA (
 	input DISEN,
 	input CURSOR,
 	input [7:0] DATA,
+	input [7:0] pDATA,
 
 	output reg clk8MHz,
 	output reg clk4MHz,
@@ -70,8 +71,8 @@ module VideoULA (
 	wire [3:0] PALETTE_out = PALETTE_mem[{SHIFT_reg[7],SHIFT_reg[5],SHIFT_reg[3],SHIFT_reg[1]}];
 	always @ (posedge clk2MHz) begin
 		if(~nCS)
-		 	if(A0)  PALETTE_mem[DATA[7:4]] <= DATA[3:0];
-			else	CONTROL <= DATA;
+		 	if(A0)  PALETTE_mem[pDATA[7:4]] <= pDATA[3:0];
+			else	CONTROL <= pDATA;
 	end
 
 /****************************************************************************************/

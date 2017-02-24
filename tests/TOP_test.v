@@ -74,12 +74,13 @@ module TOP_test();
 
 	reg nRESET;
 	initial begin
-		//$start_screen; $stop;
+		$start_screen;
 		$readmemh("./software/OS12.mem", OSROM);
 		$readmemh("./software/BASIC2.mem", BASICROM);
 
 		// -- Skip Ram initialisation -- //
 		$readmemh("./software/RAMinit.mem", RAM);
+		OSROM[14'h1B28] <= 8'h90;
 		OSROM[14'h19E8] <= 8'h80; // Mark as 32KiB model
 		OSROM[14'h19E9] <= 8'hD0; // Branch over code
 		OSROM[14'h19EA] <= 8'h12;
@@ -89,7 +90,7 @@ module TOP_test();
 		repeat (10) @(posedge clk2MHz);
 
 		nRESET <= 1;
-		repeat (20000) @(posedge clk2MHz);
+		repeat (200000) @(posedge clk2MHz);
 		$finish;
 	end
 
@@ -107,13 +108,29 @@ module TOP_test();
 			default: colour = 8'hxx;
 		endcase
 	end
-
-	// Virtual Screen
-	always @ (posedge clk16MHz) begin
-		//if(V_SYNC) 		begin $v_sync; $stop; end
-		//else if(H_SYNC) begin $h_sync; $stop; end
-		//else if(cDISPLAYen) $pixel_scan(colour);
+	
+	always @ (pADDRESSBUS) begin
+		if(pADDRESSBUS == 16'hDBFA) begin
+			$display("TIME : %t", $time);
+			$stop;
+		end
 	end
+
+// Virtual Screen
+	integer VSYNC_ACK = 0;
+	always @ (H_SYNC or V_SYNC) begin
+		if(V_SYNC)	begin
+			$v_sync;
+			if(VSYNC_ACK < 3) VSYNC_ACK = VSYNC_ACK + 1;
+			$stop;
+		end else if(H_SYNC) begin 
+			$h_sync;
+			//$stop;
+		end
+	end
+	
+	always @ (clk16MHz) if(cDISPLAYen && VSYNC_ACK == 3) $pixel_scan(colour);
+	
 
 /******************************************************************************/
 // Processor
@@ -138,6 +155,7 @@ module TOP_test();
 	.nCS(nVIDPROC),
 	.DISEN(DISPLAYen),
 	.DATA(MEM_DATA),
+	.pDATA(DATABUS),
 
 	.clk4MHz(clk4MHz),
 	.clk2MHz(clk2MHz),

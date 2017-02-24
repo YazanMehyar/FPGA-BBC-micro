@@ -86,6 +86,7 @@ start_screen(char *data) {
     }
 
     while(shmget((key_t) KEY, SHMSZ, 0666) < 0);
+    pixel_pos = 0;
 
     return 0;
 }
