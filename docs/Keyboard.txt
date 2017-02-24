@@ -1,0 +1,30 @@
+/**********************************************************************
+*
+*	BBC Keyboard
+*
+*	23-02-2017	Yazan Mehyar
+*
+**********************************************************************/
+
+The Keyboard works with 17 pins to interface with the system, only
+13 are relevant in this implementation.
+
+	1 <- AUTO SCAN
+2 - 9 <-> DATA (8 bits)
+	A <- Cassette LED
+	B -> INT (Interrupt on HIGH)
+	C <- CAPS Lock LED
+	D <- SHIFT Lock LED
+
+The LED controls are simple ON & OFF.
+The interesting bit is concerned with the AUTO SCAN, DATA lines and INT.
+
+ - When a key is pressed with the sepecified column the INT goes high
+	and will remain high until the key is depressed or another column is set.
+ - AUTO SCAN is active HIGH set by writing 8'h0B to FE43 and reset by
+ 	writing 8'h03 to FE43. If active then an automatic counter activates
+	keyboard columns in turn.
+ - The data bits:
+ 	- bit 7 indicates if the specified key in column + row combo is pressed
+	- bit 4-6 indicate the row (0-7)
+	- bit 0-3 indicate the column (0-15)

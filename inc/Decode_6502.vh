@@ -22,6 +22,7 @@
 `define iDB_DIR	3
 `define iDB_ACC	4
 `define iDB_PSR	5
+`define iDB_ABH 6
 
 `define SB_iDB	0
 `define SB_ACC	1

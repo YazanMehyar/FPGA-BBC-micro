@@ -4,7 +4,7 @@
 * @Email:  stcyazanerror@gmail.com
 * @Filename: Decode_6502.v
 * @Last modified by:   zen
-* @Last modified time: 22-Jan-2017
+* @Last modified time: 23-Feb-2017
 */
 
 `include "Decode_6502.vh"
@@ -92,7 +92,7 @@ module Decode_6502 (
 always @ ( * ) begin
 	iDB_SEL = `iDB_DIR; // default unless
 	if(T_state[0]) begin
-		if(BRANCH&BCC)       iDB_SEL = `iDB_PCH;
+		if(BRANCH&BCC)       iDB_SEL = `iDB_ABH;
 		else if(ACC)         iDB_SEL = `iDB_ACC;
 		else if(BLACK_SHEEP) iDB_SEL = `iDB_SB;
 	end else if(T_state[1]) begin

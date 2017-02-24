@@ -7,10 +7,10 @@ module VideoULA (
 	input CURSOR,
 	input [7:0] DATA,
 
-	output clk8MHz,
-	output clk4MHz,
-	output clk2MHz,
-	output clk1MHz,
+	output reg clk8MHz,
+	output reg clk4MHz,
+	output reg clk2MHz,
+	output reg clk1MHz,
 	output clkCRTC,
 	output REDout,
 	output GREENout,
@@ -25,37 +25,38 @@ module VideoULA (
 
 /****************************************************************************************/
 
-	reg [7:0] CONTROL;
-	reg [7:0] SHIFT_reg;
+	reg [7:0] CONTROL = 0;
+	reg [7:0] SHIFT_reg = 0;
 	reg [3:0] PALETTE_mem [0:15];
 
 /****************************************************************************************/
-
-	reg [3:0] clk_COUNTER = 0;
-
-	assign clk8MHz = clk_COUNTER[0];
-	assign clk4MHz = clk_COUNTER[1];
-	assign clk2MHz = clk_COUNTER[2];
-	assign clk1MHz = clk_COUNTER[3];
-	assign clkCRTC = CONTROL[4]? clk2MHz : clk1MHz;
-
-	always @ (posedge clk16MHz) begin
-		clk_COUNTER <= clk_COUNTER + 1;
+	initial begin
+		clk1MHz = 0;
+		clk2MHz = 0;
+		clk4MHz = 0;
+		clk8MHz = 0;
 	end
+
+	always @ (posedge clk16MHz) clk8MHz <= #1 ~clk8MHz;
+	always @ (posedge clk8MHz)  clk4MHz <= #1 ~clk4MHz;
+	always @ (posedge clk4MHz)  clk2MHz <= #1 ~clk2MHz;
+	always @ (posedge clk2MHz)  clk1MHz <= #1 ~clk1MHz;
+
+	assign clkCRTC = CONTROL[4]? clk2MHz : clk1MHz;
 
 /****************************************************************************************/
 
-	wire CRTC_posedge = CONTROL[4]? ~clk_COUNTER[2] & &clk_COUNTER[1:0] :
-									~clk_COUNTER[3] & &clk_COUNTER[2:0] ;
+	wire CRTC_posedge = CONTROL[4]? clk8MHz&clk4MHz&~clk2MHz :
+									clk8MHz&clk4MHz&~clk2MHz&clk1MHz ;
 
 	reg SHIFT_en; // wire
 	always @ ( * ) begin
 		case (CONTROL[3:2])
-			2'b00: SHIFT_en = &clk_COUNTER[2:0];
-			2'b01: SHIFT_en = &clk_COUNTER[1:0];
-			2'b10: SHIFT_en = clk_COUNTER[0];
+			2'b00: SHIFT_en = clk8MHz&clk4MHz&~clk2MHz;
+			2'b01: SHIFT_en = clk8MHz&clk4MHz;
+			2'b10: SHIFT_en = clk8MHz;
 			2'b11: SHIFT_en = 1;
-			default: ;
+			default: SHIFT_en = 1'bx;
 		endcase
 	end
 

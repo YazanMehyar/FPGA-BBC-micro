@@ -24,87 +24,67 @@ module TOP_test();
 	wire PHI_2, RnW, SYNC, nIRQ;
 	wire RED, GREEN, BLUE;
 
+/*****************************************************************************/
+	// ROM Bank Select
+	reg [1:0] ROM_BANK;
+	always @ ( posedge clk2MHz ) begin
+		if(~nROMSEL) ROM_BANK <= DATABUS[1:0];
+	end
+
 	// ROM
-	wire OSBANKen = (&pADDRESSBUS[15:14] & ~SHEILA);
-	wire BASICBANKen = (pADDRESSBUS[15] & ~pADDRESSBUS[14]);
+	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
+	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
 
 	reg [7:0] OSROM [0:`KiB16];
 	reg [7:0] BASICROM [0:`KiB16];
 	reg [7:0] RAM [0:`KiB32];
 	reg [7:0] MEM_DATA;
-		
+	wire [14:0] CRTC_adr;
+
 	always @ ( negedge clk4MHz ) begin
 		if(~clk2MHz & pADDRESSBUS[15]) begin
 			if(OSBANKen) MEM_DATA <= OSROM[pADDRESSBUS[13:0]];
 			else if(BASICBANKen) MEM_DATA <= BASICROM[pADDRESSBUS[13:0]];
-			else MEM_DATA <= 8'hxx;
+			else MEM_DATA <= 8'hFF;
 		end else begin
-			if(~clk2MHz) // respond to processor
-				if(RnW)	MEM_DATA <= RAM[pADDRESSBUS[14:0]];
-				else	RAM[pADDRESSBUS[14:0]] <= DATABUS;
-			else		// respond to CRTC
-				MEM_DATA <= RAM[{cFRAMESTORE[7:4],adr_sum[2:0],cFRAMESTORE[3:0],cROWADDRESS[2:0]}];
+			if(~clk2MHz) MEM_DATA <= RAM[pADDRESSBUS[14:0]]; // processor
+			else 		 MEM_DATA <= RAM[CRTC_adr];			 // crtc
+
+			if(~RnW) RAM[pADDRESSBUS[14:0]] <= DATABUS;
 		end
 	end
 
 /******************************************************************************/
-
-	// address correction
-	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
-	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
-	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]}; 
-	wire B4 = ~&{B3,cFRAMESTORE[12]};
-	reg [3:0] adr_sum;
-	
-	always @ ( * ) begin
-		adr_sum = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1;
-	end
-
-
-/******************************************************************************/
-
-	wire LS259_D;
-	wire [2:0] LS259_A;
-	wire LS259en = nVIA;
-	reg [7:0] LS259_reg;
-
-	always @ ( posedge clk2MHz ) begin
-		if(LS259en)	case (LS259_A)
-			0:	LS259_reg[0] <= LS259_D;
-			1:	LS259_reg[1] <= LS259_D;
-			2:	LS259_reg[2] <= LS259_D;
-			3:	LS259_reg[3] <= LS259_D;
-			4:	LS259_reg[4] <= LS259_D;
-			5:	LS259_reg[5] <= LS259_D;
-			6:	LS259_reg[6] <= LS259_D;
-			7:	LS259_reg[7] <= LS259_D;
-		endcase
-	end
-
-/******************************************************************************/
+//	Chip selects
 
 	wire SHEILA = &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 
-	wire nVIA = ~(SHEILA & ~pADDRESSBUS[7] & pADDRESSBUS[6] & ~pADDRESSBUS[5]);
-	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
 	wire nCRTC = ~(SHEILA & ~|pADDRESSBUS[7:3]);
+	wire nACIA = ~(SHEILA & ~|pADDRESSBUS[7:4] & pADDRESSBUS[3]);
+	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
+	wire nROMSEL  = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & pADDRESSBUS[4] & ~RnW);
+	wire nVIA = ~(SHEILA & ~pADDRESSBUS[7] & pADDRESSBUS[6] & ~pADDRESSBUS[5]);
 
 /******************************************************************************/
+
 	reg nRESET;
 	initial begin
-		$start_screen;
-		$stop;
+		//$start_screen; $stop;
 		$readmemh("./software/OS12.mem", OSROM);
 		$readmemh("./software/BASIC2.mem", BASICROM);
+
+		// -- Skip Ram initialisation -- //
+		$readmemh("./software/RAMinit.mem", RAM);
+		OSROM[14'h19DD] <= 8'h1F; // Branch over code
+		// -- Skip Ram initialisation -- //
+
 		nRESET <= 0;
 		repeat (10) @(posedge clk2MHz);
-		
+
 		nRESET <= 1;
-		repeat (200000) @(posedge clk2MHz);
+		repeat (120000) @(posedge clk2MHz);
 		$finish;
 	end
-
-/******************************************************************************/
 
 	reg [7:0] colour;
 	always @ ( * ) begin
@@ -123,13 +103,12 @@ module TOP_test();
 
 	// Virtual Screen
 	always @ (posedge clk16MHz) begin
-		if(V_SYNC) 		begin $v_sync; $stop; end
-		else if(H_SYNC) begin $h_sync; $stop; end
-		else if(cDISPLAYen) $pixel_scan(colour);
+		//if(V_SYNC) 		begin $v_sync; $stop; end
+		//else if(H_SYNC) begin $h_sync; $stop; end
+		//else if(cDISPLAYen) $pixel_scan(colour);
 	end
 
 /******************************************************************************/
-
 // Processor
 	MOS6502 pocessor(
 	.clk(clk2MHz),
@@ -151,7 +130,7 @@ module TOP_test();
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
 	.DISEN(DISPLAYen),
-	.DATA(DATABUS),
+	.DATA(MEM_DATA),
 
 	.clk4MHz(clk4MHz),
 	.clk2MHz(clk2MHz),
@@ -177,7 +156,9 @@ module TOP_test();
 	.h_sync(H_SYNC),
 	.v_sync(V_SYNC));
 
-wire [7:0] VCC_8 = 8'hFF;
+wire [3:0] VCC_4 = 4'hF;
+wire [3:0] PORTB_lo;
+
 // Versatile Interface Adapter
 	MOS6522 via(
 	.CS1(VCC),
@@ -190,9 +171,22 @@ wire [7:0] VCC_8 = 8'hFF;
 	.CA2(VCC),
 
 	.DATA(DATABUS),
-	.PORTB({VCC_8[3:0],LS259_D,LS259_A}),
-	.PORTA(VCC_8),
-
+	.PORTB({VCC_4,PORTB_lo}),
 	.nIRQ(nIRQ));
-	
+
+// Extra (MOCK) Peripherals
+	EXTRA_PERIPHERALS ext_p(
+	.clk2MHz(clk2MHz),
+	.RnW(RnW),
+	.nRESET(nRESET),
+	.nVIA(nVIA),
+	.nACIA(nACIA),
+	.cFRAMESTORE(cFRAMESTORE),
+	.cROWADDRESS(cROWADDRESS[2:0]),
+	.LS259_D(PORTB_lo[3]),
+	.LS259_A(PORTB_lo[2:0]),
+
+	.DATABUS(DATABUS),
+	.CRTC_adr(CRTC_adr));
+
 endmodule

@@ -26,27 +26,27 @@ module MC6845 (
 	output reg cursor
 	);
 
-reg [13:0] start_address;
+reg [13:0] start_address= 0;
 reg [13:0] cursor_adr;
-reg [13:0] lightpen_adr;
+reg [13:0] lightpen_adr	= 0;
 reg [4:0]  address_reg;
 
 // horizontal control registers
-reg [7:0] horz_display;
-reg [7:0] horz_syncpos;
-reg [3:0] horz_pulse;
-reg [7:0] horz_total;
+reg [7:0] horz_display = 0;
+reg [7:0] horz_syncpos = 0;
+reg [3:0] horz_pulse   = 0;
+reg [7:0] horz_total   = 8'hff;
 
 // vertical control registers
-reg [6:0] vert_display;
-reg [6:0] vert_syncpos;
-reg [3:0] vert_pulse;
-reg [6:0] vert_total;
-reg [4:0] vert_fraction;
+reg [6:0] vert_display = 0;
+reg [6:0] vert_syncpos = 0;
+reg [3:0] vert_pulse   = 0;
+reg [6:0] vert_total   = 7'h7f;
+reg [4:0] vert_fraction= 0;
 
 reg [1:0] interlace_mode;
 
-reg [4:0] max_scanline;
+reg [4:0] max_scanline = 5'h1f;
 reg [4:0] cursor_start_row;
 reg [4:0] cursor_end_row;
 
@@ -54,7 +54,7 @@ reg [1:0] cursor_blink_mode;
 // wires
 reg [7:0] data_bus_out;
 
-/**************************************************************************************************/
+/****************************************************************************************/
 
 assign data_bus = ~nCS&en&RnW&nRESET? data_bus_out : 8'hzz;
 
@@ -92,7 +92,7 @@ always @ (negedge en) begin
 		else address_reg <= data_bus[4:0];
 end
 
-/**************************************************************************************************/
+/****************************************************************************************/
 // horizontal control
 reg [3:0] hz_pulse_count;
 reg [7:0] hz_total_count;
@@ -116,7 +116,7 @@ always @ (negedge char_clk) begin
 	end
 end
 
-/**************************************************************************************************/
+/****************************************************************************************/
 // vertical control
 
 reg [3:0] vt_pulse_count;
@@ -171,7 +171,7 @@ always @ (negedge char_clk) begin
 	else if(vt_display & next_row)	vt_display <= ~vt_display_end;
 end
 
-/**************************************************************************************************/
+/****************************************************************************************/
 // Display signals
 
 always @ (negedge char_clk) begin
@@ -193,7 +193,7 @@ always @ (negedge char_clk) begin
 	else				display_en <= scanline_end & vt_display & ~(vt_display_end&next_row) | screen_end;
 end
 
-/**************************************************************************************************/
+/****************************************************************************************/
 // Address buses
 
 reg [13:0] scanline_start_adr;
@@ -221,7 +221,7 @@ always @ (negedge char_clk) begin
 	else if(scanline_end)	scanline_row <= nxt_scanline_row;
 end
 
-/**************************************************************************************************/
+/****************************************************************************************/
 // Cursor
 wire cursor_point = framestore_adr == cursor_adr;
 

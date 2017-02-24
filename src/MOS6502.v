@@ -86,6 +86,7 @@ end
 			`iDB_DIR: iDB = DIR;
 			`iDB_ACC: iDB = Acc;
 			`iDB_PSR: iDB = PSR;
+			`iDB_ABH: iDB = ADBH;
 			default: iDB = 8'hxx;
 		endcase
 	end
