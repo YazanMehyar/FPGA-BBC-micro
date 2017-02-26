@@ -57,8 +57,7 @@ screen_reset(void){
 
 static void
 next_line(void){
-	// let integer division do the job
-	pixel_pos = ((pixel_pos + PIXELS) / PIXELS) * PIXELS;
+	while(pixel_pos % PIXELS) pixel_pos++;
 }
 
 

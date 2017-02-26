@@ -1,0 +1,22 @@
+/******************************************************************
+*
+*	Teletext Chip
+*
+*	Yazan Mehyar
+*
+*******************************************************************/
+
+The teletext chip has 28 pins of which 16 are enough to model the
+chip:
+
+	OUT		RED		video output
+	OUT		GREEN	video output
+	OUT		BLUE	video output
+	IN		F1		1MHz input
+	IN		T6		6MHz input
+	IN		D0-6	Character Data input
+	IN		CRS		Character Rounding Select (~RowAdr[0])
+	IN		nGLR	General Line Reset (~H_SYNC)
+	IN		DEW		Data Entry Window  (~V_SYNC)
+	IN		LOSE	Load Output Shift Register Enable
+		

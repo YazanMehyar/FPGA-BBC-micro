@@ -4,7 +4,7 @@
 * @Email:  stcyazanerror@gmail.com
 * @Filename: Interrupt_6502.v
 * @Last modified by:   zen
-* @Last modified time: 13-Feb-2017
+* @Last modified time: 25-Feb-2017
 */
 
 module Interrupt_6502 (
@@ -46,10 +46,9 @@ module Interrupt_6502 (
 	Edge_Trigger NMI(
 		.clk(clk),
 		.EDGE_pin(NMI_pin),
-		.RESET_pin(RESET_pin),
-		.T0(T0),
-		.NEXT_T(NEXT_T),
-		.EDGE(NMI_T0)
+		.nRESET_pin(RESET_pin),
+		.En(T0 & ~NEXT_T),
+		.nEDGE(NMI_T0)
 		);
 
 	always @ (posedge clk)
@@ -65,10 +64,9 @@ module Interrupt_6502 (
 	Edge_Trigger SO(
 		.clk(clk),
 		.EDGE_pin(SO_pin),
-		.RESET_pin(RESET_pin),
-		.T0(T0),
-		.NEXT_T(NEXT_T),
-		.EDGE(SO_out)
+		.nRESET_pin(RESET_pin),
+		.En(T0 & ~NEXT_T),
+		.nEDGE(SO_out)
 		);
 
 endmodule // Interrupt_6502

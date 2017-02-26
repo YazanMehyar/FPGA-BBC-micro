@@ -93,6 +93,7 @@ Decode_6502 d(
 	.COUT(COUT),
 	.BX(BX),
 	.BCC(BCC),
+	.IRQ_req(IRQ_req),
 	.NMI_req(NMI_req),
 	.RESET_req(RESET_req),
 	.READY(READY),

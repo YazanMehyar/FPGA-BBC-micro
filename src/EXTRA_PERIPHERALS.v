@@ -27,7 +27,7 @@ module EXTRA_PERIPHERALS (
 	wire B4 = ~&{B3,cFRAMESTORE[12]};
 
 	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
-	assign CRTC_adr = {caa[3],cFRAMESTORE[7:4],caa[2:0],cFRAMESTORE[3:0],cROWADDRESS[2:0]};
+	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
 
 // MOCK MC6850 ACIA
 	reg [7:0] ACIA_status;

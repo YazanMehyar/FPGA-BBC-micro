@@ -19,7 +19,6 @@ module VideoULA (
 
 	/**
 		NOTE: Parts not implemented:
-		 - INV pin and function,
 		 - Red, Green & Blue input pins from the teletext chip
 		 - I added a nRESET pin
 	*/
@@ -77,8 +76,30 @@ module VideoULA (
 
 /****************************************************************************************/
 
+	reg [3:0] CURSOR_seg;
+	reg rCURSOR_out;
+	wire wCURSOR_out = CURSOR_seg[0]&CONTROL[7]
+					| CURSOR_seg[1]&CONTROL[6]
+					| CURSOR_seg[2]&CONTROL[5]
+					| CURSOR_seg[3]&CONTROL[5];
+
+	wire CURSOR_out = CONTROL[4]? rCURSOR_out : wCURSOR_out;
+
+	always @ (posedge clk16MHz) begin
+		if(~nRESET) CURSOR_seg <= 4'b0000;
+		else if(CRTC_posedge) begin
+			if(CURSOR)	CURSOR_seg <= 4'b0001;
+			else		CURSOR_seg <= CURSOR_seg << 1;
+			rCURSOR_out <= wCURSOR_out;
+		end
+	end
+
+
+/****************************************************************************************/
+
 	wire FLASH = ~(PALETTE_out[3]&CONTROL[0]);
-	assign {BLUEout,GREENout,REDout} = DISEN? FLASH? ~PALETTE_out[2:0] : PALETTE_out[2:0]
-											: 3'b000;
+	assign {BLUEout,GREENout,REDout} = DISEN? (CURSOR_out^FLASH)? ~PALETTE_out[2:0]
+																: PALETTE_out[2:0]
+										: 3'b000;
 
 endmodule // VideoULA

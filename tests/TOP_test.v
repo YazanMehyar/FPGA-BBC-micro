@@ -19,7 +19,7 @@ module TOP_test();
 	wire [7:0] DATABUS = RnW&~SHEILA? MEM_DATA:8'hzz;
 
 	wire clk2MHz, clk4MHz, clkCRTC;
-	wire cDISPLAYen, DISPLAYen;
+	wire cDISPLAYen, CURSOR, DISEN;
 	wire H_SYNC, V_SYNC;
 	wire PHI_2, RnW, SYNC, nIRQ;
 	wire RED, GREEN, BLUE;
@@ -42,15 +42,15 @@ module TOP_test();
 	wire [14:0] CRTC_adr;
 
 	always @ ( negedge clk4MHz ) begin
-		if(~clk2MHz & pADDRESSBUS[15]) begin
+		if(PHI_2 & pADDRESSBUS[15]) begin
 			if(OSBANKen) MEM_DATA <= OSROM[pADDRESSBUS[13:0]];
 			else if(BASICBANKen) MEM_DATA <= BASICROM[pADDRESSBUS[13:0]];
 			else MEM_DATA <= 8'hFF;
 		end else begin
-			if(~clk2MHz) MEM_DATA <= RAM[pADDRESSBUS[14:0]]; // processor
-			else 		 MEM_DATA <= RAM[CRTC_adr];			 // crtc
-
-			if(~RnW) RAM[pADDRESSBUS[14:0]] <= DATABUS;
+			if(PHI_2)
+				if(RnW) MEM_DATA <= RAM[pADDRESSBUS[14:0]]; // processor
+				else	RAM[pADDRESSBUS[14:0]] <= DATABUS;
+			else 		MEM_DATA <= RAM[CRTC_adr];			// crtc
 		end
 	end
 
@@ -73,24 +73,33 @@ module TOP_test();
 /******************************************************************************/
 
 	reg nRESET;
+	integer SCREEN_COUNT = 0;
 	initial begin
 		$start_screen;
 		$readmemh("./software/OS12.mem", OSROM);
 		$readmemh("./software/BASIC2.mem", BASICROM);
 
-		// -- Skip Ram initialisation -- //
+		// -- OS MODIFICATION -- //
 		$readmemh("./software/RAMinit.mem", RAM);
-		OSROM[14'h1B28] <= 8'h90;
+		OSROM[14'h0B3B] <= 8'h06; // Start at MODE 0 PREFERRED
 		OSROM[14'h19E8] <= 8'h80; // Mark as 32KiB model
+
 		OSROM[14'h19E9] <= 8'hD0; // Branch over code
 		OSROM[14'h19EA] <= 8'h12;
-		// -- Skip Ram initialisation -- //
+
+		// OSROM[14'h1C05] <= 8'h10; // Loop at end of OS
+		// OSROM[14'h1C06] <= 8'hFE;
+		// -- OS MODIFICATION -- //
 
 		nRESET <= 0;
 		repeat (10) @(posedge clk2MHz);
 
 		nRESET <= 1;
-		repeat (200000) @(posedge clk2MHz);
+		repeat (20) begin
+			@(posedge V_SYNC) $display("SCREEN No. %d", SCREEN_COUNT);
+			SCREEN_COUNT <= SCREEN_COUNT + 1;
+		end
+		$stop;
 		$finish;
 	end
 
@@ -108,29 +117,30 @@ module TOP_test();
 			default: colour = 8'hxx;
 		endcase
 	end
-	
-	always @ (pADDRESSBUS) begin
-		if(pADDRESSBUS == 16'hDBFA) begin
-			$display("TIME : %t", $time);
-			$stop;
+
+// TESTs
+
+	always @ (posedge PHI_2) begin
+		if(pADDRESSBUS == 16'h001E) begin
 		end
 	end
 
 // Virtual Screen
-	integer VSYNC_ACK = 0;
-	always @ (H_SYNC or V_SYNC) begin
+	reg DEN = 0;
+	always @ (V_SYNC) begin
 		if(V_SYNC)	begin
 			$v_sync;
-			if(VSYNC_ACK < 3) VSYNC_ACK = VSYNC_ACK + 1;
-			$stop;
-		end else if(H_SYNC) begin 
-			$h_sync;
-			//$stop;
 		end
 	end
-	
-	always @ (clk16MHz) if(cDISPLAYen && VSYNC_ACK == 3) $pixel_scan(colour);
-	
+
+	always @ ( H_SYNC ) begin
+		if(H_SYNC) begin
+			$h_sync;
+		end
+	end
+
+	always @ (negedge clk16MHz) if(DISEN) $pixel_scan(colour);
+
 
 /******************************************************************************/
 // Processor
@@ -148,12 +158,14 @@ module TOP_test();
 
 
 // Video ULA
+	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
 	.clk16MHz(clk16MHz),
 	.nRESET(nRESET),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
-	.DISEN(DISPLAYen),
+	.DISEN(DISEN),
+	.CURSOR(CURSOR),
 	.DATA(MEM_DATA),
 	.pDATA(DATABUS),
 
@@ -178,6 +190,7 @@ module TOP_test();
 	.framestore_adr(cFRAMESTORE),
 	.scanline_row(cROWADDRESS),
 	.display_en(cDISPLAYen),
+	.cursor(CURSOR),
 	.h_sync(H_SYNC),
 	.v_sync(V_SYNC));
 

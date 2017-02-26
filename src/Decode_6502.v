@@ -4,7 +4,7 @@
 * @Email:  stcyazanerror@gmail.com
 * @Filename: Decode_6502.v
 * @Last modified by:   zen
-* @Last modified time: 23-Feb-2017
+* @Last modified time: 25-Feb-2017
 */
 
 `include "Decode_6502.vh"
@@ -21,6 +21,7 @@ module Decode_6502 (
 	input BX,
 	input BCC,
 	input NMI_req,
+	input IRQ_req,
 	input RESET_req,
 	input READY,
 
@@ -294,7 +295,7 @@ always @ ( * ) begin
 		else if(BRANCH&~BX) NEXT_T = branch_taken(IR[7:6]);
 		else NEXT_T = 0;
 	end else if(T_state[1]) begin
-		NEXT_T = TWO_CYCLE&RESET_req;
+		NEXT_T = TWO_CYCLE&RESET_req&IRQ_req&NMI_req;
 	end else if(T_state[2]) begin
 		NEXT_T  = ZPG | ABS&CONTROL&~IR[5] | STACK&~IR[5];
 		CLEAR_T = ZPG & RMW;
