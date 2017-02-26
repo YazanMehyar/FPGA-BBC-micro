@@ -9,7 +9,7 @@ module EXTRA_PERIPHERALS (
 	input nACIA,
 	input nUVIA,
 	input [13:0] cFRAMESTORE,
-	input [2:0] cROWADDRESS,
+	input [4:0] cROWADDRESS,
 	input LS259_D,
 	input [2:0] LS259_A,
 
@@ -58,7 +58,5 @@ module EXTRA_PERIPHERALS (
 			7:	LS259_reg[7] <= LS259_D;
 		endcase
 	end
-
-// Keyboard
 
 endmodule // EXTRA_PERIPHERALS
