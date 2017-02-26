@@ -10,7 +10,7 @@ module Keyboard (
 	input PS2_DATA,
 
 	output column_match,
-	output row_match);
+	inout  row_match);
 
 	wire [7:0] DATA;
 	wire DONE;
@@ -20,15 +20,14 @@ module Keyboard (
 	reg [12:0] CLKCOUNTER;
 	reg En;
 
-	always @ (posedge CLK) begin
+	always @ (posedge clk1MHz) begin
 		if(~nRESET) CLKCOUNTER <= 0;
 		else		CLKCOUNTER <= CLKCOUNTER + 1;
 	end
 
-	always @ (posedge CLK) begin
-		if(~nRESET)					En <= 0;
-		else if(~|CLKCOUNTER[4:0])	En <= 1;
-		else						En <= 0;
+	always @ (posedge clk1MHz) begin
+		if(~nRESET)	En <= 0;
+		else		En <= ~|CLKCOUNTER[4:0];
 	end
 
 	PS2_DRIVER p(
@@ -155,6 +154,6 @@ module Keyboard (
 /****************************************************************************************/
 
 	assign column_match = |RAM_RDATA;
-	assign row_match = RAM_RDATA & (8'h01 << row);
+	assign row_match = autoscan? 1'bz : |(RAM_RDATA & (8'h01 << row));
 
 endmodule // Keyboard

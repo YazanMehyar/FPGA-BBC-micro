@@ -1,9 +1,20 @@
-module TOP_test();
+module TOP(
+	input CLK100MHZ,
+	input PS2_CLK,
+	input PS2_DATA,
+	input CPU_RESETN,
+	
+	output [3:0] VGA_R,
+	output [3:0] VGA_G,
+	output [3:0] VGA_B,
+	output VGA_HS,
+	output VGA_VS
+	);
 
 `define KiB16 16383
 `define KiB32 32767
 `define KiB64 65535
-
+	
 	wire VCC = 1'b1;
 	wire GND = 1'b0;
 
@@ -11,13 +22,76 @@ module TOP_test();
 	wire [13:0] cFRAMESTORE;
 	wire [4:0] cROWADDRESS;
 
-	wire clk2MHz, clk4MHz, clkCRTC;
+	wire clk2MHz, clk4MHz, clk1MHz, clkCRTC;
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire H_SYNC, V_SYNC;
-	wire PHI_2, RnW, SYNC, nIRQ;
+	wire PHI_2, RnW, nIRQ;
 	wire RED, GREEN, BLUE;
 
 /*****************************************************************************/
+
+	assign VGA_HS = H_SYNC_test;
+	assign VGA_VS = V_SYNC_test;
+	
+	assign VGA_R = {4{RED}};
+	assign VGA_G = {4{GREEN}};
+	assign VGA_B = {4{BLUE}};
+
+/*****************************************************************************/
+	reg clk16MHz;
+	reg [2:0] CLKPHASE = 0;
+	always @(posedge CLK100MHZ) begin
+		if(~CPU_RESETN) begin
+			CLKPHASE <= 4'h1;
+			clk16MHz <= 0;
+		end else begin
+			CLKPHASE <= {CLKPHASE[1:0],CLKPHASE[2]};
+			if(CLKPHASE[2]) clk16MHz <= ~clk16MHz;
+		end
+	end
+	
+	// TEST STUFF
+	reg [16:0] CLKTEST = 0;
+	always @ (posedge CLK100MHZ)
+		if(~CPU_RESETN) CLKTEST <= 0;
+		else		CLKTEST <= CLKTEST + 1;
+		
+	reg H_SYNC_test;
+	reg V_SYNC_test;
+	reg [10:0] H_COUNT;
+	reg [7:0]  H_PULSE_COUNT;
+	reg [9:0]  V_COUNT;
+	reg [1:0]  V_PULSE_COUNT;
+	
+	always @ (posedge CLK100MHZ) begin
+		if(~CPU_RESETN) begin
+			H_SYNC_test <= 0; H_COUNT <= 0; H_PULSE_COUNT <= 0;
+			V_SYNC_test <= 0; V_COUNT <= 0; V_PULSE_COUNT <= 0;
+		end else begin
+			if(H_SYNC_test) begin
+				H_SYNC_test <= |H_PULSE_COUNT;
+				H_PULSE_COUNT <= H_PULSE_COUNT - 1;
+				H_COUNT <= 1562;
+			end else begin
+				H_SYNC_test <= ~|H_COUNT;
+				H_PULSE_COUNT <= 100;								
+				H_COUNT <= H_COUNT - 1;
+			end
+			
+			if(V_SYNC_test & ~|H_COUNT) begin
+				V_SYNC_test <= |V_PULSE_COUNT;
+				V_PULSE_COUNT <= V_PULSE_COUNT - 1;
+				V_COUNT <= 1023;
+			end else if(~|H_COUNT) begin
+				V_SYNC_test <= ~|V_COUNT;
+				V_PULSE_COUNT <= 3;
+				V_COUNT <= V_COUNT - 1;
+			end
+		end
+	end
+
+/****************************************************************************/
+
 	`include "BBCOS12.vh"
 	`include "BBCBASIC2.vh"
 
@@ -66,25 +140,53 @@ module TOP_test();
 	wire nTUBE= ~(SHEILA & &pADDRESSBUS[7:5]);
 
 /******************************************************************************/
+
+	wire LS259en = nVIA;
+	reg [7:0] LS259_reg;
+	wire LS259_D;
+	wire [2:0] LS259_A;
+
+	always @ ( posedge clk2MHz ) begin
+		if(LS259en)	case (LS259_A)
+			0:	LS259_reg[0] <= LS259_D;
+			1:	LS259_reg[1] <= LS259_D;
+			2:	LS259_reg[2] <= LS259_D;
+			3:	LS259_reg[3] <= LS259_D;
+			4:	LS259_reg[4] <= LS259_D;
+			5:	LS259_reg[5] <= LS259_D;
+			6:	LS259_reg[6] <= LS259_D;
+			7:	LS259_reg[7] <= LS259_D;
+		endcase
+	end
+	
+	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
+	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
+	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]};
+	wire B4 = ~&{B3,cFRAMESTORE[12]};
+
+	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
+	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
+	
+/******************************************************************************/
+
 // Processor
 	MOS6502 pocessor(
 	.clk(clk2MHz),
-	.nRES(nRESET),
+	.nRES(CPU_RESETN),
 	.nIRQ(nIRQ),
 	.nNMI(VCC),.SO(VCC),.READY(VCC),
 	.Data_bus(DATABUS),
 
 	.Address_bus(pADDRESSBUS),
 	.PHI_2(PHI_2),
-	.RnW(RnW),
-	.SYNC(SYNC));
+	.RnW(RnW));
 
 
 // Video ULA
 	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
 	.clk16MHz(clk16MHz),
-	.nRESET(nRESET),
+	.nRESET(CPU_RESETN),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
 	.DISEN(DISEN),
@@ -94,6 +196,7 @@ module TOP_test();
 
 	.clk4MHz(clk4MHz),
 	.clk2MHz(clk2MHz),
+	.clk1MHz(clk1MHz),
 	.clkCRTC(clkCRTC),
 	.REDout(RED),
 	.GREENout(GREEN),
@@ -105,7 +208,7 @@ module TOP_test();
 	.en(PHI_2),
 	.char_clk(clkCRTC),
 	.nCS(nCRTC),
-	.nRESET(nRESET),
+	.nRESET(CPU_RESETN),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
 	.data_bus(DATABUS),
@@ -119,39 +222,51 @@ module TOP_test();
 
 wire [3:0] VCC_4 = 4'hF;
 wire [3:0] PORTB_lo;
+wire [7:0] PORTA;
+wire COL_MATCH;
 
 // Versatile Interface Adapter
 	MOS6522 via(
 	.CS1(VCC),
 	.nCS2(nVIA),
-	.nRESET(nRESET),
+	.nRESET(CPU_RESETN),
 	.PHI_2(PHI_2),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[3:0]),
 	.CA1(V_SYNC),
-	.CA2(VCC),
+	.CA2(COL_MATCH),
 
 	.DATA(DATABUS),
 	.PORTB({VCC_4,PORTB_lo}),
+	.PORTA(PORTA),
 	.nIRQ(nIRQ));
+	
+// KEYBOARD
+	Keyboard k(
+	.clk1MHz(clk1MHz),
+	.clk2MHz(clk2MHz),
+	.nRESET(CPU_RESETN),
+	.autoscan(LS259_reg[3]),
+	.column(PORTA[3:0]),
+	.row(PORTA[6:4]),
+	
+	.PS2_CLK(PS2_CLK),
+	.PS2_DATA(PS2_DATA),
+	.column_match(COL_MATCH),
+	.row_match(PORTA[7]));
 
 // Extra (MOCK) Peripherals
 	EXTRA_PERIPHERALS ext_p(
 	.clk2MHz(clk2MHz),
 	.RnW(RnW),
-	.nRESET(nRESET),
+	.nRESET(CPU_RESETN),
 	.nVIA(nVIA),
 	.nFDC(nFDC),
 	.nADC(nADC),
 	.nTUBE(nTUBE),
 	.nUVIA(nUVIA),
 	.nACIA(nACIA),
-	.cFRAMESTORE(cFRAMESTORE),
-	.cROWADDRESS(cROWADDRESS),
-	.LS259_D(PORTB_lo[3]),
-	.LS259_A(PORTB_lo[2:0]),
 
-	.DATABUS(DATABUS),
-	.CRTC_adr(CRTC_adr));
+	.DATABUS(DATABUS));
 
 endmodule

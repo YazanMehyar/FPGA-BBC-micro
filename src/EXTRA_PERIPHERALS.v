@@ -8,26 +8,13 @@ module EXTRA_PERIPHERALS (
 	input nTUBE,
 	input nACIA,
 	input nUVIA,
-	input [13:0] cFRAMESTORE,
-	input [4:0] cROWADDRESS,
-	input LS259_D,
-	input [2:0] LS259_A,
 
-	inout  [7:0] DATABUS,
-	output [14:0] CRTC_adr);
+	inout  [7:0] DATABUS
+	);
 
 	assign DATABUS = (RnW&nRESET&~clk2MHz)? (~nACIA)?	ACIA_status
 											: (~(nUVIA&nFDC&nTUBE&nADC))?	8'h00
 											: 8'hzz : 8'hzz;
-
-// CRTC address correction
-	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
-	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
-	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]};
-	wire B4 = ~&{B3,cFRAMESTORE[12]};
-
-	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
-	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
 
 // MOCK MC6850 ACIA
 	reg [7:0] ACIA_status;
@@ -40,23 +27,6 @@ module EXTRA_PERIPHERALS (
 		ACIA_status[5] = 0;	// No character overruns
 		ACIA_status[6] = 0;	// No parity errors
 		ACIA_status[7] = 0;	// No interrupts
-	end
-
-// VIA extention (partial behaviour)
-	wire LS259en = nVIA;
-	reg [7:0] LS259_reg;
-
-	always @ ( posedge clk2MHz ) begin
-		if(LS259en)	case (LS259_A)
-			0:	LS259_reg[0] <= LS259_D;
-			1:	LS259_reg[1] <= LS259_D;
-			2:	LS259_reg[2] <= LS259_D;
-			3:	LS259_reg[3] <= LS259_D;
-			4:	LS259_reg[4] <= LS259_D;
-			5:	LS259_reg[5] <= LS259_D;
-			6:	LS259_reg[6] <= LS259_D;
-			7:	LS259_reg[7] <= LS259_D;
-		endcase
 	end
 
 endmodule // EXTRA_PERIPHERALS
