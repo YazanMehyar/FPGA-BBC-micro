@@ -79,7 +79,7 @@ module Keyboard (
 			8'h14: BBC_CODE = 7'h23; // t
 			8'h15: BBC_CODE = 7'h44; // y
 			8'h16: BBC_CODE = 7'h35; // u
-			8'h17: BBC_CODE = 7'h25: // i
+			8'h17: BBC_CODE = 7'h25; // i
 			8'h18: BBC_CODE = 7'h36; // o
 			8'h19: BBC_CODE = 7'h37; // p
 			8'h1A: BBC_CODE = 7'h38; // [ / {
@@ -149,7 +149,7 @@ module Keyboard (
 	reg  [7:0] RAM_RDATA;
 	always @ (posedge clk2MHz) begin
 		if(RAM_En&clk1MHz)	KEYMAP[RAM_WADR] <= RAM_WDATA;
-		else if(~clk1MHz)	RAM_RDATA <= KEYMAP[RAM_RADR]
+		else if(~clk1MHz)	RAM_RDATA <= KEYMAP[RAM_RADR];
 	end
 
 /****************************************************************************************/
