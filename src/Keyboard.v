@@ -27,7 +27,7 @@ module Keyboard (
 
 	always @ (posedge clk1MHz) begin
 		if(~nRESET)	En <= 0;
-		else		En <= ~|CLKCOUNTER[4:0];
+		else		En <= ~|CLKCOUNTER[5:0];
 	end
 
 	PS2_DRIVER p(
