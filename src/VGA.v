@@ -1,8 +1,11 @@
 module VGA (
 	input nRESET,
-	input CLK100MHZ,
+	input PIXELCLK,
 	output reg VGA_HSYNC,
-	output reg VGA_VSYNC
+	output reg VGA_VSYNC,
+	output NEWLINE,
+	output NEWSCREEN,
+	output reg DISEN
 	);
 
 	`define H_COUNT_INIT 655
@@ -12,13 +15,15 @@ module VGA (
 	`define V_COUNT_INIT 490
 	`define V_PULSE_INIT 1
 	`define V_BACKPORCH  30
+	
+	`define PIXELS 640
+	`define LINES  480
 
-	// PIXEL RATE @ 25.17 MHz (~25MHz)
-	wire PIXELCLK = PIXELDIVIDER[1];
-	reg [1:0] PIXELDIVIDER = 0;
-	always @ (posedge CLK100MHZ) begin
-		PIXELDIVIDER <= PIXELDIVIDER + 1;
-	end
+	wire ENDofLINE = H_DPHASE & ~|H_DELAY;
+	wire ENDofSCREEN = ENDofLINE & V_DPHASE & ~|V_DELAY;
+	
+	assign NEWLINE = H_COUNTER == `PIXELS;
+	assign NEWSCREEN = V_COUNTER == `LINES;
 
 	// H_SYNC @ 31.46 KHz
 	reg [9:0] H_COUNTER;
@@ -52,9 +57,6 @@ module VGA (
 			H_DPHASE  <=  0;
 		end
 	end
-
-
-	wire ENDofLINE = H_DPHASE & ~|H_DELAY;
 
 	// V_SYNC @ 60Hz
 	reg [8:0] V_COUNTER;
@@ -90,5 +92,24 @@ module VGA (
 			end
 		end
 	end
+	
+	reg V_DISEN;
+	always @ ( posedge PIXELCLK ) begin
+		if(~nRESET) begin
+			V_DISEN <= 0;
+			DISEN   <= 0;
+		end else begin
+			if(NEWSCREEN)
+				V_DISEN <= 1;
+			else if(~|V_COUNTER)
+				V_DISEN <= 0;
+			
+			if(V_DISEN && NEWLINE)
+				DISEN <= 1;
+			else if(~|H_COUNTER)
+				DISEN <= 0;
+		end
+	end
+	
 
 endmodule // VGA

@@ -13,10 +13,10 @@ module TOP(
 
 	`define KiB16 16383
 	`define KiB32 32767
-	`define KiB64 65535
 
-	wire VCC = 1'b1;
-	wire GND = 1'b0;
+	wire VCC   = 1'b1;
+	wire VCC_4 = 4'hF;
+	wire GND   = 1'b0;
 
 	wire [15:0] pADDRESSBUS;
 	wire [13:0] cFRAMESTORE;
@@ -26,36 +26,21 @@ module TOP(
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire VGA_HSYNC, VGA_VSYNC;
 	wire PHI_2, RnW, nIRQ;
+	wire [7:0] PORTA, COL_MATCH;
 	wire RED, GREEN, BLUE;
 
 /*****************************************************************************/
-
-	assign VGA_HS = VGA_HSYNC;
-	assign VGA_VS = VGA_VSYNC;
 
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
 
 /*****************************************************************************/
-	reg clk16MHz;
-	reg [3:0] CLKPHASE = 0;
-	always @(posedge CLK100MHZ) begin
-		if(~CPU_RESETN) begin
-			CLKPHASE <= 4'h1;
-			clk16MHz <= 0;
-		end else begin
-			CLKPHASE <= {CLKPHASE[3:0],CLKPHASE[3]};
-			if(CLKPHASE[3]) clk16MHz <= ~clk16MHz;
-		end
-	end
 
-	VGA vga(
-		.nRESET(CPU_RESETN),
-		.CLK100MHZ(CLK100MHZ),
-		.VGA_HSYNC(VGA_HSYNC),
-		.VGA_VSYNC(VGA_VSYNC)
-		);
+	// PIXEL RATE @ 25.17 MHz (~25MHz)
+	wire PIXELCLK = PIXELDIVIDER[1];
+	reg [1:0] PIXELDIVIDER = 0;
+	always @ (posedge CLK100MHZ) PIXELDIVIDER <= PIXELDIVIDER + 1;
 
 /****************************************************************************/
 
@@ -152,7 +137,7 @@ module TOP(
 // Video ULA
 	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
-	.clk16MHz(clk16MHz),
+	.clk16MHz(PIXELCLK),
 	.nRESET(CPU_RESETN),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
@@ -168,27 +153,25 @@ module TOP(
 	.REDout(RED),
 	.GREENout(GREEN),
 	.BLUEout(BLUE));
-
-
-// CRTC, NB HSYNC and VSYNC produced by VGA module
-	MC6845 crtc(
-	.en(PHI_2),
-	.char_clk(clkCRTC),
+	
+// CRTC
+	VGA_CRTC crtc(
+	.En(PHI_2),
+	.PIXELCLK(PIXELCLK),
+	.CHARCLK(clkCRTC),
 	.nCS(nCRTC),
 	.nRESET(CPU_RESETN),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
-	.data_bus(DATABUS),
+	.DATABUS(DATABUS),
 
 	.framestore_adr(cFRAMESTORE),
 	.scanline_row(cROWADDRESS),
-	.display_en(cDISPLAYen),
-	.cursor(CURSOR));
-
-wire [3:0] VCC_4 = 4'hF;
-wire [3:0] PORTB_lo;
-wire [7:0] PORTA;
-wire COL_MATCH;
+	.DISEN(cDISPLAYen),
+	.CURSOR(CURSOR),
+	.H_SYNC(VGA_HS),
+	.V_SYNC(VGA_VS));
+	
 
 // Versatile Interface Adapter
 	MOS6522 via(
@@ -202,7 +185,7 @@ wire COL_MATCH;
 	.CA2(COL_MATCH),
 
 	.DATA(DATABUS),
-	.PORTB({VCC_4,PORTB_lo}),
+	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.PORTA(PORTA),
 	.nIRQ(nIRQ));
 

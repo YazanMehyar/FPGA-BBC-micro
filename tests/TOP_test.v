@@ -1,17 +1,20 @@
+`timescale 1ns/1ns
+
 module TOP_test();
 
 	`define KiB16 16383
 	`define KiB32 32767
 	`define KiB64 65535
-	`define CLK16MHzPERIOD 10
+	`define CLKPERIOD 10
 
 	initial $dumpvars(0, TOP_test);
 
-	reg clk16MHz = 0;
-	always #(`CLK16MHzPERIOD/2) clk16MHz = ~clk16MHz;
+	reg clk100MHz = 0;
+	always #(`CLKPERIOD/2) clk100MHz = ~clk100MHz;
 
 	wire VCC = 1'b1;
 	wire GND = 1'b0;
+	wire [3:0] VCC_4 = 4'hF;
 
 	wire [15:0] pADDRESSBUS;
 	wire [13:0] cFRAMESTORE;
@@ -23,7 +26,13 @@ module TOP_test();
 	wire H_SYNC, V_SYNC;
 	wire PHI_2, RnW, SYNC, nIRQ;
 	wire RED, GREEN, BLUE;
+	
+/*****************************************************************************/
 
+	wire PIXELCLK = PIXELCOUNT[1];
+	reg [1:0] PIXELCOUNT = 0;
+	always @ (posedge clk100MHz) PIXELCOUNT <= PIXELCOUNT + 1;
+	
 /*****************************************************************************/
 	// ROM Bank Select
 	reg [3:0] ROM_BANK;
@@ -92,7 +101,7 @@ module TOP_test();
 		// -- OS MODIFICATION -- //
 
 		nRESET <= 0;
-		repeat (10) @(posedge clk2MHz);
+		repeat (10) @(posedge clk100MHz);
 
 		nRESET <= 1;
 		repeat (20) begin
@@ -121,28 +130,49 @@ module TOP_test();
 // TESTs
 
 	always @ (posedge PHI_2) begin
-		if(pADDRESSBUS == 16'h001E) begin
+		if(pADDRESSBUS == 16'hDC05) begin
 		end
 	end
-
+	
 // Virtual Screen
-	reg DEN = 0;
-	always @ (V_SYNC) begin
-		if(V_SYNC)	begin
-			$v_sync;
-		end
-	end
+	initial forever @(negedge V_SYNC) @(posedge DISEN) $v_sync;
 
-	always @ ( H_SYNC ) begin
-		if(H_SYNC) begin
-			$h_sync;
-		end
-	end
+	initial forever @(negedge H_SYNC) @(posedge DISEN) $h_sync;
 
-	always @ (negedge clk16MHz) if(DISEN) $pixel_scan(colour);
+	always @(negedge PIXELCLK) if(DISEN) $pixel_scan(colour); else $pixel_scan(0);
 
 
 /******************************************************************************/
+
+	wire LS259en = nVIA;
+	reg [7:0] LS259_reg;
+	wire LS259_D;
+	wire [2:0] LS259_A;
+
+	always @ ( posedge clk2MHz ) begin
+		if(LS259en)	case (LS259_A)
+			0:	LS259_reg[0] <= LS259_D;
+			1:	LS259_reg[1] <= LS259_D;
+			2:	LS259_reg[2] <= LS259_D;
+			3:	LS259_reg[3] <= LS259_D;
+			4:	LS259_reg[4] <= LS259_D;
+			5:	LS259_reg[5] <= LS259_D;
+			6:	LS259_reg[6] <= LS259_D;
+			7:	LS259_reg[7] <= LS259_D;
+		endcase
+	end
+
+	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
+	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
+	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]};
+	wire B4 = ~&{B3,cFRAMESTORE[12]};
+
+	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
+	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
+
+/******************************************************************************/
+
+
 // Processor
 	MOS6502 pocessor(
 	.clk(clk2MHz),
@@ -160,7 +190,7 @@ module TOP_test();
 // Video ULA
 	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
-	.clk16MHz(clk16MHz),
+	.clk16MHz(PIXELCLK),
 	.nRESET(nRESET),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
@@ -178,24 +208,23 @@ module TOP_test();
 
 
 // CRTC
-	MC6845 crtc(
-	.en(PHI_2),
-	.char_clk(clkCRTC),
+	VGA_CRTC crtc(
+	.En(PHI_2),
+	.PIXELCLK(PIXELCLK),
+	.CHARCLK(clkCRTC),
 	.nCS(nCRTC),
 	.nRESET(nRESET),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
-	.data_bus(DATABUS),
+	.DATABUS(DATABUS),
 
 	.framestore_adr(cFRAMESTORE),
 	.scanline_row(cROWADDRESS),
-	.display_en(cDISPLAYen),
-	.cursor(CURSOR),
-	.h_sync(H_SYNC),
-	.v_sync(V_SYNC));
-
-wire [3:0] VCC_4 = 4'hF;
-wire [3:0] PORTB_lo;
+	.DISEN(cDISPLAYen),
+	.CURSOR(CURSOR),
+	.H_SYNC(H_SYNC),
+	.V_SYNC(V_SYNC));
+	
 
 // Versatile Interface Adapter
 	MOS6522 via(
@@ -209,9 +238,10 @@ wire [3:0] PORTB_lo;
 	.CA2(VCC),
 
 	.DATA(DATABUS),
-	.PORTB({VCC_4,PORTB_lo}),
+	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(nIRQ));
 
+	
 // Extra (MOCK) Peripherals
 	EXTRA_PERIPHERALS ext_p(
 	.clk2MHz(clk2MHz),
@@ -223,12 +253,7 @@ wire [3:0] PORTB_lo;
 	.nTUBE(nTUBE),
 	.nUVIA(nUVIA),
 	.nACIA(nACIA),
-	.cFRAMESTORE(cFRAMESTORE),
-	.cROWADDRESS(cROWADDRESS[2:0]),
-	.LS259_D(PORTB_lo[3]),
-	.LS259_A(PORTB_lo[2:0]),
 
-	.DATABUS(DATABUS),
-	.CRTC_adr(CRTC_adr));
+	.DATABUS(DATABUS));
 
 endmodule

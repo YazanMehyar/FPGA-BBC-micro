@@ -24,6 +24,8 @@ set_pixel(uint32_t colour){
 
 	int shmid;
 	char *shm, *hndshk;
+	
+	if (pixel_pos > SHMSZ - 2) return;
 
 	/* locate the shared memory buffer that is used as frame store */
 	if ((shmid = shmget((key_t) KEY, SHMSZ, 0666)) < 0) {
@@ -37,17 +39,13 @@ set_pixel(uint32_t colour){
 		exit(EXIT_FAILURE);
 	}
 
-	if (pixel_pos > SHMSZ-2) {
-        vpi_printf("virtual screen memory out of range address is %d.\n", pixel_pos);
-        exit(EXIT_FAILURE);
-    }
-
 	hndshk = shm + (SHMSZ-1);
 	shm[pixel_pos++] = colour;
 	*hndshk = 1;
-
 	shmdt(shm);
-
+	
+	// Don't cross to another line until a H_SYNC comes
+	if(pixel_pos % PIXELS == 0) pixel_pos--;
 }
 
 static void
@@ -57,7 +55,11 @@ screen_reset(void){
 
 static void
 next_line(void){
-	while(pixel_pos % PIXELS) pixel_pos++;
+	if(pixel_pos % PIXELS == 0) {
+		pixel_pos++;
+	} else {
+		while(pixel_pos % PIXELS) pixel_pos++;
+	}
 }
 
 
