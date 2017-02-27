@@ -3,7 +3,7 @@ module TOP(
 	input PS2_CLK,
 	input PS2_DATA,
 	input CPU_RESETN,
-	
+
 	output [3:0] VGA_R,
 	output [3:0] VGA_G,
 	output [3:0] VGA_B,
@@ -11,10 +11,10 @@ module TOP(
 	output VGA_VS
 	);
 
-`define KiB16 16383
-`define KiB32 32767
-`define KiB64 65535
-	
+	`define KiB16 16383
+	`define KiB32 32767
+	`define KiB64 65535
+
 	wire VCC = 1'b1;
 	wire GND = 1'b0;
 
@@ -24,71 +24,38 @@ module TOP(
 
 	wire clk2MHz, clk4MHz, clk1MHz, clkCRTC;
 	wire cDISPLAYen, CURSOR, DISEN;
-	wire H_SYNC, V_SYNC;
+	wire VGA_HSYNC, VGA_VSYNC;
 	wire PHI_2, RnW, nIRQ;
 	wire RED, GREEN, BLUE;
 
 /*****************************************************************************/
 
-	assign VGA_HS = H_SYNC_test;
-	assign VGA_VS = V_SYNC_test;
-	
+	assign VGA_HS = VGA_HSYNC;
+	assign VGA_VS = VGA_VSYNC;
+
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
 
 /*****************************************************************************/
 	reg clk16MHz;
-	reg [2:0] CLKPHASE = 0;
+	reg [3:0] CLKPHASE = 0;
 	always @(posedge CLK100MHZ) begin
 		if(~CPU_RESETN) begin
 			CLKPHASE <= 4'h1;
 			clk16MHz <= 0;
 		end else begin
-			CLKPHASE <= {CLKPHASE[1:0],CLKPHASE[2]};
-			if(CLKPHASE[2]) clk16MHz <= ~clk16MHz;
+			CLKPHASE <= {CLKPHASE[3:0],CLKPHASE[3]};
+			if(CLKPHASE[3]) clk16MHz <= ~clk16MHz;
 		end
 	end
-	
-	// TEST STUFF
-	reg [16:0] CLKTEST = 0;
-	always @ (posedge CLK100MHZ)
-		if(~CPU_RESETN) CLKTEST <= 0;
-		else		CLKTEST <= CLKTEST + 1;
-		
-	reg H_SYNC_test;
-	reg V_SYNC_test;
-	reg [10:0] H_COUNT;
-	reg [7:0]  H_PULSE_COUNT;
-	reg [9:0]  V_COUNT;
-	reg [1:0]  V_PULSE_COUNT;
-	
-	always @ (posedge CLK100MHZ) begin
-		if(~CPU_RESETN) begin
-			H_SYNC_test <= 0; H_COUNT <= 0; H_PULSE_COUNT <= 0;
-			V_SYNC_test <= 0; V_COUNT <= 0; V_PULSE_COUNT <= 0;
-		end else begin
-			if(H_SYNC_test) begin
-				H_SYNC_test <= |H_PULSE_COUNT;
-				H_PULSE_COUNT <= H_PULSE_COUNT - 1;
-				H_COUNT <= 1562;
-			end else begin
-				H_SYNC_test <= ~|H_COUNT;
-				H_PULSE_COUNT <= 100;								
-				H_COUNT <= H_COUNT - 1;
-			end
-			
-			if(V_SYNC_test & ~|H_COUNT) begin
-				V_SYNC_test <= |V_PULSE_COUNT;
-				V_PULSE_COUNT <= V_PULSE_COUNT - 1;
-				V_COUNT <= 1023;
-			end else if(~|H_COUNT) begin
-				V_SYNC_test <= ~|V_COUNT;
-				V_PULSE_COUNT <= 3;
-				V_COUNT <= V_COUNT - 1;
-			end
-		end
-	end
+
+	VGA vga(
+		.nRESET(CPU_RESETN),
+		.CLK100MHZ(CLK100MHZ),
+		.VGA_HSYNC(VGA_HSYNC),
+		.VGA_VSYNC(VGA_VSYNC)
+		);
 
 /****************************************************************************/
 
@@ -158,7 +125,7 @@ module TOP(
 			7:	LS259_reg[7] <= LS259_D;
 		endcase
 	end
-	
+
 	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
 	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
 	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]};
@@ -166,7 +133,7 @@ module TOP(
 
 	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
 	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
-	
+
 /******************************************************************************/
 
 // Processor
@@ -203,7 +170,7 @@ module TOP(
 	.BLUEout(BLUE));
 
 
-// CRTC
+// CRTC, NB HSYNC and VSYNC produced by VGA module
 	MC6845 crtc(
 	.en(PHI_2),
 	.char_clk(clkCRTC),
@@ -216,9 +183,7 @@ module TOP(
 	.framestore_adr(cFRAMESTORE),
 	.scanline_row(cROWADDRESS),
 	.display_en(cDISPLAYen),
-	.cursor(CURSOR),
-	.h_sync(H_SYNC),
-	.v_sync(V_SYNC));
+	.cursor(CURSOR));
 
 wire [3:0] VCC_4 = 4'hF;
 wire [3:0] PORTB_lo;
@@ -233,14 +198,14 @@ wire COL_MATCH;
 	.PHI_2(PHI_2),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[3:0]),
-	.CA1(V_SYNC),
+	.CA1(VGA_VSYNC),
 	.CA2(COL_MATCH),
 
 	.DATA(DATABUS),
 	.PORTB({VCC_4,PORTB_lo}),
 	.PORTA(PORTA),
 	.nIRQ(nIRQ));
-	
+
 // KEYBOARD
 	Keyboard k(
 	.clk1MHz(clk1MHz),
@@ -249,7 +214,7 @@ wire COL_MATCH;
 	.autoscan(LS259_reg[3]),
 	.column(PORTA[3:0]),
 	.row(PORTA[6:4]),
-	
+
 	.PS2_CLK(PS2_CLK),
 	.PS2_DATA(PS2_DATA),
 	.column_match(COL_MATCH),
