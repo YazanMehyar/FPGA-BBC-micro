@@ -195,7 +195,6 @@ module TOP(
 
 // KEYBOARD
 	Keyboard k(
-	.CLK_PROC(CLK_PROC),
 	.CLK_hPROC(CLK_hPROC),
 	.nRESET(CPU_RESETN),
 	.autoscan(LS259_reg[3]),

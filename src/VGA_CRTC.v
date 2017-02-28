@@ -11,7 +11,7 @@ module VGA_CRTC(
 
 	output reg [13:0] framestore_adr,
 	output reg [4:0]  scanline_row,
-	output DISEN,
+	output reg DISEN,
 	output H_SYNC,
 	output V_SYNC,
 	output CURSOR
@@ -33,7 +33,6 @@ reg [1:0] cursor_blink_mode;
 /****************************************************************************************/
 
 assign DATABUS = (~nCS & En & RnW & nRESET)? DATABUS_out : 8'hzz;
-assign DISEN   = VGA_DISEN & |HDISPLAY_COUNT[7:1] & |VDISPLAY_COUNT[6:1];
 assign CURSOR  = cursor_poximity & cursor_point & nRESET & cursor_display;
 
 reg [7:0] DATABUS_out;
@@ -87,13 +86,20 @@ reg prev_CHARCLK;
 always @ (posedge PIXELCLK) prev_CHARCLK <= CHARCLK;
 
 wire CHAR_en = ~CHARCLK & prev_CHARCLK;
+
+reg CHAR_SYNC;
+always @ (posedge PIXELCLK) begin
+    if(scanline_end) CHAR_SYNC <= 0;
+    else if(CHAR_en) CHAR_SYNC <= 1;
+end
+
 // horizontal control
 reg [7:0] HDISPLAY_COUNT;
 
 always @ (posedge PIXELCLK) begin
 	if(~nRESET | scanline_end)
 		HDISPLAY_COUNT <= horz_display;
-	else if(|HDISPLAY_COUNT[7:1] & VGA_DISEN & CHAR_en)
+	else if(|HDISPLAY_COUNT[7:1] & VGA_DISEN & CHAR_en & CHAR_SYNC)
 		HDISPLAY_COUNT <= HDISPLAY_COUNT - 1;
 end
 
@@ -107,8 +113,15 @@ wire next_charline = scanline_row == max_scanline && scanline_end;
 always @ (posedge PIXELCLK) begin
 	if(~nRESET | screen_end)
 		VDISPLAY_COUNT <= vert_display;
-	else if(next_charline & |VDISPLAY_COUNT[6:1])
+	else if(next_charline & |VDISPLAY_COUNT)
 		VDISPLAY_COUNT <= VDISPLAY_COUNT - 1;
+end
+
+/****************************************************************************************/
+
+always @(posedge PIXELCLK) begin
+    if(CHAR_en & CHAR_SYNC)
+        DISEN <= VGA_DISEN & |HDISPLAY_COUNT[7:1] & |VDISPLAY_COUNT;
 end
 
 /****************************************************************************************/
@@ -120,17 +133,17 @@ always @ (posedge PIXELCLK) begin
 	if(~nRESET) begin
 		framestore_adr		<= 0;
 		scanline_start_adr	<= 0;
-	end else if(screen_end) begin
-		framestore_adr		<= start_address;
-		scanline_start_adr	<= start_address;
-	end else if(next_charline) begin
-		framestore_adr		<= scanline_start_adr + horz_display;
-		scanline_start_adr	<= scanline_start_adr + horz_display;
-	end else if(scanline_end) begin
-		framestore_adr		<= scanline_start_adr;
-	end else if(CHAR_en) begin
-		framestore_adr		<= framestore_adr + 1;
-	end
+	end if(screen_end) begin
+        framestore_adr		<= start_address;
+        scanline_start_adr	<= start_address;
+    end else if(next_charline) begin
+        framestore_adr		<= scanline_start_adr + horz_display;
+        scanline_start_adr	<= scanline_start_adr + horz_display;
+    end else if(scanline_end) begin
+        framestore_adr		<= scanline_start_adr;
+    end else if(CHAR_en & CHAR_SYNC) begin
+        framestore_adr		<= framestore_adr + 1;
+    end
 end
 
 always @ (posedge PIXELCLK) begin
@@ -142,7 +155,7 @@ end
 
 /****************************************************************************************/
 // Cursor
-wire cursor_point    = framestore_adr == cursor_adr;
+wire cursor_point    = framestore_adr == cursor_adr && DISEN;
 wire cursor_poximity = scanline_row >= cursor_start_row && scanline_row <= cursor_end_row;
 
 reg [4:0] cursor_blink_count;

@@ -99,7 +99,7 @@ module VGA (
 			V_DISEN <= 0;
 			DISEN   <= 0;
 		end else begin
-			if(NEWSCREEN)
+			if(NEWSCREEN & ENDofLINE)
 				V_DISEN <= 1;
 			else if(~|V_COUNTER)
 				V_DISEN <= 0;
