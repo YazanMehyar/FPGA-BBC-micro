@@ -9,34 +9,35 @@ module TOP_test();
 
 	initial $dumpvars(0, TOP_test);
 
-	reg clk100MHz = 0;
-	always #(`CLKPERIOD/2) clk100MHz = ~clk100MHz;
+	reg CLK100MHz = 0;
+	always #(`CLKPERIOD/2) CLK100MHz = ~CLK100MHz;
 
 	wire VCC = 1'b1;
 	wire GND = 1'b0;
 	wire [3:0] VCC_4 = 4'hF;
+	wire [7:0] HiZ = 8'hzz;
 
 	wire [15:0] pADDRESSBUS;
 	wire [13:0] cFRAMESTORE;
 	wire [4:0] cROWADDRESS;
 	wire [7:0] DATABUS = RnW&~SHEILA? MEM_DATA:8'hzz;
 
-	wire clk2MHz, clk4MHz, clkCRTC;
+	wire CLK_PROC, CLK_RAM, CLK_CRTC;
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire H_SYNC, V_SYNC;
 	wire PHI_2, RnW, SYNC, nIRQ;
 	wire RED, GREEN, BLUE;
-	
+
 /*****************************************************************************/
 
 	wire PIXELCLK = PIXELCOUNT[1];
 	reg [1:0] PIXELCOUNT = 0;
-	always @ (posedge clk100MHz) PIXELCOUNT <= PIXELCOUNT + 1;
-	
+	always @ (posedge CLK100MHz) PIXELCOUNT <= PIXELCOUNT + 1;
+
 /*****************************************************************************/
 	// ROM Bank Select
 	reg [3:0] ROM_BANK;
-	always @ ( posedge clk2MHz ) begin
+	always @ ( posedge CLK_PROC ) begin
 		if(~nROMSEL) ROM_BANK <= DATABUS[3:0];
 	end
 
@@ -50,7 +51,7 @@ module TOP_test();
 	reg [7:0] MEM_DATA;
 	wire [14:0] CRTC_adr;
 
-	always @ ( negedge clk4MHz ) begin
+	always @ ( negedge CLK_RAM ) begin
 		if(PHI_2 & pADDRESSBUS[15]) begin
 			if(OSBANKen) MEM_DATA <= OSROM[pADDRESSBUS[13:0]];
 			else if(BASICBANKen) MEM_DATA <= BASICROM[pADDRESSBUS[13:0]];
@@ -101,7 +102,7 @@ module TOP_test();
 		// -- OS MODIFICATION -- //
 
 		nRESET <= 0;
-		repeat (10) @(posedge clk100MHz);
+		repeat (10) @(posedge CLK100MHz);
 
 		nRESET <= 1;
 		repeat (20) begin
@@ -127,19 +128,12 @@ module TOP_test();
 		endcase
 	end
 
-// TESTs
-
-	always @ (posedge PHI_2) begin
-		if(pADDRESSBUS == 16'hDC05) begin
-		end
-	end
-	
 // Virtual Screen
 	initial forever @(negedge V_SYNC) @(posedge DISEN) $v_sync;
 
 	initial forever @(negedge H_SYNC) @(posedge DISEN) $h_sync;
 
-	always @(negedge PIXELCLK) if(DISEN) $pixel_scan(colour); else $pixel_scan(0);
+	always @(negedge PIXELCLK) $pixel_scan(colour);
 
 
 /******************************************************************************/
@@ -149,7 +143,7 @@ module TOP_test();
 	wire LS259_D;
 	wire [2:0] LS259_A;
 
-	always @ ( posedge clk2MHz ) begin
+	always @ ( posedge CLK_PROC ) begin
 		if(LS259en)	case (LS259_A)
 			0:	LS259_reg[0] <= LS259_D;
 			1:	LS259_reg[1] <= LS259_D;
@@ -175,7 +169,7 @@ module TOP_test();
 
 // Processor
 	MOS6502 pocessor(
-	.clk(clk2MHz),
+	.clk(CLK_PROC),
 	.nRES(nRESET),
 	.nIRQ(nIRQ),
 	.nNMI(VCC),.SO(VCC),.READY(VCC),
@@ -190,7 +184,7 @@ module TOP_test();
 // Video ULA
 	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
-	.clk16MHz(PIXELCLK),
+	.PIXELCLK(PIXELCLK),
 	.nRESET(nRESET),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
@@ -199,9 +193,9 @@ module TOP_test();
 	.DATA(MEM_DATA),
 	.pDATA(DATABUS),
 
-	.clk4MHz(clk4MHz),
-	.clk2MHz(clk2MHz),
-	.clkCRTC(clkCRTC),
+	.CLK_RAM(CLK_RAM),
+	.CLK_PROC(CLK_PROC),
+	.CLK_CRTC(CLK_CRTC),
 	.REDout(RED),
 	.GREENout(GREEN),
 	.BLUEout(BLUE));
@@ -211,7 +205,7 @@ module TOP_test();
 	VGA_CRTC crtc(
 	.En(PHI_2),
 	.PIXELCLK(PIXELCLK),
-	.CHARCLK(clkCRTC),
+	.CHARCLK(CLK_CRTC),
 	.nCS(nCRTC),
 	.nRESET(nRESET),
 	.RnW(RnW),
@@ -224,7 +218,7 @@ module TOP_test();
 	.CURSOR(CURSOR),
 	.H_SYNC(H_SYNC),
 	.V_SYNC(V_SYNC));
-	
+
 
 // Versatile Interface Adapter
 	MOS6522 via(
@@ -238,13 +232,14 @@ module TOP_test();
 	.CA2(VCC),
 
 	.DATA(DATABUS),
+	.PORTA({GND, HiZ[7:1]}),
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(nIRQ));
 
-	
+
 // Extra (MOCK) Peripherals
 	EXTRA_PERIPHERALS ext_p(
-	.clk2MHz(clk2MHz),
+	.CLK_PROC(CLK_PROC),
 	.RnW(RnW),
 	.nRESET(nRESET),
 	.nVIA(nVIA),

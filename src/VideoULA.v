@@ -1,5 +1,5 @@
 module VideoULA (
-	input clk16MHz,
+	input PIXELCLK,
 	input nRESET,
 	input A0,
 	input nCS,
@@ -8,59 +8,53 @@ module VideoULA (
 	input [7:0] DATA,
 	input [7:0] pDATA,
 
-	output reg clk8MHz,
-	output reg clk4MHz,
-	output reg clk2MHz,
-	output reg clk1MHz,
-	output clkCRTC,
+	output reg CLK_PROC,
+	output reg CLK_hPROC,
+	output reg CLK_RAM,
+	output CLK_CRTC,
 	output REDout,
 	output GREENout,
 	output BLUEout);
 
-	/**
-		NOTE: Parts not implemented:
-		 - Red, Green & Blue input pins from the teletext chip
-		 - I added a nRESET pin
-	*/
-
 /****************************************************************************************/
 
+	reg CLK_2RAM;
 	reg [7:0] CONTROL = 0;
 	reg [7:0] SHIFT_reg = 0;
 	reg [3:0] PALETTE_mem [0:15];
 
 /****************************************************************************************/
 	initial begin
-		clk1MHz = 0;
-		clk2MHz = 0;
-		clk4MHz = 0;
-		clk8MHz = 0;
+		CLK_hPROC = 0;
+		CLK_PROC= 0;
+		CLK_RAM = 0;
+		CLK_2RAM = 0;
 	end
 
-	always @ (posedge clk16MHz) clk8MHz <= #1 ~clk8MHz;
-	always @ (posedge clk8MHz)  clk4MHz <= #1 ~clk4MHz;
-	always @ (posedge clk4MHz)  clk2MHz <= #1 ~clk2MHz;
-	always @ (posedge clk2MHz)  clk1MHz <= #1 ~clk1MHz;
+	always @ (posedge PIXELCLK) CLK_2RAM  <= #1 ~CLK_2RAM;
+	always @ (posedge CLK_2RAM)CLK_RAM    <= #1 ~CLK_RAM;
+	always @ (posedge CLK_RAM)  CLK_PROC  <= #1 ~CLK_PROC;
+	always @ (posedge CLK_PROC) CLK_hPROC <= #1 ~CLK_hPROC;
 
-	assign clkCRTC = CONTROL[4]? clk2MHz : clk1MHz;
+	assign CLK_CRTC = CONTROL[4]? CLK_PROC : CLK_hPROC;
 
 /****************************************************************************************/
 
-	wire CRTC_posedge = CONTROL[4]? clk8MHz&clk4MHz&~clk2MHz :
-									clk8MHz&clk4MHz&~clk2MHz&clk1MHz ;
+	wire CRTC_posedge = CONTROL[4]? CLK_2RAM&CLK_RAM&~CLK_PROC :
+									CLK_2RAM&CLK_RAM&~CLK_PROC&CLK_hPROC ;
 
 	reg SHIFT_en; // wire
 	always @ ( * ) begin
 		case (CONTROL[3:2])
-			2'b00: SHIFT_en = clk8MHz&clk4MHz&~clk2MHz;
-			2'b01: SHIFT_en = clk8MHz&clk4MHz;
-			2'b10: SHIFT_en = clk8MHz;
+			2'b00: SHIFT_en = CLK_2RAM&CLK_RAM&~CLK_PROC;
+			2'b01: SHIFT_en = CLK_2RAM&CLK_RAM;
+			2'b10: SHIFT_en = CLK_2RAM;
 			2'b11: SHIFT_en = 1;
 			default: SHIFT_en = 1'bx;
 		endcase
 	end
 
-	always @ (posedge clk16MHz) begin
+	always @ (posedge PIXELCLK) begin
 		if(CRTC_posedge)	SHIFT_reg <= DATA;
 		else if(SHIFT_en)	SHIFT_reg <= {SHIFT_reg[6:0],1'b1};
 	end
@@ -68,7 +62,7 @@ module VideoULA (
 /****************************************************************************************/
 
 	wire [3:0] PALETTE_out = PALETTE_mem[{SHIFT_reg[7],SHIFT_reg[5],SHIFT_reg[3],SHIFT_reg[1]}];
-	always @ (posedge clk2MHz) begin
+	always @ (posedge CLK_PROC) begin
 		if(~nCS)
 		 	if(A0)  PALETTE_mem[pDATA[7:4]] <= pDATA[3:0];
 			else	CONTROL <= pDATA;
@@ -76,21 +70,18 @@ module VideoULA (
 
 /****************************************************************************************/
 
-	reg [3:0] CURSOR_seg;
-	reg rCURSOR_out;
-	wire wCURSOR_out = CURSOR_seg[0]&CONTROL[7]
-					| CURSOR_seg[1]&CONTROL[6]
-					| CURSOR_seg[2]&CONTROL[5]
-					| CURSOR_seg[3]&CONTROL[5];
+	reg [2:0] CURSOR_seg;
+	reg CURSOR_out;
 
-	wire CURSOR_out = CONTROL[4]? rCURSOR_out : wCURSOR_out;
-
-	always @ (posedge clk16MHz) begin
-		if(~nRESET) CURSOR_seg <= 4'b0000;
+	always @ (posedge PIXELCLK) begin
+		if(~nRESET) CURSOR_seg <= 3'b000;
 		else if(CRTC_posedge) begin
-			if(CURSOR)	CURSOR_seg <= 4'b0001;
+			if(CURSOR)	CURSOR_seg <= 3'b001;
 			else		CURSOR_seg <= CURSOR_seg << 1;
-			rCURSOR_out <= wCURSOR_out;
+			CURSOR_out <= CURSOR&CONTROL[7]
+							| CURSOR_seg[0]&CONTROL[6]
+							| CURSOR_seg[1]&CONTROL[5]
+							| CURSOR_seg[2]&CONTROL[5];
 		end
 	end
 
@@ -98,8 +89,7 @@ module VideoULA (
 /****************************************************************************************/
 
 	wire FLASH = ~(PALETTE_out[3]&CONTROL[0]);
-	assign {BLUEout,GREENout,REDout} = DISEN? (CURSOR_out^FLASH)? ~PALETTE_out[2:0]
-																: PALETTE_out[2:0]
-										: 3'b000;
+	wire [2:0] PIXEL_COLOR = DISEN? FLASH? ~PALETTE_out[2:0] : PALETTE_out[2:0] : 3'b000;
+	assign {BLUEout,GREENout,REDout} = CURSOR_out? ~PIXEL_COLOR : PIXEL_COLOR;
 
 endmodule // VideoULA

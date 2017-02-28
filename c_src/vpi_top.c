@@ -24,7 +24,7 @@ set_pixel(uint32_t colour){
 
 	int shmid;
 	char *shm, *hndshk;
-	
+
 	if (pixel_pos > SHMSZ - 2) return;
 
 	/* locate the shared memory buffer that is used as frame store */
@@ -43,7 +43,7 @@ set_pixel(uint32_t colour){
 	shm[pixel_pos++] = colour;
 	*hndshk = 1;
 	shmdt(shm);
-	
+
 	// Don't cross to another line until a H_SYNC comes
 	if(pixel_pos % PIXELS == 0) pixel_pos--;
 }
@@ -115,8 +115,8 @@ pixel_scan(char *data) {
 	return 0;
 }
 
-int v_sync(char *data){ screen_reset(); }
-int h_sync(char *data){ next_line(); }
+int v_sync(char *data){ screen_reset(); return 0;}
+int h_sync(char *data){ next_line();    return 0;}
 
 /******************************************************************************/
 // VPI hooks

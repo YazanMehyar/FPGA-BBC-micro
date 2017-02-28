@@ -19,6 +19,11 @@ module PS2_DRIVER(
 		.nEDGE(NEGEDGE_PS2_CLK)
 		);
 
+	reg rPS2_DATA;
+	always @ (negedge PS2_CLK) begin
+		rPS2_DATA <= PS2_DATA;
+	end
+
 /****************************************************************************************/
 
 	reg READ_STATE;
@@ -30,7 +35,7 @@ module PS2_DRIVER(
 			READ_STATE <= 0;
 		else if (En)
 			if(READ_STATE) READ_STATE <= |BIT_COUNT;
-			else if(~NEGEDGE_PS2_CLK) READ_STATE <= ~PS2_DATA;
+			else if(~NEGEDGE_PS2_CLK) READ_STATE <= ~rPS2_DATA;
 	end
 
 	always @ (posedge CLK) begin
@@ -39,14 +44,14 @@ module PS2_DRIVER(
 		else if(En) begin
 			if(~|BIT_COUNT)
 				BIT_COUNT <= 10;
-			else if(READ_STATE | ~NEGEDGE_PS2_CLK & ~PS2_DATA)
+			else if(READ_STATE | ~NEGEDGE_PS2_CLK & ~rPS2_DATA)
 				BIT_COUNT <= BIT_COUNT + 4'hF;
 		end
 	end
 
 	always @ (posedge CLK) begin
 		if(En & READ_STATE | En & ~NEGEDGE_PS2_CLK)
-			MESSAGE <= {PS2_DATA,MESSAGE[10:1]};
+			MESSAGE <= {rPS2_DATA,MESSAGE[10:1]};
 	end
 
 /****************************************************************************************/
@@ -59,7 +64,7 @@ module PS2_DRIVER(
 	always @ (posedge CLK) begin
 		if(En) DATA <= MESSAGE[8:1];
 	end
-	
+
 	always @ (posedge CLK) begin
 		if(~nRESET) DONE <= 0;
 		else if(En) DONE <= DONE? 0 : CAPTURE & MESSAGE[10];

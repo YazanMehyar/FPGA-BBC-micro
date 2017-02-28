@@ -18,11 +18,13 @@ module TOP(
 	wire VCC_4 = 4'hF;
 	wire GND   = 1'b0;
 
+/*****************************************************************************/
+
 	wire [15:0] pADDRESSBUS;
 	wire [13:0] cFRAMESTORE;
 	wire [4:0] cROWADDRESS;
 
-	wire clk2MHz, clk4MHz, clk1MHz, clkCRTC;
+	wire CLK_PROC, CLK_RAM, CLK_CRTC, CLK_hPROC;
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire VGA_HSYNC, VGA_VSYNC;
 	wire PHI_2, RnW, nIRQ;
@@ -36,20 +38,21 @@ module TOP(
 	assign VGA_B = {4{BLUE}};
 
 /*****************************************************************************/
+// PIXEL RATE @ 25.17 MHz (~25MHz)
 
-	// PIXEL RATE @ 25.17 MHz (~25MHz)
 	wire PIXELCLK = PIXELDIVIDER[1];
 	reg [1:0] PIXELDIVIDER = 0;
 	always @ (posedge CLK100MHZ) PIXELDIVIDER <= PIXELDIVIDER + 1;
 
 /****************************************************************************/
+// MEMORY
 
 	`include "BBCOS12.vh"
 	`include "BBCBASIC2.vh"
 
 	// ROM Bank Select
 	reg [3:0] ROM_BANK;
-	always @ ( posedge clk2MHz ) begin
+	always @ ( posedge CLK_PROC ) begin
 		if(~nROMSEL) ROM_BANK <= DATABUS[3:0];
 	end
 
@@ -62,7 +65,7 @@ module TOP(
 	wire [7:0] DATABUS = RnW&~SHEILA? MEM_DATA:8'hzz;
 	wire [14:0] CRTC_adr;
 
-	always @ ( negedge clk4MHz ) begin
+	always @ ( negedge CLK_RAM ) begin
 		if(PHI_2 & pADDRESSBUS[15]) begin
 			if(OSBANKen) 		MEM_DATA <= BBCOS12[pADDRESSBUS[13:0]];
 			else if(BASICBANKen)MEM_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
@@ -92,13 +95,14 @@ module TOP(
 	wire nTUBE= ~(SHEILA & &pADDRESSBUS[7:5]);
 
 /******************************************************************************/
+// CRTC address correction
 
 	wire LS259en = nVIA;
 	reg [7:0] LS259_reg;
 	wire LS259_D;
 	wire [2:0] LS259_A;
 
-	always @ ( posedge clk2MHz ) begin
+	always @ ( posedge CLK_PROC ) begin
 		if(LS259en)	case (LS259_A)
 			0:	LS259_reg[0] <= LS259_D;
 			1:	LS259_reg[1] <= LS259_D;
@@ -123,7 +127,7 @@ module TOP(
 
 // Processor
 	MOS6502 pocessor(
-	.clk(clk2MHz),
+	.clk(CLK_PROC),
 	.nRES(CPU_RESETN),
 	.nIRQ(nIRQ),
 	.nNMI(VCC),.SO(VCC),.READY(VCC),
@@ -137,7 +141,7 @@ module TOP(
 // Video ULA
 	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
-	.clk16MHz(PIXELCLK),
+	.PIXELCLK(PIXELCLK),
 	.nRESET(CPU_RESETN),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
@@ -146,19 +150,19 @@ module TOP(
 	.DATA(MEM_DATA),
 	.pDATA(DATABUS),
 
-	.clk4MHz(clk4MHz),
-	.clk2MHz(clk2MHz),
-	.clk1MHz(clk1MHz),
-	.clkCRTC(clkCRTC),
+	.CLK_RAM(CLK_RAM),
+	.CLK_PROC(CLK_PROC),
+	.CLK_hPROC(CLK_hPROC),
+	.CLK_CRTC(CLK_CRTC),
 	.REDout(RED),
 	.GREENout(GREEN),
 	.BLUEout(BLUE));
-	
+
 // CRTC
 	VGA_CRTC crtc(
 	.En(PHI_2),
 	.PIXELCLK(PIXELCLK),
-	.CHARCLK(clkCRTC),
+	.CHARCLK(CLK_CRTC),
 	.nCS(nCRTC),
 	.nRESET(CPU_RESETN),
 	.RnW(RnW),
@@ -171,7 +175,7 @@ module TOP(
 	.CURSOR(CURSOR),
 	.H_SYNC(VGA_HS),
 	.V_SYNC(VGA_VS));
-	
+
 
 // Versatile Interface Adapter
 	MOS6522 via(
@@ -191,8 +195,8 @@ module TOP(
 
 // KEYBOARD
 	Keyboard k(
-	.clk1MHz(clk1MHz),
-	.clk2MHz(clk2MHz),
+	.CLK_PROC(CLK_PROC),
+	.CLK_hPROC(CLK_hPROC),
 	.nRESET(CPU_RESETN),
 	.autoscan(LS259_reg[3]),
 	.column(PORTA[3:0]),
@@ -205,7 +209,7 @@ module TOP(
 
 // Extra (MOCK) Peripherals
 	EXTRA_PERIPHERALS ext_p(
-	.clk2MHz(clk2MHz),
+	.CLK_PROC(CLK_PROC),
 	.RnW(RnW),
 	.nRESET(CPU_RESETN),
 	.nVIA(nVIA),

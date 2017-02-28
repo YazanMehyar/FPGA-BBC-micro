@@ -1,6 +1,6 @@
 module Keyboard (
-	input clk1MHz,
-	input clk2MHz,
+	input CLK_PROC,
+	input CLK_hPROC,
 	input nRESET,
 	input autoscan,
 	input [3:0] column,
@@ -16,22 +16,22 @@ module Keyboard (
 	wire DONE;
 /****************************************************************************************/
 	// 32 divider enable
-	// to be driven by 1MHz clock ~ 30 KHz
+	// to be driven by 1.56MHz clock ~ 24 KHz
 	reg [12:0] CLKCOUNTER;
 	reg En;
 
-	always @ (posedge clk1MHz) begin
+	always @ (posedge CLK_hPROC) begin
 		if(~nRESET) CLKCOUNTER <= 0;
 		else		CLKCOUNTER <= CLKCOUNTER + 1;
 	end
 
-	always @ (posedge clk1MHz) begin
+	always @ (posedge CLK_hPROC) begin
 		if(~nRESET)	En <= 0;
 		else		En <= ~|CLKCOUNTER[5:0];
 	end
 
 	PS2_DRIVER p(
-		.CLK(clk1MHz),
+		.CLK(CLK_hPROC),
 		.nRESET(nRESET),
 		.En(En),
 		.PS2_CLK(PS2_CLK),
@@ -45,10 +45,10 @@ module Keyboard (
 	reg [3:0] CLEAR_COUNTER = 0;
 	reg [3:0] COL_COUNTER;
 
-	always @ (posedge clk1MHz)
+	always @ (posedge CLK_hPROC)
 		CLEAR_COUNTER <= CLEAR_COUNTER + 1;
 
-	always @ (posedge clk1MHz) begin
+	always @ (posedge CLK_hPROC) begin
 		if(~nRESET) COL_COUNTER <= 0;
 		else		COL_COUNTER <= COL_COUNTER + 1;
 	end
@@ -125,7 +125,7 @@ module Keyboard (
 			8'h41: BBC_CODE = 7'h16; // f7
 			8'h42: BBC_CODE = 7'h76; // f8
 			8'h43: BBC_CODE = 7'h77; // f9
-			8'h44: BBC_CODE = 7'h20; // f0
+			8'h44: BBC_CODE = 7'h20; // f10 to f0
 
 			8'h48: BBC_CODE = 7'h39; // UP ARROW
 			8'h4B: BBC_CODE = 7'h19; // LEFT ARROW
@@ -146,9 +146,9 @@ module Keyboard (
 	wire [7:0] RAM_WDATA = En&DONE? BBC_ROW : 8'h00;
 	wire [3:0] RAM_RADR  = autoscan? COL_COUNTER : column;
 	reg  [7:0] RAM_RDATA;
-	always @ (posedge clk2MHz) begin
-		if(RAM_En&clk1MHz)	KEYMAP[RAM_WADR] <= RAM_WDATA;
-		else if(~clk1MHz)	RAM_RDATA <= KEYMAP[RAM_RADR];
+	always @ (posedge CLK_PROC) begin
+		if(RAM_En&CLK_hPROC)	KEYMAP[RAM_WADR] <= RAM_WDATA;
+		else if(~CLK_hPROC)		RAM_RDATA <= KEYMAP[RAM_RADR];
 	end
 
 /****************************************************************************************/
