@@ -25,7 +25,7 @@ module Keyboard (
 
 /****************************************************************************************/
 
-	reg [3:0] COL_COUNTER;
+	reg [3:0] COL_COUNTER = 0;
 	always @ (posedge CLK_hPROC) COL_COUNTER <= COL_COUNTER + 1;
 
 	reg [6:0] BBC_CODE; // Combinitorial
@@ -119,7 +119,7 @@ module Keyboard (
 	reg [7:0] KEY_MAP [0:15];
 
 	always @ (posedge CLK_hPROC) begin
-		if(nRESET) begin
+		if(~nRESET) begin
 			KEY_RELEASE <= 0;
 			KEY_MAP[0] <= 8'h0;
 			KEY_MAP[1] <= 8'h0;

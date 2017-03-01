@@ -17,6 +17,7 @@ module PS2_DRIVER(
 /****************************************************************************************/
 
     reg [10:0] MESSAGE;
+    wire wDONE = MESSAGE[10]&~MESSAGE[0]&~^MESSAGE[9:1];
     always @ (posedge CLK) begin
         if(~nRESET | DONE)
             MESSAGE <= 11'hFFF;
@@ -25,11 +26,11 @@ module PS2_DRIVER(
           
         if(~nRESET | DONE)
             DONE <= 0;
-        else if(MESSAGE[10]&~MESSAGE[0]&^MESSAGE[9:1])
-            DONE <= 1;
+		else
+            DONE <= wDONE;
             
-        if(DONE)    
-            DATA <= MESSAGE[9:1];
+        if(wDONE)    
+            DATA <= MESSAGE[8:1];
     end
     
 

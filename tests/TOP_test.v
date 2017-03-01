@@ -17,7 +17,7 @@ module TOP_test();
 	wire [3:0] VCC_4 = 4'hF;
 	wire [7:0] HiZ = 8'hzz;
 
-	wire CLK_PROC, CLK_RAM, CLK_CRTC;
+	wire CLK_hPROC, CLK_PROC, CLK_RAM, CLK_CRTC;
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire H_SYNC, V_SYNC;
 	wire PHI_2, RnW, SYNC, nIRQ;
@@ -28,6 +28,10 @@ module TOP_test();
 	wire PIXELCLK = PIXELCOUNT[1];
 	reg [1:0] PIXELCOUNT = 0;
 	always @ (posedge CLK100MHz) PIXELCOUNT <= PIXELCOUNT + 1;
+	
+	wire PS2_CLK = PS2_COUNT[12];
+	reg [12:0] PS2_COUNT = 0;
+	always @ (posedge PIXELCLK) PS2_COUNT <= PS2_COUNT + 1;
 
 /*****************************************************************************/
 	wire [15:0] pADDRESSBUS;
@@ -82,6 +86,30 @@ module TOP_test();
 /******************************************************************************/
 
 	reg nRESET;
+	reg PS2_DATA;
+	
+	`include "PS2.vh"
+	
+	task PRESS_KEY;
+		input [7:0] KEY;
+		begin
+			@(posedge PS2_CLK);
+			PS2_SEND(KEY);
+			repeat (3) begin
+				@(posedge V_SYNC) $display("SCREEN No. %3d", SCREEN_COUNT);
+				SCREEN_COUNT <= SCREEN_COUNT + 1;
+			end
+			$display("PRINTING %h", KEY);
+			@(posedge PS2_CLK);
+			PS2_SEND(8'hF0);
+			PS2_SEND(KEY);
+			repeat (10) begin
+				@(posedge V_SYNC) $display("SCREEN No. %3d", SCREEN_COUNT);
+				SCREEN_COUNT <= SCREEN_COUNT + 1;
+			end
+		end
+	endtask
+	
 	integer SCREEN_COUNT = 0;
 	initial begin
 		$start_screen;
@@ -101,6 +129,7 @@ module TOP_test();
 		// -- OS MODIFICATION -- //
 
 		nRESET <= 0;
+		PS2_DATA <= 1;
 		repeat (10) @(posedge CLK100MHz);
 
 		nRESET <= 1;
@@ -109,8 +138,35 @@ module TOP_test();
 			SCREEN_COUNT <= SCREEN_COUNT + 1;
 		end
 		$stop;
+		
+		// Send some keys
+		PRESS_KEY(8'h4D);
+		PRESS_KEY(8'h2D);
+		PRESS_KEY(8'h43);
+		PRESS_KEY(8'h31);
+		PRESS_KEY(8'h2C);
+		PRESS_KEY(8'h29);
+		PRESS_KEY(8'h3D);
+		PRESS_KEY(8'h29);
+		PRESS_KEY(8'h4E);
+		PRESS_KEY(8'h26);
+		PRESS_KEY(8'h5A);
+		
+		@(posedge V_SYNC);
+		
+		$stop;
 		$finish;
 	end
+
+/******************************************************************************/
+// Address check
+
+	always @ (posedge PHI_2) begin
+		//if(pADDRESSBUS == 16'h028F) $stop;
+	end
+
+
+/******************************************************************************/
 
 	reg [7:0] colour;
 	always @ ( * ) begin
@@ -197,6 +253,7 @@ module TOP_test();
 
 	.CLK_RAM(CLK_RAM),
 	.CLK_PROC(CLK_PROC),
+	.CLK_hPROC(CLK_hPROC),
 	.CLK_CRTC(CLK_CRTC),
 	.REDout(RED),
 	.GREENout(GREEN),
@@ -223,6 +280,8 @@ module TOP_test();
 
 
 // Versatile Interface Adapter
+wire [7:0] PORTA;
+wire COLUMN_MATCH;
 	MOS6522 via(
 	.CS1(VCC),
 	.nCS2(nVIA),
@@ -231,12 +290,24 @@ module TOP_test();
 	.RnW(RnW),
 	.RS(pADDRESSBUS[3:0]),
 	.CA1(V_SYNC),
-	.CA2(VCC),
+	.CA2(COLUMN_MATCH),
 
 	.DATA(pDATABUS),
-	.PORTA({GND, HiZ[7:1]}),
+	.PORTA(PORTA),
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(nIRQ));
+	
+// Keyboard
+	Keyboard k(
+	.CLK_hPROC(CLK_hPROC),
+	.nRESET(nRESET),
+	.autoscan(LS259_reg[3]),
+	.column(PORTA[3:0]),
+	.row(PORTA[6:4]),
+	.PS2_CLK(PS2_CLK),
+	.PS2_DATA(PS2_DATA),
+	.column_match(COLUMN_MATCH),
+	.row_match(PORTA[7]));
 
 
 // Extra (MOCK) Peripherals
