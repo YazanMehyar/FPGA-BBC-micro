@@ -26,13 +26,7 @@ module Keyboard (
 /****************************************************************************************/
 
 	reg [3:0] COL_COUNTER;
-	always @ (posedge CLK_hPROC) begin
-        if(COL_COUNTER == 9)
-            COL_COUNTER <= 0;
-        else
-            COL_COUNTER <= COL_COUNTER + 1;
-            
-	end
+	always @ (posedge CLK_hPROC) COL_COUNTER <= COL_COUNTER + 1;
 
 	reg [6:0] BBC_CODE; // Combinitorial
 	always @ ( * ) begin
@@ -115,57 +109,71 @@ module Keyboard (
 			8'h55: BBC_CODE = 7'h48; // = / + to : / *
 			8'h78: BBC_CODE = 7'h47; // F11 to @
 			8'h07: BBC_CODE = 7'h69; // F12 to COPY
-			default: BBC_CODE = 7'hxE;
+			default: BBC_CODE = 7'hxF;
 		endcase
 	end
-	
+
+	wire VALID_KEY = ~&BBC_CODE[3:0];
+
 	reg KEY_RELEASE;
 	reg [7:0] KEY_MAP [0:15];
+
 	always @ (posedge CLK_hPROC) begin
-	   if(nRESET) begin
-	       KEY_RELEASE <= 0;
-	       KEY_MAP[0] <= 8'h0;
-	       KEY_MAP[1] <= 8'h0;
-	       KEY_MAP[2] <= 8'h0;
-	       KEY_MAP[3] <= 8'h0;
-	       KEY_MAP[4] <= 8'h0;
-	       KEY_MAP[5] <= 8'h0;
-	       KEY_MAP[6] <= 8'h0;
-	       KEY_MAP[7] <= 8'h0;
-	       KEY_MAP[8] <= 8'h0;
-	       KEY_MAP[9] <= 8'h0;
-	       KEY_MAP[10] <= 8'h0;
-	       KEY_MAP[11] <= 8'h0;
-	       KEY_MAP[12] <= 8'h0;
-	       KEY_MAP[13] <= 8'h0;
-	       KEY_MAP[14] <= 8'h0;
-	       KEY_MAP[15] <= 8'h0;
-	   end else if(DONE) begin
-	       if(DATA == 8'hF0)
-	           KEY_RELEASE <= 1;
-	       else begin
-	           KEY_RELEASE <= 0;
-	           case(BBC_CODE[6:4])
-	               3'b000: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h01;
-	               3'b001: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h02;
-	               3'b010: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h04;
-	               3'b011: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h08;
-	               3'b100: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h10;
-	               3'b101: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h20;
-	               3'b110: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h40;
-	               3'b111: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? 8'h00 : 8'h80;
-	           endcase
-	       end
-	   end
+		if(nRESET) begin
+			KEY_RELEASE <= 0;
+			KEY_MAP[0] <= 8'h0;
+			KEY_MAP[1] <= 8'h0;
+			KEY_MAP[2] <= 8'h0;
+			KEY_MAP[3] <= 8'h0;
+			KEY_MAP[4] <= 8'h0;
+			KEY_MAP[5] <= 8'h0;
+			KEY_MAP[6] <= 8'h0;
+			KEY_MAP[7] <= 8'h0;
+			KEY_MAP[8] <= 8'h0;
+			KEY_MAP[9] <= 8'h0;
+			KEY_MAP[10] <= 8'h0;
+			KEY_MAP[11] <= 8'h0;
+			KEY_MAP[12] <= 8'h0;
+			KEY_MAP[13] <= 8'h0;
+			KEY_MAP[14] <= 8'h0;
+			KEY_MAP[15] <= 8'h0;
+		end else if(DONE) begin
+			if(DATA == 8'hF0)
+				KEY_RELEASE <= 1;
+			else if(VALID_KEY) begin
+				KEY_RELEASE <= 0;
+				case(BBC_CODE[6:4])
+					3'b000: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFE : KEY_MAP[BBC_CODE[3:0]] | 8'h01;
+					3'b001: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFD : KEY_MAP[BBC_CODE[3:0]] | 8'h02;
+					3'b010: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFB : KEY_MAP[BBC_CODE[3:0]] | 8'h04;
+					3'b011: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hF7 : KEY_MAP[BBC_CODE[3:0]] | 8'h08;
+					3'b100: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hEF : KEY_MAP[BBC_CODE[3:0]] | 8'h10;
+					3'b101: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hDF : KEY_MAP[BBC_CODE[3:0]] | 8'h20;
+					3'b110: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hBF : KEY_MAP[BBC_CODE[3:0]] | 8'h40;
+					3'b111: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'h7F : KEY_MAP[BBC_CODE[3:0]] | 8'h80;
+				endcase
+			end
+		end
 	end
-	
-	wire [3:0] kCOLUMN = autoscan? COL_COUNTER : column; 
+
+	wire [3:0] kCOLUMN = autoscan? COL_COUNTER : column;
 	wire [7:0] kROW    = KEY_MAP[kCOLUMN];
+	reg  kKEY;
+	always @ ( * ) begin
+		case (row)
+			3'b000: kKEY = kROW[0];
+			3'b001: kKEY = kROW[1];
+			3'b010: kKEY = kROW[2];
+			3'b011: kKEY = kROW[3];
+			3'b100: kKEY = kROW[4];
+			3'b101: kKEY = kROW[5];
+			3'b110: kKEY = kROW[6];
+			3'b111: kKEY = kROW[7];
+			default: kKEY = 1'bx;
+		endcase
+	end
 
-
-/****************************************************************************************/
-
-	assign column_match = |BBC_ROW & (autoscan? COL_COUNTER == BBC_COL : (column <= 9) && column == BBC_COL);
-	assign row_match    = autoscan? 1'bz : BBC_ROW == row;
+	assign column_match = |kROW[7:1];
+	assign row_match    = autoscan? 1'bz : kKEY;
 
 endmodule // Keyboard

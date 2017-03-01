@@ -44,6 +44,17 @@ module TOP(
 	reg [1:0] PIXELDIVIDER = 0;
 	always @ (posedge CLK100MHZ) PIXELDIVIDER <= PIXELDIVIDER + 1;
 
+	// RESET on startup
+	reg [4:0] RESET_COUNTER = 5'h1F;
+	always @ (posedge PIXELCLK) begin
+		if(~CPU_RESETN)
+			RESET_COUNTER <= 5'h1F;
+		else if(|RESET_COUNTER)
+			RESET_COUNTER <= RESET_COUNTER + 5'h1F;
+	end
+
+	wire nMASTER_RESET = ~|RESET_COUNTER & CPU_RESETN;
+
 /****************************************************************************/
 // MEMORY
 
@@ -61,20 +72,20 @@ module TOP(
 	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
 
 	reg [7:0] RAM [0:`KiB32];
-	reg [7:0] MEM_DATA;
-	wire [7:0] DATABUS = RnW&~SHEILA? MEM_DATA:8'hzz;
-	wire [14:0] CRTC_adr;
+	reg [7:0] vDATA;
+	reg [7:0] pDATA;
+	wire [7:0] DATABUS = RnW&~SHEILA? pDATA:8'hzz;
+	wire [14:0] vADDRESSBUS;
 
 	always @ ( negedge CLK_RAM ) begin
 		if(PHI_2 & pADDRESSBUS[15]) begin
-			if(OSBANKen) 		MEM_DATA <= BBCOS12[pADDRESSBUS[13:0]];
-			else if(BASICBANKen)MEM_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
-			else MEM_DATA <= 8'hFF;
+			if(OSBANKen) 		pDATA <= BBCOS12[pADDRESSBUS[13:0]];
+			else if(BASICBANKen)pDATA <= BBCBASIC2[pADDRESSBUS[13:0]];
 		end else begin
 			if(PHI_2)
-				if(RnW) MEM_DATA <= RAM[pADDRESSBUS[14:0]]; // processor
+				if(RnW) pDATA <= RAM[pADDRESSBUS[14:0]]; // processor
 				else	RAM[pADDRESSBUS[14:0]] <= DATABUS;
-			else 		MEM_DATA <= RAM[CRTC_adr];			// crtc
+			else 		vDATA <= RAM[vADDRESSBUS];			// crtc
 		end
 	end
 
@@ -121,14 +132,14 @@ module TOP(
 	wire B4 = ~&{B3,cFRAMESTORE[12]};
 
 	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
-	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
+	assign vADDRESSBUS = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
 
 /******************************************************************************/
 
 // Processor
 	MOS6502 pocessor(
 	.clk(CLK_PROC),
-	.nRES(CPU_RESETN),
+	.nRES(nMASTER_RESET),
 	.nIRQ(nIRQ),
 	.nNMI(VCC),.SO(VCC),.READY(VCC),
 	.Data_bus(DATABUS),
@@ -142,12 +153,12 @@ module TOP(
 	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
 	VideoULA vula(
 	.PIXELCLK(PIXELCLK),
-	.nRESET(CPU_RESETN),
+	.nRESET(nMASTER_RESET),
 	.A0(pADDRESSBUS[0]),
 	.nCS(nVIDPROC),
 	.DISEN(DISEN),
 	.CURSOR(CURSOR),
-	.DATA(MEM_DATA),
+	.DATA(vDATA),
 	.pDATA(DATABUS),
 
 	.CLK_RAM(CLK_RAM),
@@ -164,7 +175,7 @@ module TOP(
 	.PIXELCLK(PIXELCLK),
 	.CHARCLK(CLK_CRTC),
 	.nCS(nCRTC),
-	.nRESET(CPU_RESETN),
+	.nRESET(nMASTER_RESET),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
 	.DATABUS(DATABUS),
@@ -181,7 +192,7 @@ module TOP(
 	MOS6522 via(
 	.CS1(VCC),
 	.nCS2(nVIA),
-	.nRESET(CPU_RESETN),
+	.nRESET(nMASTER_RESET),
 	.PHI_2(PHI_2),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[3:0]),
@@ -196,7 +207,7 @@ module TOP(
 // KEYBOARD
 	Keyboard k(
 	.CLK_hPROC(CLK_hPROC),
-	.nRESET(CPU_RESETN),
+	.nRESET(nMASTER_RESET),
 	.autoscan(LS259_reg[3]),
 	.column(PORTA[3:0]),
 	.row(PORTA[6:4]),
@@ -210,7 +221,7 @@ module TOP(
 	EXTRA_PERIPHERALS ext_p(
 	.CLK_PROC(CLK_PROC),
 	.RnW(RnW),
-	.nRESET(CPU_RESETN),
+	.nRESET(nMASTER_RESET),
 	.nVIA(nVIA),
 	.nFDC(nFDC),
 	.nADC(nADC),

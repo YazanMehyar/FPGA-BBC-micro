@@ -17,11 +17,6 @@ module TOP_test();
 	wire [3:0] VCC_4 = 4'hF;
 	wire [7:0] HiZ = 8'hzz;
 
-	wire [15:0] pADDRESSBUS;
-	wire [13:0] cFRAMESTORE;
-	wire [4:0] cROWADDRESS;
-	wire [7:0] DATABUS = RnW&~SHEILA? MEM_DATA:8'hzz;
-
 	wire CLK_PROC, CLK_RAM, CLK_CRTC;
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire H_SYNC, V_SYNC;
@@ -35,10 +30,15 @@ module TOP_test();
 	always @ (posedge CLK100MHz) PIXELCOUNT <= PIXELCOUNT + 1;
 
 /*****************************************************************************/
+	wire [15:0] pADDRESSBUS;
+	wire [14:0] vADDRESSBUS;
+
+	wire [7:0] pDATABUS = RnW&~SHEILA? pDATA:8'hzz;
+
 	// ROM Bank Select
 	reg [3:0] ROM_BANK;
 	always @ ( posedge CLK_PROC ) begin
-		if(~nROMSEL) ROM_BANK <= DATABUS[3:0];
+		if(~nROMSEL) ROM_BANK <= pDATABUS[3:0];
 	end
 
 	// ROM
@@ -48,19 +48,18 @@ module TOP_test();
 	reg [7:0] OSROM [0:`KiB16];
 	reg [7:0] BASICROM [0:`KiB16];
 	reg [7:0] RAM [0:`KiB32];
-	reg [7:0] MEM_DATA;
-	wire [14:0] CRTC_adr;
+	reg [7:0] pDATA; // processor
+	reg [7:0] vDATA; // video
 
 	always @ ( negedge CLK_RAM ) begin
 		if(PHI_2 & pADDRESSBUS[15]) begin
-			if(OSBANKen) MEM_DATA <= OSROM[pADDRESSBUS[13:0]];
-			else if(BASICBANKen) MEM_DATA <= BASICROM[pADDRESSBUS[13:0]];
-			else MEM_DATA <= 8'hFF;
+			if(OSBANKen) pDATA <= OSROM[pADDRESSBUS[13:0]];
+			else if(BASICBANKen) pDATA <= BASICROM[pADDRESSBUS[13:0]];
 		end else begin
 			if(PHI_2)
-				if(RnW) MEM_DATA <= RAM[pADDRESSBUS[14:0]]; // processor
-				else	RAM[pADDRESSBUS[14:0]] <= DATABUS;
-			else 		MEM_DATA <= RAM[CRTC_adr];			// crtc
+				if(RnW) pDATA <= RAM[pADDRESSBUS[14:0]]; // processor
+				else	RAM[pADDRESSBUS[14:0]] <= pDATABUS;
+			else 		vDATA <= RAM[vADDRESSBUS];			// crtc
 		end
 	end
 
@@ -105,7 +104,7 @@ module TOP_test();
 		repeat (10) @(posedge CLK100MHz);
 
 		nRESET <= 1;
-		repeat (20) begin
+		repeat (3) begin
 			@(posedge V_SYNC) $display("SCREEN No. %d", SCREEN_COUNT);
 			SCREEN_COUNT <= SCREEN_COUNT + 1;
 		end
@@ -129,9 +128,9 @@ module TOP_test();
 	end
 
 // Virtual Screen
-	initial forever @(negedge V_SYNC) @(posedge DISEN) $v_sync;
+	initial forever @(negedge V_SYNC) @(posedge cDISPLAYen) $v_sync;
 
-	initial forever @(negedge H_SYNC) @(posedge DISEN) $h_sync;
+	initial forever @(negedge H_SYNC) @(posedge cDISPLAYen) $h_sync;
 
 	always @(negedge PIXELCLK) $pixel_scan(colour);
 
@@ -156,13 +155,16 @@ module TOP_test();
 		endcase
 	end
 
+	wire [13:0] cFRAMESTORE;
+	wire [4:0] cROWADDRESS;
+
 	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
 	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
 	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]};
 	wire B4 = ~&{B3,cFRAMESTORE[12]};
 
 	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1; // CRTC adjusted address
-	assign CRTC_adr = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
+	assign vADDRESSBUS = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
 
 /******************************************************************************/
 
@@ -173,7 +175,7 @@ module TOP_test();
 	.nRES(nRESET),
 	.nIRQ(nIRQ),
 	.nNMI(VCC),.SO(VCC),.READY(VCC),
-	.Data_bus(DATABUS),
+	.Data_bus(pDATABUS),
 
 	.Address_bus(pADDRESSBUS),
 	.PHI_2(PHI_2),
@@ -190,8 +192,8 @@ module TOP_test();
 	.nCS(nVIDPROC),
 	.DISEN(DISEN),
 	.CURSOR(CURSOR),
-	.DATA(MEM_DATA),
-	.pDATA(DATABUS),
+	.DATA(vDATA),
+	.pDATA(pDATABUS),
 
 	.CLK_RAM(CLK_RAM),
 	.CLK_PROC(CLK_PROC),
@@ -210,7 +212,7 @@ module TOP_test();
 	.nRESET(nRESET),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
-	.DATABUS(DATABUS),
+	.DATABUS(pDATABUS),
 
 	.framestore_adr(cFRAMESTORE),
 	.scanline_row(cROWADDRESS),
@@ -231,7 +233,7 @@ module TOP_test();
 	.CA1(V_SYNC),
 	.CA2(VCC),
 
-	.DATA(DATABUS),
+	.DATA(pDATABUS),
 	.PORTA({GND, HiZ[7:1]}),
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(nIRQ));
@@ -249,6 +251,6 @@ module TOP_test();
 	.nUVIA(nUVIA),
 	.nACIA(nACIA),
 
-	.DATABUS(DATABUS));
+	.DATABUS(pDATABUS));
 
 endmodule

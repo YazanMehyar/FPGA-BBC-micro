@@ -32,7 +32,7 @@ module VideoULA (
 	end
 
 	always @ (posedge PIXELCLK) CLK_2RAM  <= #1 ~CLK_2RAM;
-	always @ (posedge CLK_2RAM)CLK_RAM    <= #1 ~CLK_RAM;
+	always @ (posedge CLK_2RAM) CLK_RAM   <= #1 ~CLK_RAM;
 	always @ (posedge CLK_RAM)  CLK_PROC  <= #1 ~CLK_PROC;
 	always @ (posedge CLK_PROC) CLK_hPROC <= #1 ~CLK_hPROC;
 
@@ -40,8 +40,12 @@ module VideoULA (
 
 /****************************************************************************************/
 
-	wire CRTC_posedge = CONTROL[4]? CLK_2RAM&CLK_RAM&~CLK_PROC :
-									CLK_2RAM&CLK_RAM&~CLK_PROC&CLK_hPROC ;
+	wire CRTC_posedge;
+	reg  prev_CLKCRTC;
+	always @ (posedge PIXELCLK) begin
+		prev_CLKCRTC <= CLK_CRTC;
+	end
+	assign CRTC_posedge = CLK_CRTC & ~prev_CLKCRTC;
 
 	reg SHIFT_en; // wire
 	always @ ( * ) begin
