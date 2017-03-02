@@ -122,7 +122,7 @@ always @ (posedge PIXELCLK) begin
         scanline_start_adr	<= scanline_start_adr + horz_display;
     end else if(ENDofLINE&VGA_DISEN) begin
         framestore_adr		<= scanline_start_adr;
-    end else if(CRTC_en) begin
+    end else if(CRTC_en&DISEN) begin
         framestore_adr		<= framestore_adr + 1;
     end
 end
