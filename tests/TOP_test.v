@@ -1,71 +1,83 @@
-`timescale 1ns/1ns
+`include "TOP.vh"
 
 module TOP_test();
 
-	`define KiB16 16383
-	`define KiB32 32767
-	`define KiB64 65535
-	`define CLKPERIOD 10
-
 	initial $dumpvars(0, TOP_test);
 
-	reg CLK100MHz = 0;
-	always #(`CLKPERIOD/2) CLK100MHz = ~CLK100MHz;
+	reg CLK100MHZ = 0;
+	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
 
 	wire VCC = 1'b1;
 	wire GND = 1'b0;
 	wire [3:0] VCC_4 = 4'hF;
-	wire [7:0] HiZ = 8'hzz;
 
-	wire CLK_hPROC, CLK_PROC, CLK_RAM, CLK_CRTC;
 	wire cDISPLAYen, CURSOR, DISEN;
 	wire H_SYNC, V_SYNC;
-	wire PHI_2, RnW, SYNC, nIRQ;
+	wire RnW, SYNC, nIRQ;
 	wire RED, GREEN, BLUE;
 
 /*****************************************************************************/
+	wire PIXELCLK;
+	wire dRAM_en;	// d as in double ram
+	wire RAM_en;
+	wire PROC_en;
+	wire hPROC_en;	// h as in half processor
+	wire CRTC_en;
+	wire PHI_2;		// PHASE 2 of MOS6502
 
-	wire PIXELCLK = PIXELCOUNT[1];
-	reg [1:0] PIXELCOUNT = 0;
-	always @ (posedge CLK100MHz) PIXELCOUNT <= PIXELCOUNT + 1;
-	
+	Timing_Generator timer(
+		.CLK100MHZ(CLK100MHZ),
+		.PIXELCLK(PIXELCLK),
+		.dRAM_en(dRAM_en),
+		.RAM_en(RAM_en),
+		.PROC_en(PROC_en),
+		.hPROC_en(hPROC_en),
+		.PHI_2(PHI_2));
+
+	// Simulate PS2_CLK
 	wire PS2_CLK = PS2_COUNT[12];
 	reg [12:0] PS2_COUNT = 0;
-	always @ (posedge PIXELCLK) PS2_COUNT <= PS2_COUNT + 1;
+	always @ ( posedge PIXELCLK ) PS2_COUNT <= PS2_COUNT + 1;
 
 /*****************************************************************************/
 	wire [15:0] pADDRESSBUS;
 	wire [14:0] vADDRESSBUS;
 
-	wire [7:0] pDATABUS = RnW&~SHEILA? pDATA:8'hzz;
+	wire [7:0] pDATABUS;
+	wire [7:0] pDATA; // processor
 
-	// ROM Bank Select
-	reg [3:0] ROM_BANK;
-	always @ ( posedge CLK_PROC ) begin
-		if(~nROMSEL) ROM_BANK <= pDATABUS[3:0];
-	end
-
-	// ROM
 	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
 	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
 
-	reg [7:0] OSROM [0:`KiB16];
-	reg [7:0] BASICROM [0:`KiB16];
-	reg [7:0] RAM [0:`KiB32];
-	reg [7:0] pDATA; // processor
-	reg [7:0] vDATA; // video
+	reg [7:0] OSROM 	[0:`KiB16];
+	reg [7:0] BASICROM	[0:`KiB16];
+	reg [7:0] RAM 		[0:`KiB32];
+	reg [3:0] ROM_BANK;
+	reg [7:0] ram_DATA;
+	reg [7:0] rom_DATA;
+	reg [7:0] vDATA;
 
-	always @ ( negedge CLK_RAM ) begin
-		if(PHI_2 & pADDRESSBUS[15]) begin
-			if(OSBANKen) pDATA <= OSROM[pADDRESSBUS[13:0]];
-			else if(BASICBANKen) pDATA <= BASICROM[pADDRESSBUS[13:0]];
-		end else begin
-			if(PHI_2)
-				if(RnW) pDATA <= RAM[pADDRESSBUS[14:0]]; // processor
-				else	RAM[pADDRESSBUS[14:0]] <= pDATABUS;
-			else 		vDATA <= RAM[vADDRESSBUS];			// crtc
+	assign pDATABUS =  RnW&~SHEILA?		pDATA : 8'hzz;
+	assign pDATA	=  pADDRESSBUS[15]? rom_DATA : ram_DATA;
+
+	always @ ( posedge PIXELCLK )
+		if(PROC_en)
+			if(~nROMSEL) ROM_BANK <= pDATABUS[3:0];
+
+
+	always @ ( posedge PIXELCLK )
+		if(RAM_en) begin
+			if(PHI_2) begin // Respond to CRTC reads and MOS6502 writes
+				vDATA <= RAM[vADDRESSBUS];
+				if(~RnW) RAM[pADDRESSBUS] <= pDATABUS;
+			end else
+				ram_DATA <= RAM[pADDRESSBUS];
 		end
-	end
+
+	always @ ( posedge PIXELCLK )
+		if(RAM_en&~PHI_2)
+			if(OSBANKen) 			rom_DATA <= OSROM[pADDRESSBUS[13:0]];
+			else if(BASICBANKen)	rom_DATA <= BASICROM[pADDRESSBUS[13:0]];
 
 /******************************************************************************/
 //	Chip selects
@@ -87,30 +99,9 @@ module TOP_test();
 
 	reg nRESET;
 	reg PS2_DATA;
-	
-	`include "PS2.vh"
-	
-	task PRESS_KEY;
-		input [7:0] KEY;
-		begin
-			@(posedge PS2_CLK);
-			PS2_SEND(KEY);
-			repeat (3) begin
-				@(posedge V_SYNC) $display("SCREEN No. %3d", SCREEN_COUNT);
-				SCREEN_COUNT <= SCREEN_COUNT + 1;
-			end
-			$display("PRINTING %h", KEY);
-			@(posedge PS2_CLK);
-			PS2_SEND(8'hF0);
-			PS2_SEND(KEY);
-			repeat (10) begin
-				@(posedge V_SYNC) $display("SCREEN No. %3d", SCREEN_COUNT);
-				SCREEN_COUNT <= SCREEN_COUNT + 1;
-			end
-		end
-	endtask
-	
-	integer SCREEN_COUNT = 0;
+
+	`include "TEST_HELPERS.vh"
+
 	initial begin
 		$start_screen;
 		$readmemh("./software/OS12.mem", OSROM);
@@ -123,22 +114,17 @@ module TOP_test();
 
 		OSROM[14'h19E9] <= 8'hD0; // Branch over code
 		OSROM[14'h19EA] <= 8'h12;
-
-		// OSROM[14'h1C05] <= 8'h10; // Loop at end of OS
-		// OSROM[14'h1C06] <= 8'hFE;
 		// -- OS MODIFICATION -- //
 
 		nRESET <= 0;
 		PS2_DATA <= 1;
-		repeat (10) @(posedge CLK100MHz);
+		repeat (16) @(posedge PIXELCLK);
 
 		nRESET <= 1;
-		repeat (3) begin
-			@(posedge V_SYNC) $display("SCREEN No. %d", SCREEN_COUNT);
-			SCREEN_COUNT <= SCREEN_COUNT + 1;
-		end
+		repeat (3) @(posedge V_SYNC);
+
 		$stop;
-		
+
 		// Send some keys
 		PRESS_KEY(8'h4D);
 		PRESS_KEY(8'h2D);
@@ -149,20 +135,28 @@ module TOP_test();
 		PRESS_KEY(8'h3D);
 		PRESS_KEY(8'h29);
 		PRESS_KEY(8'h4E);
+		PRESS_KEY(8'h29);
 		PRESS_KEY(8'h26);
 		PRESS_KEY(8'h5A);
-		
+		PRESS_KEY(8'h4D);
+
 		@(posedge V_SYNC);
-		
+
 		$stop;
 		$finish;
 	end
 
+	integer SCREEN_COUNT = 0;
+	always @ (posedge V_SYNC) begin
+		$display("SCREEN No. %d", SCREEN_COUNT);
+		SCREEN_COUNT <= SCREEN_COUNT + 1;
+	end
 /******************************************************************************/
 // Address check
 
 	always @ (posedge PHI_2) begin
-		//if(pADDRESSBUS == 16'h028F) $stop;
+		if(pADDRESSBUS == 16'h8000 && SYNC)
+			$display("BASIC taking control @ %t", $stime);
 	end
 
 
@@ -193,12 +187,12 @@ module TOP_test();
 
 /******************************************************************************/
 
-	wire LS259en = nVIA;
+	wire LS259en = nVIA&PROC_en;
 	reg [7:0] LS259_reg;
 	wire LS259_D;
 	wire [2:0] LS259_A;
 
-	always @ ( posedge CLK_PROC ) begin
+	always @ ( posedge PIXELCLK ) begin
 		if(LS259en)	case (LS259_A)
 			0:	LS259_reg[0] <= LS259_D;
 			1:	LS259_reg[1] <= LS259_D;
@@ -224,17 +218,18 @@ module TOP_test();
 
 /******************************************************************************/
 
-
 // Processor
 	MOS6502 pocessor(
-	.clk(CLK_PROC),
-	.nRES(nRESET),
-	.nIRQ(nIRQ),
-	.nNMI(VCC),.SO(VCC),.READY(VCC),
-	.Data_bus(pDATABUS),
-
-	.Address_bus(pADDRESSBUS),
+	.clk(PIXELCLK),
+	.clk_en(PROC_en),
 	.PHI_2(PHI_2),
+	.nRESET(nRESET),
+	.nIRQ(nIRQ),
+	.nNMI(VCC),
+	.nSO(VCC),
+	.READY(VCC),
+	.Data_bus(pDATABUS),
+	.Address_bus(pADDRESSBUS),
 	.RnW(RnW),
 	.SYNC(SYNC));
 
@@ -248,13 +243,13 @@ module TOP_test();
 	.nCS(nVIDPROC),
 	.DISEN(DISEN),
 	.CURSOR(CURSOR),
-	.DATA(vDATA),
+	.vDATA(vDATA),
 	.pDATA(pDATABUS),
-
-	.CLK_RAM(CLK_RAM),
-	.CLK_PROC(CLK_PROC),
-	.CLK_hPROC(CLK_hPROC),
-	.CLK_CRTC(CLK_CRTC),
+	.dRAM_en(dRAM_en),
+	.RAM_en(RAM_en),
+	.PROC_en(PROC_en),
+	.hPROC_en(hPROC_en),
+	.CRTC_en(CRTC_en),
 	.REDout(RED),
 	.GREENout(GREEN),
 	.BLUEout(BLUE));
@@ -262,15 +257,15 @@ module TOP_test();
 
 // CRTC
 	VGA_CRTC crtc(
-	.En(PHI_2),
 	.PIXELCLK(PIXELCLK),
-	.CHARCLK(CLK_CRTC),
+	.PROC_en(PROC_en),
+	.CRTC_en(CRTC_en),
+	.PHI_2(PHI_2),
 	.nCS(nCRTC),
 	.nRESET(nRESET),
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
 	.DATABUS(pDATABUS),
-
 	.framestore_adr(cFRAMESTORE),
 	.scanline_row(cROWADDRESS),
 	.DISEN(cDISPLAYen),
@@ -280,8 +275,9 @@ module TOP_test();
 
 
 // Versatile Interface Adapter
-wire [7:0] PORTA;
-wire COLUMN_MATCH;
+	wire [7:0] PORTA;
+	wire COLUMN_MATCH;
+
 	MOS6522 via(
 	.CS1(VCC),
 	.nCS2(nVIA),
@@ -291,15 +287,15 @@ wire COLUMN_MATCH;
 	.RS(pADDRESSBUS[3:0]),
 	.CA1(V_SYNC),
 	.CA2(COLUMN_MATCH),
-
 	.DATA(pDATABUS),
 	.PORTA(PORTA),
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(nIRQ));
-	
+
 // Keyboard
-	Keyboard k(
-	.CLK_hPROC(CLK_hPROC),
+	Keyboard keyboard(
+	.clk(PIXELCLK),
+	.clk_en(hPROC_en),
 	.nRESET(nRESET),
 	.autoscan(LS259_reg[3]),
 	.column(PORTA[3:0]),
@@ -311,8 +307,8 @@ wire COLUMN_MATCH;
 
 
 // Extra (MOCK) Peripherals
-	EXTRA_PERIPHERALS ext_p(
-	.CLK_PROC(CLK_PROC),
+	EXTRA_PERIPHERALS extra(
+	.PHI_2(PHI_2),
 	.RnW(RnW),
 	.nRESET(nRESET),
 	.nVIA(nVIA),
@@ -321,7 +317,6 @@ wire COLUMN_MATCH;
 	.nTUBE(nTUBE),
 	.nUVIA(nUVIA),
 	.nACIA(nACIA),
-
 	.DATABUS(pDATABUS));
 
 endmodule

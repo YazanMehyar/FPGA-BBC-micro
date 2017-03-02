@@ -7,7 +7,7 @@ VPI=./vpi
 VPIm=-m vpi_top
 
 VC=iverilog
-VCFLAGS=-Wall -I$(INC) -t vvp
+VCFLAGS=-Wall -Wno-timescale -Wno-implicit-dimensions -I$(INC) -t vvp
 
 VI=vvp
 VIFLAGS=-s -M $(VPI) $(VPIm)

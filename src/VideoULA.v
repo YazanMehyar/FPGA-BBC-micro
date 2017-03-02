@@ -1,75 +1,66 @@
+`include "TOP.vh"
+
 module VideoULA (
 	input PIXELCLK,
 	input nRESET,
+	input dRAM_en,
+	input RAM_en,
+	input PROC_en,
+	input hPROC_en,
 	input A0,
 	input nCS,
 	input DISEN,
 	input CURSOR,
-	input [7:0] DATA,
+	input [7:0] vDATA,
 	input [7:0] pDATA,
 
-	output reg CLK_PROC,
-	output reg CLK_hPROC,
-	output reg CLK_RAM,
-	output CLK_CRTC,
+	output CRTC_en,
 	output REDout,
 	output GREENout,
 	output BLUEout);
 
 /****************************************************************************************/
 
-	reg CLK_2RAM;
 	reg [7:0] CONTROL = 0;
 	reg [7:0] SHIFT_reg = 0;
 	reg [3:0] PALETTE_mem [0:15];
 
 /****************************************************************************************/
-	initial begin
-		CLK_hPROC = 0;
-		CLK_PROC= 0;
-		CLK_RAM = 0;
-		CLK_2RAM = 0;
+	assign CRTC_en = CONTROL[4]? PROC_en : hPROC_en;
+
+	reg hPROC_SYNC;
+	always @ ( posedge PIXELCLK ) begin
+		if(PROC_en) hPROC_SYNC <= hPROC_en;
 	end
 
-	always @ (posedge PIXELCLK) CLK_2RAM  <= #1 ~CLK_2RAM;
-	always @ (posedge CLK_2RAM) CLK_RAM   <= #1 ~CLK_RAM;
-	always @ (posedge CLK_RAM)  CLK_PROC  <= #1 ~CLK_PROC;
-	always @ (posedge CLK_PROC) CLK_hPROC <= #1 ~CLK_hPROC;
-
-	assign CLK_CRTC = CONTROL[4]? CLK_PROC : CLK_hPROC;
-
+	wire NEXT_vBYTE = CONTROL[4]? RAM_en&~PROC_en : RAM_en&PROC_en&hPROC_en;
 /****************************************************************************************/
-
-	wire CRTC_posedge;
-	reg  prev_CLKCRTC;
-	always @ (posedge PIXELCLK) begin
-		prev_CLKCRTC <= CLK_CRTC;
-	end
-	assign CRTC_posedge = CLK_CRTC & ~prev_CLKCRTC;
 
 	reg SHIFT_en; // wire
 	always @ ( * ) begin
 		case (CONTROL[3:2])
-			2'b00: SHIFT_en = CLK_2RAM&CLK_RAM&~CLK_PROC;
-			2'b01: SHIFT_en = CLK_2RAM&CLK_RAM;
-			2'b10: SHIFT_en = CLK_2RAM;
-			2'b11: SHIFT_en = 1;
+			2'b00: SHIFT_en = PROC_en;
+			2'b01: SHIFT_en = RAM_en;
+			2'b10: SHIFT_en = dRAM_en;
+			2'b11: SHIFT_en = 1'b1;
 			default: SHIFT_en = 1'bx;
 		endcase
 	end
 
-	always @ (posedge PIXELCLK) begin
-		if(CRTC_posedge)	SHIFT_reg <= DATA;
+	always @ ( posedge PIXELCLK ) begin
+		if(NEXT_vBYTE)	SHIFT_reg <= vDATA;
 		else if(SHIFT_en)	SHIFT_reg <= {SHIFT_reg[6:0],1'b1};
 	end
 
 /****************************************************************************************/
 
-	wire [3:0] PALETTE_out = PALETTE_mem[{SHIFT_reg[7],SHIFT_reg[5],SHIFT_reg[3],SHIFT_reg[1]}];
-	always @ (posedge CLK_PROC) begin
-		if(~nCS)
-		 	if(A0)  PALETTE_mem[pDATA[7:4]] <= pDATA[3:0];
-			else	CONTROL <= pDATA;
+	wire [3:0] PALETTE_out = PALETTE_mem[{SHIFT_reg[7],SHIFT_reg[5],
+										  SHIFT_reg[3],SHIFT_reg[1]}];
+	always @ ( posedge PIXELCLK ) begin
+		if(PROC_en)
+			if(~nCS)
+		 		if(A0)  PALETTE_mem[pDATA[7:4]] <= pDATA[3:0];
+				else	CONTROL <= pDATA;
 	end
 
 /****************************************************************************************/
@@ -77,9 +68,9 @@ module VideoULA (
 	reg [2:0] CURSOR_seg;
 	reg CURSOR_out;
 
-	always @ (posedge PIXELCLK) begin
+	always @ ( posedge PIXELCLK ) begin
 		if(~nRESET) CURSOR_seg <= 3'b000;
-		else if(CRTC_posedge) begin
+		else if(NEXT_vBYTE) begin
 			if(CURSOR)	CURSOR_seg <= 3'b001;
 			else		CURSOR_seg <= CURSOR_seg << 1;
 			CURSOR_out <= CURSOR&CONTROL[7]

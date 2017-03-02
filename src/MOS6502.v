@@ -1,18 +1,18 @@
-`include "Decode_6502.vh"
+`include "MOS6502.vh"
 
 module MOS6502 (
 	input clk,
-	input nRES,
+	input clk_en,
+	input nRESET,
 	input nIRQ,
 	input nNMI,
-	input SO,
+	input nSO,
 	input READY,
+	input PHI_2,
 
 	inout [7:0] Data_bus,
 
 	output [15:0] Address_bus,
-	output PHI_1,
-	output PHI_2,
 	output RnW,
 	output SYNC,
 
@@ -33,20 +33,16 @@ module MOS6502 (
 	wire PC_inc, decimal_mode;
 
 	wire [7:0] PSR;
-	wire [7:0] PCL;
-	wire [7:0] PCH;
-	wire [7:0] Acc;
-	wire [7:0] iX;
-	wire [7:0] iY;
-	wire [7:0] SP;
+	reg  [7:0] PCL;
+	reg  [7:0] PCH;
+	reg  [7:0] Acc;
+	reg  [7:0] iX;
+	reg  [7:0] iY;
+	reg  [7:0] SP;
 	wire [7:0] ALU_out;
 
-	wire [7:0] ADBL;
-    wire [7:0] ADBH;
-
-    wire [7:0] Address_bus_lo;
-    wire [7:0] Address_bus_hi;
-
+	reg  [7:0] ADBL;
+    reg  [7:0] ADBH;
 
     reg [7:0] ALU_B;
     reg [7:0] SB;
@@ -57,25 +53,30 @@ module MOS6502 (
 
 /**************************************************************************************************/
 
-always @ ( * ) begin
-	case(test_reg_select)
-	3'b000: test_value_out = Acc;
-	3'b001: test_value_out = iX;
-	3'b010: test_value_out = iY;
-	3'b011: test_value_out = SP;
+    always @ ( * ) begin
+	    case(test_reg_select)
+	    3'b000: test_value_out = Acc;
+	    3'b001: test_value_out = iX;
+	    3'b010: test_value_out = iY;
+	    3'b011: test_value_out = SP;
 
-	3'b100: test_value_out = PSR;
-	3'b101: test_value_out = PCL;
-	3'b110: test_value_out = PCH;
-	default:test_value_out = 8'hxx;
-	endcase
-end
+	    3'b100: test_value_out = PSR;
+	    3'b101: test_value_out = PCL;
+	    3'b110: test_value_out = PCH;
+	    default:test_value_out = 8'hxx;
+	    endcase
+    end
 
 /**************************************************************************************************/
+// Data paths
+
+	assign Data_bus = ~RnW & PHI_2? iDB : 8'hzz;
 
 	always @ (posedge clk) begin
-		if(DIR_en) DIR <= Data_bus;
-		if(AOR_en) AOR <= ALU_out;
+		if(clk_en) begin
+			if(DIR_en) DIR <= Data_bus;
+			if(AOR_en) AOR <= ALU_out;
+		end
 	end
 
 	always @ ( * ) begin
@@ -112,58 +113,126 @@ end
 	end
 
 /**************************************************************************************************/
+// Register Bank
+    
+    always @ (posedge clk) begin
+	    if(~nRESET) begin
+		    SP  <= 8'h00;
+		    Acc <= 8'h00;
+		    iX  <= 8'h00;
+		    iY  <= 8'h00;
+	    end else if(clk_en) begin
+		    if(SP_en)  SP  <= SB;
+		    if(ACC_en) Acc <= SB;
+		    if(iX_en)  iX  <= SB;
+		    if(iY_en)  iY  <= SB;
+	    end
+    end
 
-	assign Address_bus = {Address_bus_hi, Address_bus_lo};
-	assign Data_bus = ~RnW & PHI_2? iDB : 8'hzz;
+/**************************************************************************************************/
+// Program Counter
+
+    always @ (posedge clk) begin
+	    if(~nRESET) begin
+		    PCL <= 8'h00;
+		    PCH <= 8'h00;
+	    end else if(clk_en)
+	    	if(PC_en) begin
+			    PCL <= ADBL + PC_inc;
+			    PCH <= ADBH + (&ADBL? PC_inc : 0);
+	    	end
+    end
+    
+/**************************************************************************************************/
+// Memory Addressing
+
+	reg [7:0] buff_lo, buff_hi;
+
+	assign Address_bus = {ADBH_SEL[3]? buff_hi:ADBH, ADBL_SEL[3]? buff_lo:ADBL};
+
+	always @ (posedge clk) begin
+		if(clk_en)
+			if(BUFF_en) begin
+				buff_hi <= ADBH;
+				buff_lo <= ADBL;
+			end
+	end
+
+	// ADBL
+	always @ ( * ) begin
+		case (ADBL_SEL[2:0])
+			`ADBL_PCL:   ADBL = PCL;
+			`ADBL_AOR:   ADBL = AOR;
+			`ADBL_STACK: ADBL = SP;
+			`ADBL_DIR:   ADBL = DIR;
+			`ADBL_IRQ:   ADBL = `IRQ_LOW_VEC;
+			`ADBL_NMI:   ADBL = `NMI_LOW_VEC;
+			`ADBL_RESET: ADBL = `RES_LOW_VEC;
+			`ADBL_BUFFER:ADBL = buff_lo;
+			default: ADBL = 8'hxx;
+		endcase
+	end
+
+	// ADBH
+	always @ ( * ) begin
+		case (ADBH_SEL[2:0])
+			`ADBH_PCH:   ADBH = PCH;
+			`ADBH_AOR:   ADBH = AOR;
+			`ADBH_DIR:   ADBH = DIR;
+			`ADBH_ZPG:   ADBH = 8'h00;
+			`ADBH_STACK: ADBH = 8'h01;
+			`ADBH_VECTOR:ADBH = 8'hFF;
+			`ADBH_BUFFER:ADBH = buff_hi;
+			default: ADBH = 8'hxx;
+		endcase
+	end
 
 /**************************************************************************************************/
 
-Control_6502 control(
+MOS6502_Control control(
 	.clk(clk),
-	.DIR(DIR), .iDB(iDB),
-	.ALU_COUT(ALU_COUT), .ALU_VOUT(ALU_VOUT), .ALU_ZOUT(ALU_ZOUT), .ALU_NOUT(ALU_NOUT),
-	.RESET_pin(nRES),.NMI_pin(nNMI),.IRQ_pin(nIRQ),.READY_pin(READY),.SO_pin(SO),.SYNC_pin(SYNC),
-	.PHI_1(PHI_1),.PHI_2(PHI_2),
-	.iDB_SEL(iDB_SEL),.SB_SEL(SB_SEL),.ADBL_SEL(ADBL_SEL),.ADBH_SEL(ADBH_SEL),
-	.ALU_FUNC(ALU_FUNC),.ALU_B_SEL(ALU_B_SEL),.CARRY_IN(CARRY_IN),
+	.clk_en(clk_en),
+	.DIR(DIR),
+	.iDB(iDB),
+	.ALU_COUT(ALU_COUT),
+	.ALU_VOUT(ALU_VOUT),
+	.ALU_ZOUT(ALU_ZOUT),
+	.ALU_NOUT(ALU_NOUT),
+	.nRESET(nRESET),
+	.nNMI(nNMI),
+	.nIRQ(nIRQ),
+	.READY_pin(READY),
+	.nSO(nSO),
+	.SYNC_pin(SYNC),
+	.iDB_SEL(iDB_SEL),
+	.SB_SEL(SB_SEL),
+	.ADBL_SEL(ADBL_SEL),
+	.ADBH_SEL(ADBH_SEL),
+	.ALU_FUNC(ALU_FUNC),
+	.ALU_B_SEL(ALU_B_SEL),
+	.CARRY_IN(CARRY_IN),
 	.RnW(RnW),
-	.ACC_en(ACC_en),.iX_en(iX_en),.iY_en(iY_en),
-	.SP_en(SP_en),.PC_en(PC_en),.AOR_en(AOR_en),.DIR_en(DIR_en),.BUFF_en(BUFF_en),
-	.PC_inc(PC_inc),.PSR_out(PSR),.decimal_mode(decimal_mode));
+	.ACC_en(ACC_en),
+	.iX_en(iX_en),
+	.iY_en(iY_en),
+	.SP_en(SP_en),
+	.PC_en(PC_en),
+	.AOR_en(AOR_en),
+	.DIR_en(DIR_en),
+	.BUFF_en(BUFF_en),
+	.PC_inc(PC_inc),
+	.PSR_out(PSR),
+	.decimal_mode(decimal_mode));
 
-ALU_6502 alu(
-	.ALU_FUNC(ALU_FUNC), .D_flag(decimal_mode), .CARRY_IN(CARRY_IN), .SB(SB), .ALU_B(ALU_B),
-	.ALU_COUT(ALU_COUT), .ALU_VOUT(ALU_VOUT),   .ALU_NOUT(ALU_NOUT), .ALU_ZOUT(ALU_ZOUT),
+MOS6502_ALU alu(
+	.ALU_FUNC(ALU_FUNC),
+	.D_flag(decimal_mode),
+	.CARRY_IN(CARRY_IN),
+	.SB(SB), .ALU_B(ALU_B),
+	.ALU_COUT(ALU_COUT),
+	.ALU_VOUT(ALU_VOUT),
+	.ALU_NOUT(ALU_NOUT),
+	.ALU_ZOUT(ALU_ZOUT),
 	.ALU_out(ALU_out));
 
-Reg_Bank reg_bank(
-	.clk(clk), .RESET_pin(nRES),
-	.SB(SB),
-	.ACC_en(ACC_en), .iX_en(iX_en),
-	.iY_en(iY_en),   .SP_en(SP_en),
-	.Acc(Acc), .iX(iX), .iY(iY), .SP(SP));
-
-Address_bus addr_bus(
-	.clk(clk),
-	.ADBL_SEL(ADBL_SEL),
-	.PCL(PCL), .AOR(AOR),
-	.DIR(DIR), .SP(SP),
-	.ADBH_SEL(ADBH_SEL),
-	.PCH(PCH),
-	.BUFF_en(BUFF_en),
-	.ADB_lo(ADBL), .ADB_hi(ADBH),
-	.ADB_lo_pin(Address_bus_lo),
-	.ADB_hi_pin(Address_bus_hi));
-
-Program_Counter pc(
-	.clk(clk),
-	.nRES(nRES),
-	.ADB_lo(ADBL),
-	.ADB_hi(ADBH),
-	.PC_en(PC_en),
-	.PC_inc(PC_inc),
-	.PCL(PCL),
-	.PCH(PCH));
-
-
-endmodule // MOS_6502
+endmodule

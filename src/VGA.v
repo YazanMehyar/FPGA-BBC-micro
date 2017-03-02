@@ -1,3 +1,5 @@
+`include "VGA.vh"
+
 module VGA (
 	input nRESET,
 	input PIXELCLK,
@@ -7,8 +9,6 @@ module VGA (
 	output NEWSCREEN,
 	output reg DISEN
 	);
-
-	`include "VGA.vh"
 
 	assign ENDofLINE = H_DPHASE & ~|H_DELAY;
 	assign NEWSCREEN = V_COUNTER == `LINES && ENDofLINE;

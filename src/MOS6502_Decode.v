@@ -1,16 +1,6 @@
-/**
-* @Author: Yazan Mehyar <zen>
-* @Date:   26-Dec-2016
-* @Email:  stcyazanerror@gmail.com
-* @Filename: Decode_6502.v
-* @Last modified by:   zen
-* @Last modified time: 25-Feb-2017
-*/
+`include "MOS6502.vh"
 
-`include "Decode_6502.vh"
-/*------------------------------------------------------------------------------------------------*/
-
-module Decode_6502 (
+module MOS6502_Decode (
 	input [7:0] IR,
 	input [5:0] T_state,
 	input [7:0] PSR,
@@ -20,9 +10,9 @@ module Decode_6502 (
 	input COUT,
 	input BX,
 	input BCC,
-	input NMI_req,
-	input IRQ_req,
-	input RESET_req,
+	input nNMI_req,
+	input nIRQ_req,
+	input nRESET_req,
 	input READY,
 
 	output reg [2:0] iDB_SEL,
@@ -158,8 +148,8 @@ always @ ( * ) begin
 		else if(ABSi) ADBL_SEL = {1'b1,`ADBL_BUFFER};
 		else ADBL_SEL = {INDy&COUT,`ADBL_AOR};
 	end else if(T_state[5]) begin
-		if(BRK&~RESET_req)    ADBL_SEL = `ADBL_RESET;
-		else if(BRK&~NMI_req) ADBL_SEL = `ADBL_NMI;
+		if(BRK&~nRESET_req)    ADBL_SEL = `ADBL_RESET;
+		else if(BRK&~nNMI_req) ADBL_SEL = `ADBL_NMI;
 		else if(BRK)         ADBL_SEL = `ADBL_IRQ;
 		else ADBL_SEL = {INDy,`ADBL_AOR};
 	end else begin
@@ -272,7 +262,7 @@ end
 /**************************************************************************************************/
 // REQUEST_STORE
 always @ ( * ) begin
-	if(|T_state[1:0] | ~RESET_req) begin
+	if(|T_state[1:0] | ~nRESET_req) begin
 		RnW = 1;
 	end else if(T_state[2]) begin
 		RnW = ~(ZPG&STORE|STACK&~IR[5]|JSR|BRK);
@@ -295,7 +285,7 @@ always @ ( * ) begin
 		else if(BRANCH&~BX) NEXT_T = branch_taken(IR[7:6]);
 		else NEXT_T = 0;
 	end else if(T_state[1]) begin
-		NEXT_T = TWO_CYCLE&RESET_req&IRQ_req&NMI_req;
+		NEXT_T = TWO_CYCLE&nRESET_req&nIRQ_req&nNMI_req;
 	end else if(T_state[2]) begin
 		NEXT_T  = ZPG | ABS&CONTROL&~IR[5] | STACK&~IR[5];
 		CLEAR_T = ZPG & RMW;
@@ -406,4 +396,4 @@ endcase
 end
 endfunction
 
-endmodule //Decode_6502
+endmodule

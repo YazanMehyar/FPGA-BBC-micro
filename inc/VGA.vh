@@ -1,3 +1,5 @@
+`include "TOP.vh"
+
 `define H_COUNT_INIT 655
 `define H_PULSE_INIT 95
 `define H_BACKPORCH  47

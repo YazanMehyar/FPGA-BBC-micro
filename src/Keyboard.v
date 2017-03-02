@@ -1,5 +1,6 @@
 module Keyboard (
-	input CLK_hPROC,
+	input clk,
+	input clk_en,
 	input nRESET,
 	input autoscan,
 	input [3:0] column,
@@ -16,7 +17,8 @@ module Keyboard (
 /****************************************************************************************/
 
 	PS2_DRIVER p(
-		.CLK(CLK_hPROC),
+		.clk(clk),
+		.clk_en(clk_en),
 		.nRESET(nRESET),
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
@@ -26,7 +28,7 @@ module Keyboard (
 /****************************************************************************************/
 
 	reg [3:0] COL_COUNTER = 0;
-	always @ (posedge CLK_hPROC) COL_COUNTER <= COL_COUNTER + 1;
+	always @ (posedge clk) if(clk_en) COL_COUNTER <= COL_COUNTER + 1;
 
 	reg [6:0] BBC_CODE; // Combinitorial
 	always @ ( * ) begin
@@ -118,7 +120,7 @@ module Keyboard (
 	reg KEY_RELEASE;
 	reg [7:0] KEY_MAP [0:15];
 
-	always @ (posedge CLK_hPROC) begin
+	always @ (posedge clk) begin
 		if(~nRESET) begin
 			KEY_RELEASE <= 0;
 			KEY_MAP[0] <= 8'h0;
@@ -137,23 +139,24 @@ module Keyboard (
 			KEY_MAP[13] <= 8'h0;
 			KEY_MAP[14] <= 8'h0;
 			KEY_MAP[15] <= 8'h0;
-		end else if(DONE) begin
-			if(DATA == 8'hF0)
-				KEY_RELEASE <= 1;
-			else if(VALID_KEY) begin
-				KEY_RELEASE <= 0;
-				case(BBC_CODE[6:4])
-					3'b000: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFE : KEY_MAP[BBC_CODE[3:0]] | 8'h01;
-					3'b001: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFD : KEY_MAP[BBC_CODE[3:0]] | 8'h02;
-					3'b010: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFB : KEY_MAP[BBC_CODE[3:0]] | 8'h04;
-					3'b011: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hF7 : KEY_MAP[BBC_CODE[3:0]] | 8'h08;
-					3'b100: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hEF : KEY_MAP[BBC_CODE[3:0]] | 8'h10;
-					3'b101: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hDF : KEY_MAP[BBC_CODE[3:0]] | 8'h20;
-					3'b110: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hBF : KEY_MAP[BBC_CODE[3:0]] | 8'h40;
-					3'b111: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'h7F : KEY_MAP[BBC_CODE[3:0]] | 8'h80;
-				endcase
+		end else if(clk_en)
+			if(DONE) begin
+				if(DATA == 8'hF0)
+					KEY_RELEASE <= 1;
+				else if(VALID_KEY) begin
+					KEY_RELEASE <= 0;
+					case(BBC_CODE[6:4])
+						3'b000: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFE : KEY_MAP[BBC_CODE[3:0]] | 8'h01;
+						3'b001: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFD : KEY_MAP[BBC_CODE[3:0]] | 8'h02;
+						3'b010: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hFB : KEY_MAP[BBC_CODE[3:0]] | 8'h04;
+						3'b011: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hF7 : KEY_MAP[BBC_CODE[3:0]] | 8'h08;
+						3'b100: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hEF : KEY_MAP[BBC_CODE[3:0]] | 8'h10;
+						3'b101: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hDF : KEY_MAP[BBC_CODE[3:0]] | 8'h20;
+						3'b110: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'hBF : KEY_MAP[BBC_CODE[3:0]] | 8'h40;
+						3'b111: KEY_MAP[BBC_CODE[3:0]] <= KEY_RELEASE? KEY_MAP[BBC_CODE[3:0]] & 8'h7F : KEY_MAP[BBC_CODE[3:0]] | 8'h80;
+					endcase
+				end
 			end
-		end
 	end
 
 	wire [3:0] kCOLUMN = autoscan? COL_COUNTER : column;

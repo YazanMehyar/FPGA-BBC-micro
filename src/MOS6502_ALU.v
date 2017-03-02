@@ -1,6 +1,6 @@
-`include "Decode_6502.vh"
+`include "MOS6502.vh"
 
-module ALU_6502 (
+module MOS6502_ALU (
 	input [3:0] ALU_FUNC,
 	input D_flag,
 	input CARRY_IN,
@@ -73,4 +73,4 @@ always @ ( * ) begin
 
 end
 
-endmodule // ALU_6502
+endmodule

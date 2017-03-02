@@ -1,7 +1,10 @@
+`include "TOP.vh"
+
 module VGA_CRTC(
 	input PIXELCLK,
-	input CHARCLK,
-	input En,
+	input CRTC_en,
+	input PROC_en,
+	input PHI_2,
 	input nCS,
 	input RnW,
 	input RS,
@@ -14,8 +17,7 @@ module VGA_CRTC(
 	output DISEN,
 	output H_SYNC,
 	output V_SYNC,
-	output CURSOR
-);
+	output CURSOR);
 
 reg [13:0] start_address;
 reg [13:0] cursor_adr;
@@ -30,7 +32,7 @@ reg [1:0] cursor_blink_mode;
 
 /****************************************************************************************/
 
-assign DATABUS = (~nCS & En & RnW & nRESET)? DATABUS_out : 8'hzz;
+assign DATABUS = (~nCS & PHI_2 & RnW & nRESET)? DATABUS_out : 8'hzz;
 assign DISEN   = VGA_DISEN & |HDISPLAY_COUNT[7:1] & |VDISPLAY_COUNT;
 assign CURSOR  = cursor_poximity & cursor_point & nRESET & cursor_display;
 
@@ -43,8 +45,8 @@ always @ ( * ) begin
 	endcase
 end
 
-always @ (negedge En) begin
-	if(~nCS & ~RnW)
+always @ (posedge PIXELCLK) begin
+	if(~nCS & ~RnW & PROC_en)
 		if(RS)
 			case (address_reg) // light pen register is not writable.
 				5'h01: horz_display  <= DATABUS;
@@ -78,10 +80,6 @@ VGA vga(
 
 
 /****************************************************************************************/
-reg prev_CHARCLK;
-always @ (posedge PIXELCLK) prev_CHARCLK <= CHARCLK;
-
-wire CHAR_en = ~CHARCLK & prev_CHARCLK;
 
 // horizontal control
 reg [7:0] HDISPLAY_COUNT;
@@ -89,7 +87,7 @@ reg [7:0] HDISPLAY_COUNT;
 always @ (posedge PIXELCLK) begin
 	if(~nRESET | ENDofLINE)
 		HDISPLAY_COUNT <= horz_display;
-	else if(|HDISPLAY_COUNT[7:1] & DISEN & CHAR_en)
+	else if( DISEN & CRTC_en)
 		HDISPLAY_COUNT <= HDISPLAY_COUNT - 1;
 end
 
@@ -124,7 +122,7 @@ always @ (posedge PIXELCLK) begin
         scanline_start_adr	<= scanline_start_adr + horz_display;
     end else if(ENDofLINE) begin
         framestore_adr		<= scanline_start_adr;
-    end else if(CHAR_en & DISEN) begin
+    end else if(CRTC_en) begin
         framestore_adr		<= framestore_adr + 1;
     end
 end

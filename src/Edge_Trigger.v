@@ -1,23 +1,22 @@
+`include "TOP.vh"
+
 module Edge_Trigger (
 	input clk,
-	input EDGE_pin,
-	input nRESET_pin,
-	input En,
+	input IN,
 
-	output reg nEDGE);
+	output reg EDGE);
 
-	reg EDGE_R0, EDGE_R1;
+	// TYPE defines wether the module reacts to a positive edge or a negative one
+	// 1 -> +ve, o/w negative
 
-	wire EDGE_negedge = EDGE_R0 | ~EDGE_R1;
+	parameter TYPE = 1;
 
-	always @ (posedge clk)
-		if(~nRESET_pin) begin // active low
-			EDGE_R0 <= 1'b1;
-			EDGE_R1 <= 1'b1;
-			nEDGE <= 1'b1;
-		end else begin
-			EDGE_R0 <= EDGE_pin;
-			EDGE_R1 <= EDGE_R0;
-			if(En | nEDGE)	nEDGE <= EDGE_negedge;
-		end
+	reg prev_IN;
+
+	always @ (*)
+		if(TYPE == 1) EDGE = ~prev_IN & IN;
+		else		  EDGE = prev_IN & ~IN;
+
+	always @ (posedge clk) prev_IN <= IN;
+
 endmodule // Edge_Trigger

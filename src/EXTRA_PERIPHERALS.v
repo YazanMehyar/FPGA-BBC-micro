@@ -1,5 +1,5 @@
 module EXTRA_PERIPHERALS (
-	input CLK_PROC,
+	input PHI_2,
 	input nRESET,
 	input RnW,
 	input nVIA,
@@ -12,7 +12,7 @@ module EXTRA_PERIPHERALS (
 	inout  [7:0] DATABUS
 	);
 
-	assign DATABUS = (RnW&nRESET&~CLK_PROC)? (~nACIA)?	ACIA_status
+	assign DATABUS = (RnW&nRESET&PHI_2)? (~nACIA)?	ACIA_status
 											: (~(nUVIA&nFDC&nTUBE&nADC))?	8'h00
 											: 8'hzz : 8'hzz;
 

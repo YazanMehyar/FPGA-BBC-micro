@@ -1,0 +1,78 @@
+[*]
+[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
+[*] Thu Mar  2 13:18:50 2017
+[*]
+[dumpfile] "/home/zen/FinalYearProject/bbc_micro_FPGA/sim_dump/TOP_test.vcd"
+[dumpfile_mtime] "Thu Mar  2 13:17:31 2017"
+[dumpfile_size] 305603912
+[savefile] "/home/zen/FinalYearProject/bbc_micro_FPGA/TOP.gtkw"
+[timestart] 30438000
+[size] 1916 1037
+[pos] -1 -1
+*-20.000000 2175 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP_test.
+[treeopen] TOP_test.pocessor.
+[sst_width] 223
+[signals_width] 213
+[sst_expanded] 1
+[sst_vpaned_height] 295
+@28
+TOP_test.PIXELCLK
+TOP_test.dRAM_en
+TOP_test.RAM_en
+TOP_test.PROC_en
+TOP_test.hPROC_en
+TOP_test.PHI_2
+@200
+-
+-Processor
+@22
+TOP_test.pocessor.Address_bus[15:0]
+@28
+TOP_test.pocessor.SYNC
+TOP_test.RnW
+@22
+TOP_test.pocessor.Data_bus[7:0]
+TOP_test.pocessor.control.IR[7:0]
+TOP_test.pocessor.Acc[7:0]
+TOP_test.pocessor.iX[7:0]
+TOP_test.pocessor.iY[7:0]
+TOP_test.pocessor.SP[7:0]
+TOP_test.pocessor.PSR[7:0]
+@200
+-
+-Video
+@28
+TOP_test.nCRTC
+TOP_test.crtc.DISEN
+TOP_test.crtc.VGA_DISEN
+TOP_test.crtc.V_SYNC
+TOP_test.crtc.H_SYNC
+TOP_test.BLUE
+TOP_test.vula.NEXT_vBYTE
+@22
+TOP_test.vula.CONTROL[7:0]
+@200
+-
+-VIA
+@28
+TOP_test.nVIA
+TOP_test.via.nIRQ
+@22
+TOP_test.via.IER[6:0]
+TOP_test.via.IFR[6:0]
+TOP_test.via.PORTA[7:0]
+TOP_test.via.PORTB[7:0]
+@200
+-
+-Keyboard
+@28
+TOP_test.keyboard.DONE
+TOP_test.keyboard.VALID_KEY
+TOP_test.keyboard.KEY_RELEASE
+@22
+TOP_test.keyboard.DATA[7:0]
+@23
+TOP_test.keyboard.kROW[7:0]
+[pattern_trace] 1
+[pattern_trace] 0

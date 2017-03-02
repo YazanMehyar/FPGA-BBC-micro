@@ -15,6 +15,8 @@
 	- CA2 output modes
 */
 
+`include "TOP.vh"
+
 module MOS6522 (
 	input CS1,
 	input nCS2,

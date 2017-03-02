@@ -1,3 +1,5 @@
+`include "TOP.vh"
+
 `define ADR_ABSx 3'b111
 `define ADR_ABSy 3'b110
 `define ADR_ZPGi 3'b101
@@ -63,3 +65,16 @@
 
 `define ALUB_ADL	0
 `define ALUB_iDB	1
+
+`define NMI_LOW_VEC 8'hFA
+`define RES_LOW_VEC 8'hFC
+`define IRQ_LOW_VEC 8'hFE
+
+`define IRQ_ACTIVE		1'b0
+`define IRQ_INACTIVE	1'b1
+
+`define NMI_ACTIVE		1'b0
+`define NMI_INACTIVE	1'b1
+
+`define SO_ACTIVE		1'b1
+`define SO_INACTIVE		1'b0
