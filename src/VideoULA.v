@@ -24,17 +24,10 @@ module VideoULA (
 	reg [7:0] CONTROL = 0;
 	reg [7:0] SHIFT_reg = 0;
 	reg [3:0] PALETTE_mem [0:15];
-
+	
 /****************************************************************************************/
+
 	assign CRTC_en = CONTROL[4]? PROC_en : hPROC_en;
-
-	reg hPROC_SYNC;
-	always @ ( posedge PIXELCLK ) begin
-		if(PROC_en) hPROC_SYNC <= hPROC_en;
-	end
-
-	wire NEXT_vBYTE = CONTROL[4]? RAM_en&~PROC_en : RAM_en&PROC_en&hPROC_en;
-/****************************************************************************************/
 
 	reg SHIFT_en; // wire
 	always @ ( * ) begin
@@ -48,7 +41,7 @@ module VideoULA (
 	end
 
 	always @ ( posedge PIXELCLK ) begin
-		if(NEXT_vBYTE)	SHIFT_reg <= vDATA;
+		if(CRTC_en)	SHIFT_reg <= vDATA;
 		else if(SHIFT_en)	SHIFT_reg <= {SHIFT_reg[6:0],1'b1};
 	end
 
@@ -70,7 +63,7 @@ module VideoULA (
 
 	always @ ( posedge PIXELCLK ) begin
 		if(~nRESET) CURSOR_seg <= 3'b000;
-		else if(NEXT_vBYTE) begin
+		else if(CRTC_en) begin
 			if(CURSOR)	CURSOR_seg <= 3'b001;
 			else		CURSOR_seg <= CURSOR_seg << 1;
 			CURSOR_out <= CURSOR&CONTROL[7]

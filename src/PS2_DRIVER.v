@@ -12,10 +12,16 @@ module PS2_DRIVER(
 
 /****************************************************************************************/
 
-	reg  prev_PS2CLK;
-	always @ (posedge clk) if(clk_en) prev_PS2CLK <= PS2_CLK;
-
-	wire NEGEDGE_PS2_CLK = prev_PS2CLK & ~PS2_CLK;
+	reg prev_PS2CLK;
+	reg prev_PS2CLK2; 
+	reg NEGEDGE_PS2_CLK;
+	always @ (posedge clk)
+		if(clk_en) begin
+			prev_PS2CLK <= PS2_CLK;
+			prev_PS2CLK2 <= prev_PS2CLK;
+			NEGEDGE_PS2_CLK <= ~prev_PS2CLK & prev_PS2CLK2;
+		end
+	
 
 /****************************************************************************************/
 

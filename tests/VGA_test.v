@@ -4,12 +4,12 @@ module VGA_test ();
 
 	`define CLKPERIOD 10
 
-	reg CLK100MHZ;
+	reg PIXELCLK;
 	initial begin
 		$dumpvars(0,VGA_test);
-		CLK100MHZ = 0;
+		PIXELCLK = 0;
 
-		forever #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
+		forever #(`CLKPERIOD/2) PIXELCLK = ~PIXELCLK;
 	end
 
 	// input
@@ -18,16 +18,22 @@ module VGA_test ();
 	// output
 	wire HS;
 	wire VS;
+	wire ENDofLINE;
+	wire NEWSCREEN;
+	wire DISEN;
 
 	VGA vga(
-		.CLK100MHZ(CLK100MHZ),
+		.PIXELCLK(PIXELCLK),
 		.nRESET(nRESET),
-		.VGA_HSYNC(HS),
-		.VGA_VSYNC(VS));
+		.VGA_HS(HS),
+		.VGA_VS(VS),
+		.ENDofLINE(ENDofLINE),
+		.NEWSCREEN(NEWSCREEN),
+		.DISEN(DISEN));
 
 	initial begin
 		nRESET <= 0;
-		repeat (10) @(posedge CLK100MHZ);
+		repeat (10) @(posedge PIXELCLK);
 
 		nRESET <= 1;
 		repeat (10) @(posedge VS);

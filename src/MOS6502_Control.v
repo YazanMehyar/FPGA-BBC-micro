@@ -126,10 +126,10 @@ MOS6502_Decode decoder(
 
 /**************************************************************************************************/
 always @ (posedge clk) begin
-	if(clk_en) begin
-		READY		<= READY_pin | ~RnW;
-		nRESET_req	<= nRESET_req? nRESET : T_state[0]&nRESET;
-	end
+	READY <= READY_pin | ~RnW;
+	
+	if(~nRESET)		nRESET_req	<= 1'b0;
+	else if(clk_en) nRESET_req	<= (nRESET_req | T_state[0]);
 end
 
 always @ (posedge clk) begin
@@ -144,9 +144,8 @@ end
 
 always @ (posedge clk) begin
 	if(~nRESET)	IR <= 8'h00;
-	else if(clk_en)
-		if(T_state[1]&READY)
-			IR <= nIRQ_req&nNMI_req&nRESET_req? DIR[7:0] : 8'h00;
+	else if(clk_en&T_state[1]&READY)
+		IR <= nIRQ_req&nNMI_req&nRESET_req? DIR[7:0] : 8'h00;
 end
 
 always @ (posedge clk) begin

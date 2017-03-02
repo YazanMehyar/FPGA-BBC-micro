@@ -3,104 +3,90 @@
 module VGA (
 	input nRESET,
 	input PIXELCLK,
-	output reg VGA_HSYNC,
-	output reg VGA_VSYNC,
+	output VGA_HS,
+	output VGA_VS,
 	output ENDofLINE,
 	output NEWSCREEN,
-	output reg DISEN
+	output DISEN
 	);
 
-	assign ENDofLINE = H_DPHASE & ~|H_DELAY;
-	assign NEWSCREEN = V_COUNTER == `LINES && ENDofLINE;
-	wire ENDofSCREEN = ENDofLINE & V_DPHASE & ~|V_DELAY;
+	assign ENDofLINE = ~|H_COUNTER;
+	assign NEWSCREEN = ~|V_COUNTER & ENDofLINE;
+	assign DISEN	 = H_DISPLAY&V_DISPLAY;
+	assign VGA_HS    = H_PULSE;
+	assign VGA_VS    = V_PULSE;
 
 	// H_SYNC @ 31.46 KHz
+	reg H_BACK;
+	reg H_DISPLAY;
+	reg H_PULSE;
 	reg [9:0] H_COUNTER;
-	reg [6:0] H_PULSE;
-	reg [5:0] H_DELAY;
-	reg H_DPHASE;
 	always @ ( posedge PIXELCLK ) begin
 		if(~nRESET) begin
 			H_COUNTER <= `H_COUNT_INIT;
-			H_PULSE   <= `H_PULSE_INIT;
-			H_DELAY   <= `H_BACKPORCH;
-			VGA_HSYNC <=  0;
-			H_DPHASE  <=  0;
-		end else if(H_DPHASE) begin
-			H_COUNTER <= `H_COUNT_INIT;
-			H_PULSE   <= `H_PULSE_INIT;
-			H_DELAY   <=  H_DELAY - 1;
-			VGA_HSYNC <=  0;
-			H_DPHASE  <= |H_DELAY;
-		end else if(VGA_HSYNC) begin
-			H_COUNTER <= `H_COUNT_INIT;
-			H_PULSE   <=  H_PULSE - 1;
-			H_DELAY   <= `H_BACKPORCH;
-			VGA_HSYNC <= |H_PULSE;
-			H_DPHASE  <= ~|H_PULSE;
+			H_BACK    <= 0;
+			H_DISPLAY <= 0;
+			H_PULSE <= 0;
 		end else begin
-			H_COUNTER <=  H_COUNTER - 1;
-			H_PULSE   <= `H_PULSE_INIT;
-			H_DELAY   <= `H_BACKPORCH;
-			VGA_HSYNC <= ~|H_COUNTER;
-			H_DPHASE  <=  0;
-		end
-	end
-
-	// V_SYNC @ 60Hz
-	reg [8:0] V_COUNTER;
-	reg [1:0] V_PULSE;
-	reg [4:0] V_DELAY;
-	reg V_DPHASE;
-	always @ ( posedge PIXELCLK ) begin
-		if(~nRESET) begin
-			V_COUNTER <= `V_COUNT_INIT;
-			V_PULSE   <= `V_PULSE_INIT;
-			V_DELAY   <= `V_BACKPORCH;
-			VGA_VSYNC <=  0;
-			V_DPHASE  <=  0;
-		end if(ENDofLINE) begin
-			if(V_DPHASE) begin
-				V_COUNTER <= `V_COUNT_INIT;
-				V_PULSE   <= `V_PULSE_INIT;
-				V_DELAY   <=  V_DELAY - 1;
-				VGA_VSYNC <=  0;
-				V_DPHASE  <= |V_DELAY;
-			end else if(VGA_VSYNC) begin
-				V_COUNTER <= `V_COUNT_INIT;
-				V_PULSE   <=  V_PULSE - 1;
-				V_DELAY   <= `V_BACKPORCH;
-				VGA_VSYNC <= |V_PULSE;
-				V_DPHASE  <= ~|V_PULSE;
+			if(|H_COUNTER)
+				H_COUNTER <= H_COUNTER - 1;
+			else
+				H_COUNTER <= `H_COUNT_INIT;
+			
+			if(H_DISPLAY) begin
+				H_BACK		<= 0;
+				H_DISPLAY	<= |H_COUNTER;
+				H_PULSE	<= 0;
+			end else if(H_BACK) begin
+				H_BACK		<= H_COUNTER != `H_DISPLAY;
+				H_DISPLAY	<= H_COUNTER == `H_DISPLAY;
+				H_PULSE	<= 0;
+			end else if(H_PULSE) begin
+				H_BACK		<= H_COUNTER == `H_BACK;
+				H_DISPLAY	<= 0;
+				H_PULSE	<= H_COUNTER != `H_BACK;
 			end else begin
-				V_COUNTER <=  V_COUNTER - 1;
-				V_PULSE   <= `V_PULSE_INIT;
-				V_DELAY   <= `V_BACKPORCH;
-				VGA_VSYNC <= ~|V_COUNTER;
-				V_DPHASE  <=  0;
+				H_BACK		<= 0;
+				H_DISPLAY	<= 0;
+				H_PULSE	<= H_COUNTER == `H_PULSE;
 			end
 		end
 	end
 
-/****************************************************************************************/
-
-	wire NEWLINE = H_COUNTER == `PIXELS;
-
-	reg V_DISEN;
+	// V_SYNC @ 60Hz
+	reg V_BACK;
+	reg V_DISPLAY;
+	reg V_PULSE;
+	reg [9:0] V_COUNTER;
 	always @ ( posedge PIXELCLK ) begin
 		if(~nRESET) begin
-			V_DISEN <= 0;
-			DISEN   <= 0;
-		end else begin
-			if(NEWSCREEN)
-				V_DISEN <= 1;
-			else if(~|V_COUNTER)
-				V_DISEN <= 0;
-
-			if(V_DISEN & NEWLINE)
-				DISEN <= 1;
-			else if(~|H_COUNTER)
-				DISEN <= 0;
+			V_COUNTER <= `V_COUNT_INIT;
+			V_BACK    <= 0;
+			V_DISPLAY <= 0;
+			V_PULSE <= 0;
+		end else if(ENDofLINE) begin
+			if(|V_COUNTER)
+				V_COUNTER <= V_COUNTER - 1;
+			else
+				V_COUNTER <= `V_COUNT_INIT;
+			
+			if(V_DISPLAY) begin
+				V_BACK		<= 0;
+				V_DISPLAY	<= |V_COUNTER;
+				V_PULSE	<= 0;
+			end else if(V_BACK) begin
+				V_BACK		<= V_COUNTER != `V_DISPLAY;
+				V_DISPLAY	<= V_COUNTER == `V_DISPLAY;
+				V_PULSE	<= 0;
+			end else if(V_PULSE) begin
+				V_BACK		<= V_COUNTER == `V_BACK;
+				V_DISPLAY	<= 0;
+				V_PULSE	<= V_COUNTER != `V_BACK;
+			end else begin
+				V_BACK		<= 0;
+				V_DISPLAY	<= 0;
+				V_PULSE	<= V_COUNTER == `V_PULSE;
+			end
 		end
 	end
 

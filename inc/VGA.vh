@@ -1,12 +1,12 @@
 `include "TOP.vh"
 
-`define H_COUNT_INIT 655
-`define H_PULSE_INIT 95
-`define H_BACKPORCH  47
+`define H_COUNT_INIT 799
+`define H_PULSE		 784
+`define H_BACK		 688
+`define H_DISPLAY	 640
 
-`define V_COUNT_INIT 490
-`define V_PULSE_INIT 1
-`define V_BACKPORCH  30
+`define V_COUNT_INIT 524
+`define V_PULSE		 515
+`define V_BACK		 513
+`define V_DISPLAY	 480
 
-`define PIXELS 640
-`define LINES  480

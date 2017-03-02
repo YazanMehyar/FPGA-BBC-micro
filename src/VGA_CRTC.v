@@ -15,8 +15,8 @@ module VGA_CRTC(
 	output reg [13:0] framestore_adr,
 	output reg [4:0]  scanline_row,
 	output DISEN,
-	output H_SYNC,
-	output V_SYNC,
+	output VGA_HS,
+	output VGA_VS,
 	output CURSOR);
 
 reg [13:0] start_address;
@@ -71,8 +71,8 @@ wire VGA_DISEN;
 VGA vga(
 	.PIXELCLK(PIXELCLK),
 	.nRESET(nRESET),
-	.VGA_HSYNC(H_SYNC),
-	.VGA_VSYNC(V_SYNC),
+	.VGA_HS(VGA_HS),
+	.VGA_VS(VGA_VS),
 	.ENDofLINE(ENDofLINE),
 	.NEWSCREEN(NEWSCREEN),
 	.DISEN(VGA_DISEN)
@@ -87,7 +87,7 @@ reg [7:0] HDISPLAY_COUNT;
 always @ (posedge PIXELCLK) begin
 	if(~nRESET | ENDofLINE)
 		HDISPLAY_COUNT <= horz_display;
-	else if( DISEN & CRTC_en)
+	else if(DISEN & CRTC_en)
 		HDISPLAY_COUNT <= HDISPLAY_COUNT - 1;
 end
 
@@ -96,7 +96,7 @@ end
 
 reg [6:0] VDISPLAY_COUNT;
 
-wire next_charline = scanline_row == max_scanline && ENDofLINE;
+wire next_charline = scanline_row == max_scanline && ENDofLINE&VGA_DISEN;
 
 always @ (posedge PIXELCLK) begin
 	if(~nRESET | NEWSCREEN)
@@ -120,7 +120,7 @@ always @ (posedge PIXELCLK) begin
     end else if(next_charline) begin
         framestore_adr		<= scanline_start_adr + horz_display;
         scanline_start_adr	<= scanline_start_adr + horz_display;
-    end else if(ENDofLINE) begin
+    end else if(ENDofLINE&VGA_DISEN) begin
         framestore_adr		<= scanline_start_adr;
     end else if(CRTC_en) begin
         framestore_adr		<= framestore_adr + 1;
@@ -130,7 +130,7 @@ end
 always @ (posedge PIXELCLK) begin
 	if(~nRESET | next_charline | NEWSCREEN)
 		scanline_row <= 0;
-	else if(ENDofLINE)
+	else if(ENDofLINE&VGA_DISEN)
 		scanline_row <= scanline_row + 1;
 end
 

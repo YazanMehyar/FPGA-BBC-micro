@@ -26,11 +26,11 @@ task PRESS_KEY;
 		@(posedge PS2_CLK);
 			PS2_SEND(KEY);
 			$display("PRINTING %H", KEY);
-		@(posedge V_SYNC);
+		@(posedge VGA_VS);
 
 		@(posedge PS2_CLK);
 			PS2_SEND(8'hF0);
 			PS2_SEND(KEY);
-		repeat (3)	@(posedge V_SYNC);
+		repeat (3)	@(posedge VGA_VS);
 	end
 endtask

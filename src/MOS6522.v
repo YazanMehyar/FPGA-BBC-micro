@@ -18,6 +18,8 @@
 `include "TOP.vh"
 
 module MOS6522 (
+	input clk,
+	input clk_en,
 	input CS1,
 	input nCS2,
 	input nRESET,
@@ -76,25 +78,26 @@ module MOS6522 (
 /****************************************************************************************/
 
 	// Most Internal Registers
-	always @ (negedge PHI_2) begin
+	always @ (clk) begin
 		if(~nRESET) begin
 			ACR <= 0; PCR <= 0;
 			DDRA <= 0; DDRB <= 0;
 			OUTB <= 0; OUTA <= 0;
 			IER <= 0;
-		end else if(CS & ~RnW) case (RS)
-			4'h0: OUTB <= DATA;
-			4'h1,
-			4'hF: OUTA <= DATA;
-			4'h2: DDRB <= DATA;
-			4'h3: DDRA <= DATA;
-			4'h4,
-			4'h6: T1REG[7:0] <= DATA;
-			4'h7: T1REG[15:8]<= DATA;
-			4'hB: ACR  <= DATA;
-			4'hC: PCR  <= DATA;
-			4'hE: IER  <= DATA[7]? DATA[6:0] | IER : ~DATA[6:0] & IER;
-		endcase
+		end else if(clk_en)
+			if(CS & ~RnW) case (RS)
+				4'h0: OUTB <= DATA;
+				4'h1,
+				4'hF: OUTA <= DATA;
+				4'h2: DDRB <= DATA;
+				4'h3: DDRA <= DATA;
+				4'h4,
+				4'h6: T1REG[7:0] <= DATA;
+				4'h7: T1REG[15:8]<= DATA;
+				4'hB: ACR  <= DATA;
+				4'hC: PCR  <= DATA;
+				4'hE: IER  <= DATA[7]? DATA[6:0] | IER : ~DATA[6:0] & IER;
+			endcase
 	end
 
 /****************************************************************************************/
@@ -110,7 +113,7 @@ module MOS6522 (
 		else CA1INT_neg <= 1;
 	end
 
-	always @ (negedge PHI_2) begin
+	always @ (posedge clk) begin
 		if(~nRESET) CA1INT <= 0;
 		else 		CA1INT <= PCR[0]? CA1INT_pos : CA1INT_neg;
 	end
@@ -127,48 +130,48 @@ module MOS6522 (
 		else CA2INT_neg <= 1;
 	end
 
-	always @ (negedge PHI_2) begin
+	always @ (posedge clk) begin
 		if(~nRESET) CA2INT <= 0;
 		else 		CA2INT <= PCR[2]? CA2INT_pos : CA2INT_neg;
 	end
 
 /****************************************************************************************/
 
-	always @ (negedge PHI_2) begin
+	always @ (posedge clk) begin
 		if(~nRESET)	begin
 			IFR <= 0;
-		end else if(CS) begin
-			case (RS) // Write
-				4'h1,4'hF: IFR[1:0] <= 2'b00;
-				4'h4:      if(RnW) IFR[6] <= 1'b0;
-				4'h5:      if(~RnW)IFR[6] <= 1'b0;
-				4'hD:      if(~RnW)IFR    <= ~DATA[6:0] & IFR;
-			endcase
-		end else begin
-			IFR[0] <= CA2INT | IFR[0];
-			IFR[1] <= CA1INT | IFR[1];
-			IFR[6] <= T1INT & ~|T1COUNTER  | IFR[6];
-		end
+		end else if(clk_en)
+			if(CS) case (RS) // Write
+					4'h1,4'hF: IFR[1:0] <= 2'b00;
+					4'h4:      if(RnW) IFR[6] <= 1'b0;
+					4'h5:      if(~RnW)IFR[6] <= 1'b0;
+					4'hD:      if(~RnW)IFR    <= ~DATA[6:0] & IFR;
+			endcase else begin
+				IFR[0] <= CA2INT | IFR[0];
+				IFR[1] <= CA1INT | IFR[1];
+				IFR[6] <= T1INT & ~|T1COUNTER  | IFR[6];
+			end
 	end
 
 /****************************************************************************************/
 
 	reg T1INT, T1IRQ;
-	always @ (negedge PHI_2) begin
+	always @ (posedge clk) begin
 		if(~nRESET) begin
 			T1INT    <= 0;
 			T1COUNTER<= 0;
 			T1IRQ    <= 0;
-		end else if(CS && RS==4'h5 && ~RnW) begin
-			T1COUNTER<= {DATA,T1REG[7:0]};
-			T1INT    <= 1;
-			T1IRQ    <= 0;
-		end else begin
-			T1IRQ <= T1INT & ~|T1COUNTER;
+		end else if(clk_en)
+			if(CS && RS==4'h5 && ~RnW) begin
+				T1COUNTER<= {DATA,T1REG[7:0]};
+				T1INT    <= 1;
+				T1IRQ    <= 0;
+			end else begin
+				T1IRQ <= T1INT & ~|T1COUNTER;
 
-			if(~|T1COUNTER) T1COUNTER <= T1REG;
-			else if(~T1IRQ)	T1COUNTER <= T1COUNTER + 16'hFFFF;
-		end
+				if(~|T1COUNTER) T1COUNTER <= T1REG;
+				else if(~T1IRQ)	T1COUNTER <= T1COUNTER + 16'hFFFF;
+			end
 	end
 
 /****************************************************************************************/
@@ -186,7 +189,7 @@ module MOS6522 (
 					DDRB[3]? OUTB[3]: 1'bz, DDRB[2]? OUTB[2]: 1'bz,
 					DDRB[1]? OUTB[1]: 1'bz, DDRB[0]? OUTB[0]: 1'bz} : 8'hzz;
 
-	always @ (posedge PHI_2) begin
+	always @ (posedge clk) begin
 		nIRQ <= ~|(IFR&IER);
 	end
 

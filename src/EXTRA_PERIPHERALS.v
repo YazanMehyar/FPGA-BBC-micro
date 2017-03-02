@@ -2,7 +2,6 @@ module EXTRA_PERIPHERALS (
 	input PHI_2,
 	input nRESET,
 	input RnW,
-	input nVIA,
 	input nFDC,
 	input nADC,
 	input nTUBE,
