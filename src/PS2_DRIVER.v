@@ -12,36 +12,38 @@ module PS2_DRIVER(
 
 /****************************************************************************************/
 
-	reg [7:0] clk_filter;
-	reg prev_PS2CLK;
+	reg [3:0] clk_filter;
 	always @ (posedge clk)
-		if(~nRESET)		clk_filter <= 8'hFF;
+		if(~nRESET)		clk_filter <= 4'hF;
 		else if(clk_en) begin
-			clk_filter  <= {clk_filter[6:0],PS2_CLK};
-			prev_PS2CLK <= |clk_filter;
+			clk_filter  <= {clk_filter[2:0],PS2_CLK};
 		end
 
 /****************************************************************************************/
-	wire NEGEDGE_PS2CLK = ~|clk_filter & prev_PS2CLK;
+	wire NEGEDGE_PS2CLK = ~|clk_filter;
+	wire POSEDGE_PS2CLK =  &clk_filter;
 
+    reg CAPTURE;
 	reg [10:0] MESSAGE;
-	wire wDONE = MESSAGE[10]&~MESSAGE[0]&~^MESSAGE[9:1];
+	reg [3:0]  BITCOUNT;
+
 	always @ (posedge clk) begin
-		if(~nRESET)
-			MESSAGE <= 11'h7FF;
-		else if(clk_en)
-			if(DONE)
-				MESSAGE <= 11'h7FF;
-			else if(NEGEDGE_PS2CLK)
+		if(~nRESET) begin
+			MESSAGE  <= 11'h7FF;
+			BITCOUNT <=  4'h0;
+			CAPTURE  <=  1'b0; 
+		end else if(clk_en)
+            if(DONE) begin
+                BITCOUNT <= 4'h0;
+			end else if(NEGEDGE_PS2CLK & ~CAPTURE & ~DONE) begin
 				MESSAGE <= {PS2_DATA,MESSAGE[10:1]};
-
-		if(~nRESET)		DONE <= 0;
-		else if(clk_en)
-			if(DONE)	DONE <= 0;
-			else		DONE <= wDONE;
-
-		if(clk_en&wDONE)
-			DATA <= MESSAGE[8:1];
+				CAPTURE <= 1'b1;
+				BITCOUNT <= BITCOUNT + 1'b1;
+			end else if(POSEDGE_PS2CLK)
+                CAPTURE <= 1'b0;
 	end
+	
+	always @ (*) DATA = MESSAGE[8:1];
+	always @ (*) DONE = BITCOUNT == 11;
 
 endmodule

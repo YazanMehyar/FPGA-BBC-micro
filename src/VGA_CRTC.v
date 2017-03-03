@@ -155,7 +155,7 @@ end
 wire cursor_point    = FRAMESTORE_ADR == cursor_adr && DISEN;
 wire cursor_poximity = ROW_ADDRESS >= cursor_start_row && ROW_ADDRESS <= cursor_end_row;
 
-reg [4:0] cursor_blink_count;
+reg [5:0] cursor_blink_count;
 reg cursor_display;
 always @ (posedge PIXELCLK) begin
 	if(~nRESET) begin
@@ -166,8 +166,8 @@ always @ (posedge PIXELCLK) begin
 		case (cursor_blink_mode)
 			2'b00: cursor_display <= 1;
 			2'b01: cursor_display <= 0;
-			2'b10: cursor_display <= cursor_blink_count[3];
-			2'b11: cursor_display <= cursor_blink_count[4];
+			2'b10: cursor_display <= cursor_blink_count[4];
+			2'b11: cursor_display <= cursor_blink_count[5];
 			default: cursor_display <= 1'bx;
 		endcase
 	end
