@@ -16,7 +16,7 @@ module Keyboard (
 	wire DONE;
 /****************************************************************************************/
 
-	PS2_DRIVER p(
+	PS2_DRIVER ps2(
 		.clk(clk),
 		.clk_en(clk_en),
 		.nRESET(nRESET),
@@ -178,5 +178,15 @@ module Keyboard (
 
 	assign column_match = |kROW[7:1];
 	assign row_match    = autoscan? 1'bz : kKEY;
+	
+/**************************************************************************************************/
+// TEST HELPERS
+`ifdef SIMULATION
+	initial begin
+	forever @(posedge clk) begin
+		if(clk_en&DONE) $display("Key Pressed is %H", DATA);
+	end
+	end
+`endif
 
 endmodule // Keyboard

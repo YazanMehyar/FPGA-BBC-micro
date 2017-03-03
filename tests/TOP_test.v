@@ -2,16 +2,16 @@
 
 module TOP_test();
 
-	initial $dumpvars(0, TOP_test);
+	//initial $dumpvars(0, TOP_test);
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
 
 
 	// Simulate PS2_CLK
-	reg [14:0] PS2_COUNT = 0;
+	reg [11:0] PS2_COUNT = 0;
 	always @ ( posedge CLK100MHZ ) PS2_COUNT <= PS2_COUNT + 1;
-	wire PS2_CLK = PS2_COUNT[14];
+	wire PS2_CLK = PS2_COUNT[11];
 
 	// Simulate PIXELCLK
 	reg [1:0] PIXELCOUNT = 0;
@@ -42,7 +42,44 @@ module TOP_test();
 
 /******************************************************************************/
 
-	`include "TEST_HELPERS.vh"
+	// Task to simplify sending data via PS2
+	task PS2_SEND;
+		input [7:0] DATA;
+		begin
+			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			PS2_DATA <= 1'b0;
+
+			repeat (8) begin
+				@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+				PS2_DATA <= DATA[0];
+				DATA <= {DATA[0],DATA[7:1]};
+			end
+
+			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			PS2_DATA <= ^DATA;
+
+			@(posedge PS2_CLK);repeat (1000) @(posedge CLK100MHZ);
+			PS2_DATA <= 1'b1;
+			@(posedge PS2_CLK);
+		end
+	endtask
+
+	task PRESS_KEY;
+		input [7:0] KEY;
+		begin
+			@(posedge PS2_CLK);
+				PS2_SEND(KEY);
+				$display("PRINTING %H", KEY);
+			@(posedge VGA_VS);
+
+			@(posedge PS2_CLK);
+				PS2_SEND(8'hF0);
+				PS2_SEND(KEY);
+			repeat (3)	@(posedge VGA_VS);
+		end
+	endtask
+	
+/******************************************************************************/
 
 	initial begin
 		$start_screen;
@@ -52,22 +89,10 @@ module TOP_test();
 		repeat (16) @(posedge CLK100MHZ);
 
 		CPU_RESETN <= 1;
-		repeat (2) @(posedge VGA_VS);
+		repeat (3) @(posedge VGA_VS);
 
 		// Send some keys
-		PRESS_KEY(8'h4D);
-		PRESS_KEY(8'h2D);
-		PRESS_KEY(8'h43);
-		PRESS_KEY(8'h31);
-		PRESS_KEY(8'h2C);
-		PRESS_KEY(8'h29);
-		PRESS_KEY(8'h3D);
-		PRESS_KEY(8'h29);
-		PRESS_KEY(8'h4E);
-		PRESS_KEY(8'h29);
-		PRESS_KEY(8'h26);
-		PRESS_KEY(8'h5A);
-		PRESS_KEY(8'h4D);
+		repeat (20) PRESS_KEY(8'h5A);
 
 		@(posedge VGA_VS);
 

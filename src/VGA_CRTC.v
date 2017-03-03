@@ -100,7 +100,7 @@ end
 
 reg [6:0] VDISPLAY_COUNT;
 
-wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE;
+wire NEWvCHAR = (ROW_ADDRESS == max_scanline+1) && NEWLINE;
 
 always @ (posedge PIXELCLK) begin
 	if(~nRESET)
@@ -173,4 +173,24 @@ always @ (posedge PIXELCLK) begin
 	end
 end
 
+/****************************************************************************************/
+// TEST Hepler
+`ifdef SIMULATION
+	initial forever @(posedge PIXELCLK)
+		if(CRTC_en) begin
+			if(~nCS & ~RnW & PROC_en) begin
+				@(posedge PIXELCLK)
+				$display("");
+				$display("HORZ DISPLAY: %d", horz_display);
+				$display("VERT DISPLAY: %d", vert_display);
+				$display("MAX SCANLINE: %d", max_scanline);
+				$display("CURSOR BLINK MODE: %2b", cursor_blink_mode);
+				$display("CURSOR START ROW: %d", cursor_start_row);
+				$display("CURSOR END ROW: %d", cursor_end_row);
+				$display("START ADDRESS %H", start_address);
+				$display("CURSOR ADDRESS %H", cursor_adr);
+			end
+//			if(NEWLINE&~SINGLE) @(posedge PIXELCLK) $display("ROW_ADDRESS = %d", ROW_ADDRESS);
+		end
+`endif
 endmodule
