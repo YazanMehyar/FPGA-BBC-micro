@@ -12,35 +12,17 @@ module PS2_DRIVER(
 
 /****************************************************************************************/
 
+	reg [7:0] clk_filter;
 	reg prev_PS2CLK;
-	reg prev_PS2CLK2;
 	always @ (posedge clk)
-		if(clk_en) begin
-			prev_PS2CLK <= PS2_CLK;
-			prev_PS2CLK2 <= prev_PS2CLK;
+		if(~nRESET)		clk_filter <= 8'hFF;
+		else if(clk_en) begin
+			clk_filter  <= {clk_filter[6:0],PS2_CLK};
+			prev_PS2CLK <= |clk_filter;
 		end
 
-	reg [5:0] FILTER;
-	reg CHANGE;
-	reg NEGEDGE_PS2_CLK;
-	always @ (posedge clk) begin
-		if(nRESET) begin
-			CHANGE <= 0;
-			FILTER <= 6'h3F;
-			NEGEDGE_PS2_CLK <= 0;
-		end else if(clk_en)
-			if(CHANGE) begin
-				FILTER <= FILTER - 1;
-				CHANGE <= |FILTER;
-				NEGEDGE_PS2_CLK <= ~|FILTER;
-			end else begin
-				CHANGE <= ~prev_PS2CLK & prev_PS2CLK2;
-				NEGEDGE_PS2_CLK <= 0;
-			end
-	end
-
-
 /****************************************************************************************/
+	wire NEGEDGE_PS2CLK = ~|clk_filter & prev_PS2CLK;
 
 	reg [10:0] MESSAGE;
 	wire wDONE = MESSAGE[10]&~MESSAGE[0]&~^MESSAGE[9:1];
@@ -50,7 +32,7 @@ module PS2_DRIVER(
 		else if(clk_en)
 			if(DONE)
 				MESSAGE <= 11'h7FF;
-			else if(NEGEDGE_PS2_CLK)
+			else if(NEGEDGE_PS2CLK)
 				MESSAGE <= {PS2_DATA,MESSAGE[10:1]};
 
 		if(~nRESET)		DONE <= 0;

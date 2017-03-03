@@ -2,7 +2,7 @@
 
 module TOP_test();
 
-	//initial $dumpvars(0, TOP_test);
+	initial $dumpvars(0, TOP_test);
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
@@ -53,8 +53,6 @@ module TOP_test();
 
 		CPU_RESETN <= 1;
 		repeat (2) @(posedge VGA_VS);
-
-		$stop;
 
 		// Send some keys
 		PRESS_KEY(8'h4D);

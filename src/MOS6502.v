@@ -1,6 +1,11 @@
 `include "MOS6502.vh"
 
 module MOS6502 (
+	// Test pins
+	`ifdef SIMULATION
+		input [2:0] test_reg_select,
+		output reg [7:0] test_value_out,
+	`endif
 	input clk,
 	input clk_en,
 	input nRESET,
@@ -14,11 +19,7 @@ module MOS6502 (
 
 	output [15:0] Address_bus,
 	output RnW,
-	output SYNC,
-
-	// Test pins
-	input [2:0] test_reg_select,
-	output reg [7:0] test_value_out
+	output SYNC
 	);
 
 /**************************************************************************************************/
@@ -52,20 +53,22 @@ module MOS6502 (
     reg [7:0] AOR;
 
 /**************************************************************************************************/
+// TEST HELPER
+	`ifdef SIMULATION
+	    always @ ( * ) begin
+		    case(test_reg_select)
+		    3'b000: test_value_out = Acc;
+		    3'b001: test_value_out = iX;
+		    3'b010: test_value_out = iY;
+		    3'b011: test_value_out = SP;
 
-    always @ ( * ) begin
-	    case(test_reg_select)
-	    3'b000: test_value_out = Acc;
-	    3'b001: test_value_out = iX;
-	    3'b010: test_value_out = iY;
-	    3'b011: test_value_out = SP;
-
-	    3'b100: test_value_out = PSR;
-	    3'b101: test_value_out = PCL;
-	    3'b110: test_value_out = PCH;
-	    default:test_value_out = 8'hxx;
-	    endcase
-    end
+		    3'b100: test_value_out = PSR;
+		    3'b101: test_value_out = PCL;
+		    3'b110: test_value_out = PCH;
+		    default:test_value_out = 8'hxx;
+		    endcase
+	    end
+	`endif
 
 /**************************************************************************************************/
 // Data paths
@@ -114,7 +117,7 @@ module MOS6502 (
 
 /**************************************************************************************************/
 // Register Bank
-    
+
     always @ (posedge clk) begin
 	    if(~nRESET) begin
 		    SP  <= 8'h00;
@@ -142,7 +145,7 @@ module MOS6502 (
 			    PCH <= ADBH + (&ADBL? PC_inc : 0);
 	    	end
     end
-    
+
 /**************************************************************************************************/
 // Memory Addressing
 

@@ -56,8 +56,15 @@ module TOP(
 /*****************************************************************************/
 // MEMORY
 
-	//`include "BBCOS12.vh"
-	`include "TEST_BBCOS12.vh"
+	reg [7:0] RAM [0:`KiB32];
+
+	`ifdef SIMULATION
+		`include "RAM_init.vh"
+		`include "TEST_BBCOS12.vh"
+	`else
+		`include "BBCOS12.vh"
+	`endif
+
 	`include "BBCBASIC2.vh"
 
 	wire [15:0] pADDRESSBUS;
@@ -69,8 +76,7 @@ module TOP(
 	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
 	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
 
-	reg [7:0] RAM [0:`KiB32];
-	`include "RAM_init.vh"
+
 	reg [3:0] ROM_BANK;
 	reg [7:0] ram_DATA;
 	reg [7:0] rom_DATA;
@@ -246,15 +252,13 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 
 /**************************************************************************************************/
 // TEST_ASSISTANCE
+`ifdef SIMULATION
 
-//always @ (posedge PHI_2) begin
-//	if(SYNC) begin
-//		if(pADDRESSBUS == 16'hDA03) $stop;
-//		if(pADDRESSBUS == 16'hDB27) $stop;
-//		if(pADDRESSBUS == 16'hDBC8) $stop;
-//		if(pADDRESSBUS == 16'hDC05) $stop;
-//	end
-//end
-
+always @ (posedge PHI_2) begin
+	if(SYNC) begin
+		if(pADDRESSBUS == 16'hDC05) $stop;
+	end
+end
+`endif
 
 endmodule
