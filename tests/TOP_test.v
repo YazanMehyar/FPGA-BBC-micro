@@ -12,7 +12,7 @@ module TOP_test();
 	reg [14:0] PS2_COUNT = 0;
 	always @ ( posedge CLK100MHZ ) PS2_COUNT <= PS2_COUNT + 1;
 	wire PS2_CLK = PS2_COUNT[14];
-	
+
 	// Simulate PIXELCLK
 	reg [1:0] PIXELCOUNT = 0;
 	always @ ( posedge CLK100MHZ ) PIXELCOUNT <= PIXELCOUNT + 1;
@@ -21,14 +21,14 @@ module TOP_test();
 	// input
 	reg CPU_RESETN;
 	reg PS2_DATA;
-	
+
 	// output
 	wire [3:0] VGA_R;
 	wire [3:0] VGA_G;
 	wire [3:0] VGA_B;
 	wire VGA_HS;
 	wire VGA_VS;
-	
+
 	TOP top(
 		.CLK100MHZ(CLK100MHZ),
 		.PS2_CLK(PS2_CLK),
@@ -39,7 +39,7 @@ module TOP_test();
 		.VGA_B(VGA_B),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS));
-	
+
 /******************************************************************************/
 
 	`include "TEST_HELPERS.vh"
@@ -102,8 +102,8 @@ module TOP_test();
 
 // Virtual Screen
 	initial forever begin
-		@(negedge VGA_VS) 
-		repeat (33) @(negedge VGA_HS); 
+		@(negedge VGA_VS)
+		repeat (33) @(negedge VGA_HS);
 		$v_sync;
 	end
 

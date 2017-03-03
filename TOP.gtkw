@@ -1,18 +1,18 @@
 [*]
-[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Thu Mar  2 19:58:49 2017
+[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
+[*] Fri Mar  3 04:23:43 2017
 [*]
-[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/TOP_test.vcd"
-[dumpfile_mtime] "Thu Mar  2 19:57:59 2017"
-[dumpfile_size] 503863276
-[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/TOP.gtkw"
-[timestart] 27359709
-[size] 1916 1157
+[dumpfile] "/home/zen/FinalYearProject/bbc_micro_FPGA/sim_dump/TOP_test.vcd"
+[dumpfile_mtime] "Fri Mar  3 04:06:27 2017"
+[dumpfile_size] 543825995
+[savefile] "/home/zen/FinalYearProject/bbc_micro_FPGA/TOP.gtkw"
+[timestart] 34946802
+[size] 1916 1037
 [pos] -1 -1
-*-9.000000 27360980 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-10.000000 34950375 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP_test.
 [treeopen] TOP_test.top.
-[treeopen] TOP_test.top.pocessor.
+[treeopen] TOP_test.top.crtc.
 [treeopen] TOP_test.top.pocessor.control.
 [sst_width] 223
 [signals_width] 256
@@ -22,10 +22,10 @@
 TOP_test.CLK100MHZ
 TOP_test.CPU_RESETN
 TOP_test.PIXELCLK
-TOP_test.VGA_HS
-TOP_test.VGA_VS
-@22
-TOP_test.VGA_G[3:0]
+TOP_test.top.RAM_en
+TOP_test.top.PROC_en
+TOP_test.top.hPROC_en
+TOP_test.top.PHI_2
 @200
 -
 -TOP
@@ -37,7 +37,6 @@ TOP_test.top.pocessor.RnW
 -Processor
 @22
 TOP_test.top.pocessor.Address_bus[15:0]
-@23
 TOP_test.top.pocessor.Data_bus[7:0]
 @28
 TOP_test.top.pocessor.SYNC
@@ -54,14 +53,18 @@ TOP_test.top.pocessor.PSR[7:0]
 -Video
 @28
 TOP_test.top.nCRTC
+TOP_test.top.crtc.VGA_HS
+TOP_test.top.crtc.VGA_VS
+TOP_test.top.crtc.DISEN
+TOP_test.top.crtc.NEWLINE
+TOP_test.top.crtc.NEWvCHAR
+TOP_test.top.crtc.NEWSCREEN
 TOP_test.top.crtc.CRTC_en
 @22
-TOP_test.top.crtc.framestore_adr[13:0]
+TOP_test.top.crtc.FRAMESTORE_ADR[13:0]
+TOP_test.top.crtc.ROW_ADDRESS[4:0]
 TOP_test.top.vDATA[7:0]
 @28
-TOP_test.top.crtc.DISEN
-TOP_test.top.crtc.H_SYNC
-TOP_test.top.crtc.V_SYNC
 TOP_test.top.vula.BLUEout
 TOP_test.top.vula.CURSOR
 @200

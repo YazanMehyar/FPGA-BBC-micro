@@ -3,19 +3,27 @@
 module VGA (
 	input nRESET,
 	input PIXELCLK,
+	input CRTC_en,
 	output VGA_HS,
 	output VGA_VS,
-	output ENDofLINE,
+	output NEWLINE,
 	output NEWSCREEN,
 	output DISEN
 	);
 
-	assign ENDofLINE = ~|H_COUNTER;
-	assign NEWSCREEN = ~|V_COUNTER & ENDofLINE;
+	assign NEWLINE	 = H_BACK &&  H_COUNTER != `H_DISPLAY;
+	assign NEWSCREEN = V_COUNTER == `V_NEW && NEWLINE;
 	assign DISEN	 = H_DISPLAY&V_DISPLAY;
 	assign VGA_HS    = H_PULSE;
 	assign VGA_VS    = V_PULSE;
 
+	reg CRTC_SYNC;
+	always @ ( posedge PIXELCLK ) begin
+		if(~nRESET)			CRTC_SYNC <= 0;
+		else if(CRTC_en)	CRTC_SYNC <= 1;
+	end
+
+	wire ENDofLINE = ~|H_COUNTER;
 	// H_SYNC @ 31.46 KHz
 	reg H_BACK;
 	reg H_DISPLAY;
@@ -26,29 +34,29 @@ module VGA (
 			H_COUNTER <= `H_COUNT_INIT;
 			H_BACK    <= 0;
 			H_DISPLAY <= 0;
-			H_PULSE <= 0;
-		end else begin
+			H_PULSE	  <= 0;
+		end else if(CRTC_SYNC) begin
 			if(|H_COUNTER)
 				H_COUNTER <= H_COUNTER - 1;
 			else
 				H_COUNTER <= `H_COUNT_INIT;
-			
+
 			if(H_DISPLAY) begin
 				H_BACK		<= 0;
 				H_DISPLAY	<= |H_COUNTER;
-				H_PULSE	<= 0;
+				H_PULSE		<= 0;
 			end else if(H_BACK) begin
 				H_BACK		<= H_COUNTER != `H_DISPLAY;
 				H_DISPLAY	<= H_COUNTER == `H_DISPLAY;
-				H_PULSE	<= 0;
+				H_PULSE		<= 0;
 			end else if(H_PULSE) begin
 				H_BACK		<= H_COUNTER == `H_BACK;
 				H_DISPLAY	<= 0;
-				H_PULSE	<= H_COUNTER != `H_BACK;
+				H_PULSE		<= H_COUNTER != `H_BACK;
 			end else begin
 				H_BACK		<= 0;
 				H_DISPLAY	<= 0;
-				H_PULSE	<= H_COUNTER == `H_PULSE;
+				H_PULSE		<= H_COUNTER == `H_PULSE;
 			end
 		end
 	end
@@ -63,29 +71,29 @@ module VGA (
 			V_COUNTER <= `V_COUNT_INIT;
 			V_BACK    <= 0;
 			V_DISPLAY <= 0;
-			V_PULSE <= 0;
+			V_PULSE   <= 0;
 		end else if(ENDofLINE) begin
 			if(|V_COUNTER)
 				V_COUNTER <= V_COUNTER - 1;
 			else
 				V_COUNTER <= `V_COUNT_INIT;
-			
+
 			if(V_DISPLAY) begin
 				V_BACK		<= 0;
 				V_DISPLAY	<= |V_COUNTER;
-				V_PULSE	<= 0;
+				V_PULSE		<= 0;
 			end else if(V_BACK) begin
 				V_BACK		<= V_COUNTER != `V_DISPLAY;
 				V_DISPLAY	<= V_COUNTER == `V_DISPLAY;
-				V_PULSE	<= 0;
+				V_PULSE		<= 0;
 			end else if(V_PULSE) begin
 				V_BACK		<= V_COUNTER == `V_BACK;
 				V_DISPLAY	<= 0;
-				V_PULSE	<= V_COUNTER != `V_BACK;
+				V_PULSE		<= V_COUNTER != `V_BACK;
 			end else begin
 				V_BACK		<= 0;
 				V_DISPLAY	<= 0;
-				V_PULSE	<= V_COUNTER == `V_PULSE;
+				V_PULSE		<= V_COUNTER == `V_PULSE;
 			end
 		end
 	end

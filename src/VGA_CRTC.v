@@ -12,8 +12,8 @@ module VGA_CRTC(
 
 	inout [7:0] DATABUS,
 
-	output reg [13:0] framestore_adr,
-	output reg [4:0]  scanline_row,
+	output reg [13:0] FRAMESTORE_ADR,
+	output reg [4:0]  ROW_ADDRESS,
 	output DISEN,
 	output VGA_HS,
 	output VGA_VS,
@@ -64,16 +64,17 @@ end
 
 /****************************************************************************************/
 
-wire ENDofLINE;
+wire NEWLINE;
 wire NEWSCREEN;
 wire VGA_DISEN;
 
 VGA vga(
 	.PIXELCLK(PIXELCLK),
+	.CRTC_en(CRTC_en),
 	.nRESET(nRESET),
 	.VGA_HS(VGA_HS),
 	.VGA_VS(VGA_VS),
-	.ENDofLINE(ENDofLINE),
+	.NEWLINE(NEWLINE),
 	.NEWSCREEN(NEWSCREEN),
 	.DISEN(VGA_DISEN)
 );
@@ -85,10 +86,13 @@ VGA vga(
 reg [7:0] HDISPLAY_COUNT;
 
 always @ (posedge PIXELCLK) begin
-	if(~nRESET | ENDofLINE)
+	if(~nRESET)
 		HDISPLAY_COUNT <= horz_display;
-	else if(DISEN & CRTC_en)
-		HDISPLAY_COUNT <= HDISPLAY_COUNT - 1;
+	else if(CRTC_en)
+		if(NEWLINE)
+			HDISPLAY_COUNT <= horz_display;
+		else if(DISEN)
+			HDISPLAY_COUNT <= HDISPLAY_COUNT - 1;
 end
 
 /****************************************************************************************/
@@ -96,13 +100,16 @@ end
 
 reg [6:0] VDISPLAY_COUNT;
 
-wire next_charline = scanline_row == max_scanline && ENDofLINE&VGA_DISEN;
+wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE;
 
 always @ (posedge PIXELCLK) begin
-	if(~nRESET | NEWSCREEN)
+	if(~nRESET)
 		VDISPLAY_COUNT <= vert_display;
-	else if(next_charline & |VDISPLAY_COUNT)
-		VDISPLAY_COUNT <= VDISPLAY_COUNT - 1;
+ 	else if(CRTC_en)
+		if(NEWSCREEN)
+			VDISPLAY_COUNT <= vert_display;
+		else if(NEWvCHAR & |VDISPLAY_COUNT)
+			VDISPLAY_COUNT <= VDISPLAY_COUNT - 1;
 end
 
 /****************************************************************************************/
@@ -112,32 +119,41 @@ reg [13:0] scanline_start_adr;
 
 always @ (posedge PIXELCLK) begin
 	if(~nRESET) begin
-		framestore_adr		<= 0;
+		FRAMESTORE_ADR		<= 0;
 		scanline_start_adr	<= 0;
-	end if(NEWSCREEN) begin
-        framestore_adr		<= start_address;
-        scanline_start_adr	<= start_address;
-    end else if(next_charline) begin
-        framestore_adr		<= scanline_start_adr + horz_display;
-        scanline_start_adr	<= scanline_start_adr + horz_display;
-    end else if(ENDofLINE&VGA_DISEN) begin
-        framestore_adr		<= scanline_start_adr;
-    end else if(CRTC_en&DISEN) begin
-        framestore_adr		<= framestore_adr + 1;
-    end
+	end else if(CRTC_en)
+		if(NEWSCREEN) begin
+	        FRAMESTORE_ADR		<= start_address;
+	        scanline_start_adr	<= start_address;
+	    end else if(NEWvCHAR) begin
+	        FRAMESTORE_ADR		<= scanline_start_adr + horz_display;
+	        scanline_start_adr	<= scanline_start_adr + horz_display;
+	    end else if(NEWLINE) begin
+	        FRAMESTORE_ADR		<= scanline_start_adr;
+	    end else begin
+	        FRAMESTORE_ADR		<= FRAMESTORE_ADR + 1;
+	    end
 end
 
+reg SINGLE;
 always @ (posedge PIXELCLK) begin
-	if(~nRESET | next_charline | NEWSCREEN)
-		scanline_row <= 0;
-	else if(ENDofLINE&VGA_DISEN)
-		scanline_row <= scanline_row + 1;
+	if(~nRESET) begin
+		ROW_ADDRESS <= 0;
+		SINGLE		<= 0;
+	end else if(CRTC_en)
+		if(NEWvCHAR | NEWSCREEN) begin
+			ROW_ADDRESS <= 0;
+			SINGLE <= 1;
+		end else if(NEWLINE & ~SINGLE) begin
+			ROW_ADDRESS <= ROW_ADDRESS + 1;
+			SINGLE <= 1;
+		end else SINGLE <= 0;
 end
 
 /****************************************************************************************/
 // Cursor
-wire cursor_point    = framestore_adr == cursor_adr && DISEN;
-wire cursor_poximity = scanline_row >= cursor_start_row && scanline_row <= cursor_end_row;
+wire cursor_point    = FRAMESTORE_ADR == cursor_adr && DISEN;
+wire cursor_poximity = ROW_ADDRESS >= cursor_start_row && ROW_ADDRESS <= cursor_end_row;
 
 reg [4:0] cursor_blink_count;
 reg cursor_display;
@@ -145,7 +161,7 @@ always @ (posedge PIXELCLK) begin
 	if(~nRESET) begin
 		cursor_blink_count <= 0;
 		cursor_display <= 0;
-	end else if(NEWSCREEN) begin
+	end else if(NEWSCREEN&CRTC_en) begin
 		cursor_blink_count <= cursor_blink_count + 1;
 		case (cursor_blink_mode)
 			2'b00: cursor_display <= 1;

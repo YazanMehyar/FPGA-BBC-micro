@@ -12,7 +12,7 @@ module TOP(
 	output VGA_HS,
 	output VGA_VS
 	);
-	
+
 	wire VCC   = 1'b1;
     wire [3:0] VCC_4 = 4'hF;
     wire GND   = 1'b0;
@@ -51,7 +51,7 @@ module TOP(
 		.PROC_en(PROC_en),
 		.hPROC_en(hPROC_en),
 		.PHI_2(PHI_2));
-		
+
 
 /*****************************************************************************/
 // MEMORY
@@ -192,8 +192,8 @@ wire SYNC;
 	.RnW(RnW),
 	.RS(pADDRESSBUS[0]),
 	.DATABUS(pDATABUS),
-	.framestore_adr(cFRAMESTORE),
-	.scanline_row(cROWADDRESS),
+	.FRAMESTORE_ADR(cFRAMESTORE),
+	.ROW_ADDRESS(cROWADDRESS),
 	.DISEN(cDISPLAYen),
 	.CURSOR(CURSOR),
 	.VGA_HS(VGA_HS),
@@ -243,7 +243,7 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 	.nUVIA(nUVIA),
 	.nACIA(nACIA),
 	.DATABUS(pDATABUS));
-	
+
 /**************************************************************************************************/
 // TEST_ASSISTANCE
 

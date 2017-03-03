@@ -9,4 +9,4 @@
 `define V_PULSE		 515
 `define V_BACK		 513
 `define V_DISPLAY	 480
-
+`define V_NEW		 479

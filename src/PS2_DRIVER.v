@@ -13,15 +13,32 @@ module PS2_DRIVER(
 /****************************************************************************************/
 
 	reg prev_PS2CLK;
-	reg prev_PS2CLK2; 
-	reg NEGEDGE_PS2_CLK;
+	reg prev_PS2CLK2;
 	always @ (posedge clk)
 		if(clk_en) begin
 			prev_PS2CLK <= PS2_CLK;
 			prev_PS2CLK2 <= prev_PS2CLK;
-			NEGEDGE_PS2_CLK <= ~prev_PS2CLK & prev_PS2CLK2;
 		end
-	
+
+	reg [5:0] FILTER;
+	reg CHANGE;
+	reg NEGEDGE_PS2_CLK;
+	always @ (posedge clk) begin
+		if(nRESET) begin
+			CHANGE <= 0;
+			FILTER <= 6'h3F;
+			NEGEDGE_PS2_CLK <= 0;
+		end else if(clk_en)
+			if(CHANGE) begin
+				FILTER <= FILTER - 1;
+				CHANGE <= |FILTER;
+				NEGEDGE_PS2_CLK <= ~|FILTER;
+			end else begin
+				CHANGE <= ~prev_PS2CLK & prev_PS2CLK2;
+				NEGEDGE_PS2_CLK <= 0;
+			end
+	end
+
 
 /****************************************************************************************/
 
