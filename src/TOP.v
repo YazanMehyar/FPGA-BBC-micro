@@ -19,10 +19,9 @@ module TOP(
 
 /*****************************************************************************/
 
-	wire [13:0] cFRAMESTORE;
-	wire [4:0] cROWADDRESS;
+	wire [13:0] FRAMESTORE_ADR;
+	wire [4:0] ROW_ADDRESS;
 
-	wire cDISPLAYen, CURSOR, DISEN;
 	wire RnW, nIRQ;
 	wire [7:0] PORTA;
 	wire COLUMN_MATCH;
@@ -140,13 +139,13 @@ module TOP(
 		endcase
 	end
 
-	wire B1 = ~&{LS259_reg[4],LS259_reg[5],cFRAMESTORE[12]};
-	wire B2 = ~&{B3,LS259_reg[5],cFRAMESTORE[12]};
-	wire B3 = ~&{LS259_reg[4],cFRAMESTORE[12]};
-	wire B4 = ~&{B3,cFRAMESTORE[12]};
+	wire B1 = ~&{LS259_reg[4],LS259_reg[5],FRAMESTORE_ADR[12]};
+	wire B2 = ~&{B3,LS259_reg[5],FRAMESTORE_ADR[12]};
+	wire B3 = ~&{LS259_reg[4],FRAMESTORE_ADR[12]};
+	wire B4 = ~&{B3,FRAMESTORE_ADR[12]};
 
-	wire [3:0] caa = cFRAMESTORE[11:8] + {B4,B3,B2,B1} + 1'b1;
-	assign vADDRESSBUS = {caa,cFRAMESTORE[7:0],cROWADDRESS[2:0]};
+	wire [3:0] caa = FRAMESTORE_ADR[11:8] + {B4,B3,B2,B1} + 1'b1;
+	assign vADDRESSBUS = {caa,FRAMESTORE_ADR[7:0],ROW_ADDRESS[2:0]};
 
 /******************************************************************************/
 wire SYNC;
@@ -165,46 +164,28 @@ wire SYNC;
 	.Address_bus(pADDRESSBUS),
 	.RnW(RnW));
 
-
-// Video ULA
-	assign DISEN = cDISPLAYen&~cROWADDRESS[3];
-	VideoULA vula(
+// Video control
+	Display_Control dc(
 	.PIXELCLK(PIXELCLK),
 	.nRESET(CPU_RESETN),
-	.A0(pADDRESSBUS[0]),
-	.nCS(nVIDPROC),
-	.DISEN(DISEN),
-	.CURSOR(CURSOR),
-	.vDATA(vDATA),
-	.pDATA(pDATABUS),
 	.dRAM_en(dRAM_en),
 	.RAM_en(RAM_en),
 	.PROC_en(PROC_en),
 	.hPROC_en(hPROC_en),
-	.CRTC_en(CRTC_en),
-	.REDout(RED),
-	.GREENout(GREEN),
-	.BLUEout(BLUE));
-
-
-// CRTC
-	VGA_CRTC crtc(
-	.PIXELCLK(PIXELCLK),
-	.PROC_en(PROC_en),
-	.CRTC_en(CRTC_en),
 	.PHI_2(PHI_2),
-	.nCS(nCRTC),
-	.nRESET(CPU_RESETN),
+	.nCS_CRTC(nCRTC),
+	.nCS_VULA(nVIDPROC),
 	.RnW(RnW),
-	.RS(pADDRESSBUS[0]),
-	.DATABUS(pDATABUS),
-	.FRAMESTORE_ADR(cFRAMESTORE),
-	.ROW_ADDRESS(cROWADDRESS),
-	.DISEN(cDISPLAYen),
-	.CURSOR(CURSOR),
+	.A0(pADDRESSBUS[0]),
+	.vDATABUS(vDATA),
+	.pDATABUS(pDATABUS),
 	.VGA_HS(VGA_HS),
-	.VGA_VS(VGA_VS));
-
+	.VGA_VS(VGA_VS),
+	.RED(RED),
+	.GREEN(GREEN),
+	.BLUE(BLUE),
+	.FRAMESTORE_ADR(FRAMESTORE_ADR),
+	.ROW_ADDRESS(ROW_ADDRESS));
 
 wire PORTB = {VCC_4, LS259_D, LS259_A};
 // Versatile Interface Adapter
@@ -239,7 +220,7 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 
 
 // Extra (MOCK) Peripherals
-	EXTRA_PERIPHERALS extra(
+	Extra_Peripherals extra(
 	.PHI_2(PHI_2),
 	.RnW(RnW),
 	.nRESET(CPU_RESETN),

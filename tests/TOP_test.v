@@ -2,7 +2,7 @@
 
 module TOP_test();
 
-	//initial $dumpvars(0, TOP_test);
+	// initial $dumpvars(0, TOP_test);
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
@@ -75,10 +75,10 @@ module TOP_test();
 			@(posedge PS2_CLK);
 				PS2_SEND(8'hF0);
 				PS2_SEND(KEY);
-			repeat (3)	@(posedge VGA_VS);
+			repeat (2)	@(posedge VGA_VS);
 		end
 	endtask
-	
+
 /******************************************************************************/
 
 	initial begin
@@ -92,9 +92,15 @@ module TOP_test();
 		repeat (3) @(posedge VGA_VS);
 
 		// Send some keys
-		repeat (20) PRESS_KEY(8'h5A);
-
+		PRESS_KEY(8'h3A);
+		PRESS_KEY(8'h44);
+		PRESS_KEY(8'h23);
+		PRESS_KEY(8'h24);
+		PRESS_KEY(8'h29);
+		PRESS_KEY(8'h1E);
+		PRESS_KEY(8'h5A);
 		@(posedge VGA_VS);
+		PRESS_KEY(8'h35);
 
 		$stop;
 		$finish;
@@ -126,7 +132,8 @@ module TOP_test();
 // Virtual Screen
 	initial forever begin
 		@(negedge VGA_VS)
-		repeat (33) @(negedge VGA_HS);
+		repeat (31) @(negedge VGA_HS);
+		repeat (48) @(posedge PIXELCLK);
 		$v_sync;
 	end
 

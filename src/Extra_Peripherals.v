@@ -1,4 +1,4 @@
-module EXTRA_PERIPHERALS (
+module Extra_Peripherals (
 	input PHI_2,
 	input nRESET,
 	input RnW,
