@@ -78,7 +78,7 @@ module MOS6522 (
 /****************************************************************************************/
 
 	// Most Internal Registers
-	always @ (clk) begin
+	always @ (posedge clk) begin
 		if(~nRESET) begin
 			ACR <= 0; PCR <= 0;
 			DDRA <= 0; DDRB <= 0;

@@ -12,11 +12,11 @@ module PS2_DRIVER(
 
 /****************************************************************************************/
 
-	reg [7:0] clk_filter;
+	reg [3:0] clk_filter;
 	always @ (posedge clk)
-		if(~nRESET)		clk_filter <= 8'hFF;
+		if(~nRESET)		clk_filter <= 4'hF;
 		else if(clk_en) begin
-			clk_filter  <= {clk_filter[6:0],PS2_CLK};
+			clk_filter  <= {clk_filter[2:0],PS2_CLK};
 		end
 
 /****************************************************************************************/
