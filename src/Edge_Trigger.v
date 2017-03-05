@@ -13,7 +13,7 @@ module Edge_Trigger (
 
 	reg prev_IN;
 
-	always @ (*)
+	always_comb
 		if(TYPE == 1) EDGE = ~prev_IN & IN;
 		else		  EDGE = prev_IN & ~IN;
 

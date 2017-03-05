@@ -80,7 +80,7 @@ module MOS6502_Decode (
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 // iDB_SEL
-always @ ( * ) begin
+always_comb begin
 	iDB_SEL = `iDB_DIR; // default unless
 	if(T_state[0]) begin
 		if(BRANCH&BCC)       iDB_SEL = `iDB_ABH;
@@ -107,7 +107,7 @@ always @ ( * ) begin
 end
 
 // SB_SEL
-always @ ( * ) begin
+always_comb begin
 	if(T_state[0]) begin
 		if(STACK)                 SB_SEL = `SB_AOR;
 		else if(BRANCH)           SB_SEL = `SB_iDB;
@@ -129,7 +129,7 @@ always @ ( * ) begin
 end
 
 // ADBL_SEL
-always @ ( * ) begin
+always_comb begin
 	if(T_state[0]) begin
 		if(BRANCH&BX)         ADBL_SEL = {1'b1,`ADBL_BUFFER};
 		else if(BRANCH&BCC)   ADBL_SEL = {(COUT^iDB7),`ADBL_AOR};
@@ -159,7 +159,7 @@ always @ ( * ) begin
 end
 
 // ADBH_SEL
-always @ ( * ) begin
+always_comb begin
 	if(T_state[0]) begin
 		if(BRANCH&BX)         ADBH_SEL = `ADBH_AOR;
 		else if(BRANCH&BCC)   ADBH_SEL = {1'b1, `ADBH_BUFFER};
@@ -193,7 +193,7 @@ end
 /**************************************************************************************************/
 
 // ALU_FUNC
-always @ ( * ) begin
+always_comb begin
 	if(T_state[0]| ~|T_state) begin
 		if(BRANCH&BCC)     ALU_FUNC = iDB7? `ALU_DEC : `ALU_INC;
 		else if(BRANCH)    ALU_FUNC = `ALU_ADD;
@@ -226,7 +226,7 @@ always @ ( * ) begin
 end
 
 // ALU_B_SEL
-always @ ( * ) begin
+always_comb begin
 	if (T_state[0]) begin
 		if(BRANCH&~BCC) ALU_B_SEL = `ALUB_ADL;
 		else ALU_B_SEL = `ALUB_iDB;
@@ -245,7 +245,7 @@ always @ ( * ) begin
 end
 
 // CARRY_IN
-always @ ( * ) begin
+always_comb begin
 	if(T_state[0]) begin
 		if(BRANCH)       CARRY_IN = 0;
 		else if(CMP|T_3) CARRY_IN = 1;
@@ -261,7 +261,7 @@ end
 
 /**************************************************************************************************/
 // REQUEST_STORE
-always @ ( * ) begin
+always_comb begin
 	if(|T_state[1:0] | ~nRESET_req) begin
 		RnW = 1;
 	end else if(T_state[2]) begin
@@ -278,7 +278,7 @@ always @ ( * ) begin
 end
 
 // NEXT_T , CLEAR_T
-always @ ( * ) begin
+always_comb begin
 	CLEAR_T = 0;
 	if(T_state[0]) begin
 		if(BRANCH&BCC)      NEXT_T = iDB7^COUT;
@@ -307,7 +307,7 @@ end
 /**************************************************************************************************/
 
 // N,Z,V,C enables
-always @ ( * ) begin
+always_comb begin
 	if(T_state[1] & ~(FLAGS|CONTROL|BRANCH)) begin
 		N_en = T_1 & CMP | T_3 & (SBC|CMP) | ACC_en | iX_en | iY_en;
 		Z_en = N_en | BIT;
@@ -321,7 +321,7 @@ always @ ( * ) begin
 end
 
 // ACC_en, iX_en, iY_en
-always @ ( * ) begin
+always_comb begin
 	if(T_state[1] & ~(CONTROL|FLAGS|BRANCH) & READY) begin
 		ACC_en = STACK&IR[6]&IR[5] | T_1&~(STORE|CMP) | ACC | BLACK_SHEEP&STORE&(IR[4]^IR[1]);
 		iX_en = T_2 & LOAD | T_3 & SBC & BLACK_SHEEP | T_2 & CMP & BLACK_SHEEP;
@@ -332,7 +332,7 @@ always @ ( * ) begin
 end
 
 // SP_en
-always @ ( * ) begin
+always_comb begin
 	if(~READY) begin
 		SP_en = 0;
 	end else if(T_state[0]) begin
@@ -347,7 +347,7 @@ always @ ( * ) begin
 end
 
 // PC_en
-always @ ( * ) begin
+always_comb begin
 	if(~READY) begin
 		PC_en = 0;
 	end else if(T_state[0]) begin
@@ -364,7 +364,7 @@ always @ ( * ) begin
 end
 
 // AOR_en, DIR_en
-always @ ( * ) begin
+always_comb begin
 	if(~READY) begin
 		AOR_en = 0;
 		DIR_en = 0;

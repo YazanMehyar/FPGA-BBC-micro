@@ -235,7 +235,7 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 // TEST_ASSISTANCE
 `ifdef SIMULATION
 
-always @ (posedge PHI_2) begin
+always @ ( posedge PHI_2 ) begin
 	if(SYNC) begin
 		if(pADDRESSBUS == 16'hDC05) $stop;
 	end

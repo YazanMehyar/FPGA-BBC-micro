@@ -55,7 +55,7 @@ module MOS6502 (
 /**************************************************************************************************/
 // TEST HELPER
 	`ifdef SIMULATION
-	    always @ ( * ) begin
+	    always_comb begin
 		    case(test_reg_select)
 		    3'b000: test_value_out = Acc;
 		    3'b001: test_value_out = iX;
@@ -82,7 +82,7 @@ module MOS6502 (
 		end
 	end
 
-	always @ ( * ) begin
+	always_comb begin
 		case (iDB_SEL)
 			`iDB_PCL: iDB = PCL;
 			`iDB_PCH: iDB = PCH;
@@ -95,7 +95,7 @@ module MOS6502 (
 		endcase
 	end
 
-	always @ ( * ) begin
+	always_comb begin
 		case (SB_SEL)
 			`SB_iDB: SB = iDB;
 			`SB_ACC: SB = Acc;
@@ -107,7 +107,7 @@ module MOS6502 (
 		endcase
 	end
 
-	always @ ( * ) begin
+	always_comb begin
 		case (ALU_B_SEL)
 			`ALUB_iDB: ALU_B = iDB;
 			`ALUB_ADL: ALU_B = ADBL;
@@ -162,7 +162,7 @@ module MOS6502 (
 	end
 
 	// ADBL
-	always @ ( * ) begin
+	always_comb begin
 		case (ADBL_SEL[2:0])
 			`ADBL_PCL:   ADBL = PCL;
 			`ADBL_AOR:   ADBL = AOR;
@@ -177,7 +177,7 @@ module MOS6502 (
 	end
 
 	// ADBH
-	always @ ( * ) begin
+	always_comb begin
 		case (ADBH_SEL[2:0])
 			`ADBH_PCH:   ADBH = PCH;
 			`ADBH_AOR:   ADBH = AOR;

@@ -100,7 +100,7 @@ module Display_Control (
 
 	// More registers can be included to meet more spec of the 6845 CRTC
 	reg [7:0] pDATABUS_out;
-	always @ ( * ) case (reg_sel[0])
+	always_comb case (reg_sel[0])
 		1'b0: pDATABUS_out = {2'b00,cursor_adr[13:8]};
 		1'b1: pDATABUS_out = cursor_adr[7:0];
 		default: pDATABUS_out = 8'hxx;
@@ -234,7 +234,13 @@ module Display_Control (
 
 	reg [7:0] CONTROL;
 	reg [7:0] SHIFTER;
-	reg [3:0] PALETTE [0:15];
+
+	// Synthesizer has trouble with the following so it is broken down
+	// reg [3:0] PALETTE [0:15];
+	reg [3:0] PALETTE0,PALETTE1,PALETTE2,PALETTE3;
+	reg [3:0] PALETTE4,PALETTE5,PALETTE6,PALETTE7;
+	reg [3:0] PALETTE8,PALETTE9,PALETTEA,PALETTEB;
+	reg [3:0] PALETTEC,PALETTED,PALETTEE,PALETTEF;
 
 	assign CRTC_en    = CONTROL[4]? ~PROC_en&RAM_en : hPROC_en;
 	assign HALF_SPEED = ~CONTROL[4];
@@ -243,15 +249,13 @@ module Display_Control (
 // -- Shift speed
 
 	reg SHIFT_en;
-	always @ ( * ) begin
-		case (CONTROL[3:2])
-			2'b00: SHIFT_en = PROC_en;
-			2'b01: SHIFT_en = RAM_en;
-			2'b10: SHIFT_en = dRAM_en;
-			2'b11: SHIFT_en = 1'b1;
-			default: SHIFT_en = 1'bx;
-		endcase
-	end
+	always_comb case (CONTROL[3:2])
+		2'b00: SHIFT_en = PROC_en;
+		2'b01: SHIFT_en = RAM_en;
+		2'b10: SHIFT_en = dRAM_en;
+		2'b11: SHIFT_en = 1'b1;
+		default: SHIFT_en = 1'bx;
+	endcase
 
 	always @ ( posedge PIXELCLK ) begin
 		if(CRTC_en)			SHIFTER <= vDATABUS;
@@ -263,8 +267,32 @@ module Display_Control (
 	always @ ( posedge PIXELCLK ) begin
 		if(~nRESET) CONTROL <= 8'h00;
 		else if(PROC_en&~nCS_VULA)
-	 		if(A0)  PALETTE[pDATABUS[7:4]] <= pDATABUS[3:0];
+	 		if(A0)  case (pDATABUS[7:4])
+	 			3'h0: PALETTE0 <= pDATABUS[3:0];	3'h1: PALETTE1 <= pDATABUS[3:0];
+				3'h2: PALETTE2 <= pDATABUS[3:0];	3'h3: PALETTE3 <= pDATABUS[3:0];
+				3'h4: PALETTE4 <= pDATABUS[3:0];	3'h5: PALETTE5 <= pDATABUS[3:0];
+				3'h6: PALETTE6 <= pDATABUS[3:0];	3'h7: PALETTE7 <= pDATABUS[3:0];
+				3'h8: PALETTE8 <= pDATABUS[3:0];	3'h9: PALETTE9 <= pDATABUS[3:0];
+				3'hA: PALETTEA <= pDATABUS[3:0];	3'hB: PALETTEB <= pDATABUS[3:0];
+				3'hC: PALETTEC <= pDATABUS[3:0];	3'hD: PALETTED <= pDATABUS[3:0];
+				3'hE: PALETTEE <= pDATABUS[3:0];	3'hF: PALETTEF <= pDATABUS[3:0];
+	 		endcase
 			else	CONTROL <= pDATABUS;
+	end
+
+	reg PALETTE_COLOUR[3:0];
+	always_comb begin
+		case ({SHIFTER[7],SHIFTER[5],SHIFTER[3],SHIFTER[1]})
+			3'h0: PALETTE_COLOUR = PALETTE0;	3'h1: PALETTE_COLOUR = PALETTE1;
+			3'h2: PALETTE_COLOUR = PALETTE2;	3'h3: PALETTE_COLOUR = PALETTE3;
+			3'h4: PALETTE_COLOUR = PALETTE4;	3'h5: PALETTE_COLOUR = PALETTE5;
+			3'h6: PALETTE_COLOUR = PALETTE6;	3'h7: PALETTE_COLOUR = PALETTE7;
+			3'h8: PALETTE_COLOUR = PALETTE8;	3'h9: PALETTE_COLOUR = PALETTE9;
+			3'hA: PALETTE_COLOUR = PALETTEA;	3'hB: PALETTE_COLOUR = PALETTEB;
+			3'hC: PALETTE_COLOUR = PALETTEC;	3'hD: PALETTE_COLOUR = PALETTED;
+			3'hE: PALETTE_COLOUR = PALETTEE;	3'hF: PALETTE_COLOUR = PALETTEF;
+			default: PALETTE_COLOUR <= 4'hx;
+		endcase
 	end
 
 // -- Cursor drawing
@@ -287,7 +315,6 @@ module Display_Control (
 
 // -- Pixel colour
 	wire VULA_DISEN = DISEN & ~ROW_ADDRESS[3];
-	wire [3:0] PALETTE_COLOUR = PALETTE[{SHIFTER[7],SHIFTER[5],SHIFTER[3],SHIFTER[1]}];
 
 	wire FLASH = ~(PALETTE_COLOUR[3]&CONTROL[0]);
 	wire [2:0] PIXEL_COLOR = VULA_DISEN? FLASH? ~PALETTE_COLOUR[2:0] : PALETTE_COLOUR[2:0] : 3'b000;
