@@ -15,9 +15,10 @@ module Timing_Generator(
 	//NB Both counters are initialised to aid with simulation
 
 	// Highest resolution clock
-	reg PIXELCLK = 0;
-	always @ (posedge CLK100MHZ) PIXELCLK <= ~PIXELCLK;
-
+	reg PIXELCOUNT = 0;
+	always @ (posedge CLK100MHZ) PIXELCOUNT <= ~PIXELCOUNT;
+	assign PIXELCLK = PIXELCOUNT;
+	
 	reg [4:0] MASTER_COUNTER = 0;
 	always @(posedge PIXELCLK)	MASTER_COUNTER <= MASTER_COUNTER + 4'h1;
 

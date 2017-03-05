@@ -59,6 +59,8 @@ module TOP(
 // MEMORY
 
 	reg [7:0] RAM [0:`KiB32];
+	reg [7:0] BBCBASIC2 [0:`KiB16];
+	reg [7:0] BBCOS12   [0:`KiB16];
 
 	`ifdef SIMULATION
 		`include "RAM_init.vh"

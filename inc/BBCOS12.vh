@@ -1,4 +1,3 @@
-reg [7:0] BBCOS12 [0:16384];
 // MODIFICATION @ 1B28 & 1B29
 // also could @ 0B3B
 initial begin

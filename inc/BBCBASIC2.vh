@@ -1,5 +1,3 @@
-reg [7:0] BBCBASIC2 [0:16384];
-
 initial begin
 BBCBASIC2[16'h0000] = 8'hC9;
 BBCBASIC2[16'h0001] = 8'h01;
