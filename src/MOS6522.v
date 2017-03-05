@@ -49,7 +49,7 @@ module MOS6522 (
 	reg [7:0] DATA_OUT;
 	assign DATA = (PHI_2&CS&RnW&nRESET)? DATA_OUT : 8'hzz;
 
-	always_comb begin
+	always @ (*) begin
 		if(CS) case (RS)
 			4'h0: DATA_OUT = nRESET?
 					{DDRB[7]? OUTB[7]:PORTB[7], DDRB[6]? OUTB[6]:PORTB[6],

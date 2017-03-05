@@ -31,7 +31,7 @@ module Keyboard (
 	always @ (posedge clk) if(clk_en) COL_COUNTER <= COL_COUNTER + 1;
 
 	reg [6:0] BBC_CODE; // Combinitorial
-	always_comb begin
+	always @ ( * ) begin
 		case (DATA)
 			8'h76: BBC_CODE = 7'h70; //ESC
 			8'h16: BBC_CODE = 7'h30; // 1
@@ -162,7 +162,7 @@ module Keyboard (
 	wire [3:0] kCOLUMN = autoscan? COL_COUNTER : column;
 	wire [7:0] kROW    = KEY_MAP[kCOLUMN];
 	reg  kKEY;
-	always_comb begin
+	always @ ( * ) begin
 		case (row)
 			3'b000: kKEY = kROW[0];
 			3'b001: kKEY = kROW[1];

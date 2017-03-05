@@ -100,7 +100,7 @@ module Display_Control (
 
 	// More registers can be included to meet more spec of the 6845 CRTC
 	reg [7:0] pDATABUS_out;
-	always_comb case (reg_sel[0])
+	always @ ( * ) case (reg_sel[0])
 		1'b0: pDATABUS_out = {2'b00,cursor_adr[13:8]};
 		1'b1: pDATABUS_out = cursor_adr[7:0];
 		default: pDATABUS_out = 8'hxx;
@@ -249,13 +249,15 @@ module Display_Control (
 // -- Shift speed
 
 	reg SHIFT_en;
-	always_comb case (CONTROL[3:2])
-		2'b00: SHIFT_en = PROC_en;
-		2'b01: SHIFT_en = RAM_en;
-		2'b10: SHIFT_en = dRAM_en;
-		2'b11: SHIFT_en = 1'b1;
-		default: SHIFT_en = 1'bx;
-	endcase
+	always @ ( * ) begin
+		case (CONTROL[3:2])
+			2'b00: SHIFT_en = PROC_en;
+			2'b01: SHIFT_en = RAM_en;
+			2'b10: SHIFT_en = dRAM_en;
+			2'b11: SHIFT_en = 1'b1;
+			default: SHIFT_en = 1'bx;
+		endcase
+	end
 
 	always @ ( posedge PIXELCLK ) begin
 		if(CRTC_en)			SHIFTER <= vDATABUS;
@@ -268,29 +270,29 @@ module Display_Control (
 		if(~nRESET) CONTROL <= 8'h00;
 		else if(PROC_en&~nCS_VULA)
 	 		if(A0)  case (pDATABUS[7:4])
-	 			3'h0: PALETTE0 <= pDATABUS[3:0];	3'h1: PALETTE1 <= pDATABUS[3:0];
-				3'h2: PALETTE2 <= pDATABUS[3:0];	3'h3: PALETTE3 <= pDATABUS[3:0];
-				3'h4: PALETTE4 <= pDATABUS[3:0];	3'h5: PALETTE5 <= pDATABUS[3:0];
-				3'h6: PALETTE6 <= pDATABUS[3:0];	3'h7: PALETTE7 <= pDATABUS[3:0];
-				3'h8: PALETTE8 <= pDATABUS[3:0];	3'h9: PALETTE9 <= pDATABUS[3:0];
-				3'hA: PALETTEA <= pDATABUS[3:0];	3'hB: PALETTEB <= pDATABUS[3:0];
-				3'hC: PALETTEC <= pDATABUS[3:0];	3'hD: PALETTED <= pDATABUS[3:0];
-				3'hE: PALETTEE <= pDATABUS[3:0];	3'hF: PALETTEF <= pDATABUS[3:0];
+	 			4'h0: PALETTE0 <= pDATABUS[3:0];	4'h1: PALETTE1 <= pDATABUS[3:0];
+				4'h2: PALETTE2 <= pDATABUS[3:0];	4'h3: PALETTE3 <= pDATABUS[3:0];
+				4'h4: PALETTE4 <= pDATABUS[3:0];	4'h5: PALETTE5 <= pDATABUS[3:0];
+				4'h6: PALETTE6 <= pDATABUS[3:0];	4'h7: PALETTE7 <= pDATABUS[3:0];
+				4'h8: PALETTE8 <= pDATABUS[3:0];	4'h9: PALETTE9 <= pDATABUS[3:0];
+				4'hA: PALETTEA <= pDATABUS[3:0];	4'hB: PALETTEB <= pDATABUS[3:0];
+				4'hC: PALETTEC <= pDATABUS[3:0];	4'hD: PALETTED <= pDATABUS[3:0];
+				4'hE: PALETTEE <= pDATABUS[3:0];	4'hF: PALETTEF <= pDATABUS[3:0];
 	 		endcase
 			else	CONTROL <= pDATABUS;
 	end
 
-	reg PALETTE_COLOUR[3:0];
-	always_comb begin
+	reg [3:0] PALETTE_COLOUR;
+	always @ ( * ) begin
 		case ({SHIFTER[7],SHIFTER[5],SHIFTER[3],SHIFTER[1]})
-			3'h0: PALETTE_COLOUR = PALETTE0;	3'h1: PALETTE_COLOUR = PALETTE1;
-			3'h2: PALETTE_COLOUR = PALETTE2;	3'h3: PALETTE_COLOUR = PALETTE3;
-			3'h4: PALETTE_COLOUR = PALETTE4;	3'h5: PALETTE_COLOUR = PALETTE5;
-			3'h6: PALETTE_COLOUR = PALETTE6;	3'h7: PALETTE_COLOUR = PALETTE7;
-			3'h8: PALETTE_COLOUR = PALETTE8;	3'h9: PALETTE_COLOUR = PALETTE9;
-			3'hA: PALETTE_COLOUR = PALETTEA;	3'hB: PALETTE_COLOUR = PALETTEB;
-			3'hC: PALETTE_COLOUR = PALETTEC;	3'hD: PALETTE_COLOUR = PALETTED;
-			3'hE: PALETTE_COLOUR = PALETTEE;	3'hF: PALETTE_COLOUR = PALETTEF;
+			4'h0: PALETTE_COLOUR = PALETTE0;	4'h1: PALETTE_COLOUR = PALETTE1;
+			4'h2: PALETTE_COLOUR = PALETTE2;	4'h3: PALETTE_COLOUR = PALETTE3;
+			4'h4: PALETTE_COLOUR = PALETTE4;	4'h5: PALETTE_COLOUR = PALETTE5;
+			4'h6: PALETTE_COLOUR = PALETTE6;	4'h7: PALETTE_COLOUR = PALETTE7;
+			4'h8: PALETTE_COLOUR = PALETTE8;	4'h9: PALETTE_COLOUR = PALETTE9;
+			4'hA: PALETTE_COLOUR = PALETTEA;	4'hB: PALETTE_COLOUR = PALETTEB;
+			4'hC: PALETTE_COLOUR = PALETTEC;	4'hD: PALETTE_COLOUR = PALETTED;
+			4'hE: PALETTE_COLOUR = PALETTEE;	4'hF: PALETTE_COLOUR = PALETTEF;
 			default: PALETTE_COLOUR <= 4'hx;
 		endcase
 	end

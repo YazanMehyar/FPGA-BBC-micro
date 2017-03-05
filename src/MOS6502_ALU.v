@@ -22,7 +22,7 @@ reg half_hex_c;
 
 wire [7:0] rALU_B = ALU_FUNC == `ALU_SUB? ~ALU_B : ALU_B;
 
-always_comb begin
+always @ ( * ) begin
 	ALU_COUT = 0;
 	half_dec_c = 0;
 	dec_c = 0;
