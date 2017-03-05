@@ -2,7 +2,7 @@
 
 module TOP_test();
 
-	initial $dumpvars(0, TOP_test);
+	// initial $dumpvars(0, TOP_test);
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
@@ -79,6 +79,28 @@ module TOP_test();
 		end
 	endtask
 
+	task MODE;
+		input [2:0] MODE_No;
+		begin
+			PRESS_KEY(8'h3A);
+			PRESS_KEY(8'h44);
+			PRESS_KEY(8'h23);
+			PRESS_KEY(8'h24);
+			PRESS_KEY(8'h29);
+			case (MODE_No)
+				0: PRESS_KEY(8'h45);
+				1: PRESS_KEY(8'h16);
+				2: PRESS_KEY(8'h1E);
+				3: PRESS_KEY(8'h26);
+				4: PRESS_KEY(8'h25);
+				5: PRESS_KEY(8'h2E);
+				6: PRESS_KEY(8'h36);
+				default: $display("UNSUPPORTED MODE");
+			endcase
+			PRESS_KEY(8'h5A);
+		end
+	endtask
+
 /******************************************************************************/
 
 	initial begin
@@ -92,7 +114,8 @@ module TOP_test();
 		repeat (3) @(posedge VGA_VS);
 
 		// Send some keys
-		repeat(5) PRESS_KEY(8'h35);
+		MODE(4);
+		PRESS_KEY(8'h1B);
 
 		$stop;
 		$finish;

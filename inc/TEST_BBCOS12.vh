@@ -1,13 +1,21 @@
 reg [7:0] BBCOS12 [0:16384];
-// MODIFICATION @ 1B28 & 1B29
-// also could @ 0B3B
-/* 
+/*
+	MODIFICATION @ 1B28 & 1B29 for startup mode
+	0 -- D980
+	1 -- D985
+	2 -- DB55
+	3 -- D9A3
+	4 -- D98C
+	5 -- D9C3
+	6 -- D9A6
 	OSROM[14'h19E8] <= 8'h80; // Mark as 32KiB model
 
 	OSROM[14'h19E9] <= 8'hD0; // Branch over code
 	OSROM[14'h19EA] <= 8'h12;
 */
 initial begin
+BBCOS12[16'h1B28] = 8'h55;
+BBCOS12[16'h1B29] = 8'hDB;
 BBCOS12[16'h0000] = 8'h00;
 BBCOS12[16'h0001] = 8'h00;
 BBCOS12[16'h0002] = 8'h00;
@@ -6960,8 +6968,6 @@ BBCOS12[16'h1B24] = 8'h8E;
 BBCOS12[16'h1B25] = 8'h49;
 BBCOS12[16'h1B26] = 8'hFE;
 BBCOS12[16'h1B27] = 8'hAD;
-BBCOS12[16'h1B28] = 8'h55;
-BBCOS12[16'h1B29] = 8'hDB;
 BBCOS12[16'h1B2A] = 8'h20;
 BBCOS12[16'h1B2B] = 8'h00;
 BBCOS12[16'h1B2C] = 8'hC3;

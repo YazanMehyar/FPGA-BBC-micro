@@ -163,7 +163,6 @@ module Display_Control (
 // -- RAM addressing
 
 	// The RAM fails to catch up on the first full speed cycle
-	reg CRTC_SYNC;
 	reg [13:0] NEWLINE_ADR;
 	reg FIELD;
 
@@ -172,9 +171,6 @@ module Display_Control (
 			FRAMESTORE_ADR <= 0;
 			NEWLINE_ADR    <= 0;
 		end else if(CRTC_en) begin
-			if(HALF_SPEED)  CRTC_SYNC <= 1;
-			else			CRTC_SYNC <= 0;
-		
 			if(NEWSCREEN) begin
 				FRAMESTORE_ADR <= start_adr;
 				NEWLINE_ADR    <= start_adr;
@@ -183,7 +179,7 @@ module Display_Control (
 				NEWLINE_ADR    <= NEWLINE_ADR + horz_display;
 			end else if(NEWLINE) begin
 				FRAMESTORE_ADR <= NEWLINE_ADR;
-			end else if(HALF_SPEED|~CRTC_SYNC) begin
+			end else begin
 				FRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
 			end
 		end
@@ -240,10 +236,10 @@ module Display_Control (
 	reg [7:0] SHIFTER;
 	reg [3:0] PALETTE [0:15];
 
-	assign CRTC_en    = CONTROL[4]? PROC_en : hPROC_en;
+	assign CRTC_en    = CONTROL[4]? ~PROC_en&RAM_en : hPROC_en;
 	assign HALF_SPEED = ~CONTROL[4];
-	
-	
+
+
 // -- Shift speed
 
 	reg SHIFT_en;
