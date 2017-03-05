@@ -16,7 +16,7 @@ module Timing_Generator(
 	reg [1:0] PIXELCOUNT = 0;
 	always @ (posedge CLK100MHZ) PIXELCOUNT <= PIXELCOUNT + 2'b01;
 
-	assign PIXELCLK = PIXELCOUNT[1];
+	assign PIXELCLK = PIXELCOUNT[0];
 
 	reg [3:0] MASTER_COUNTER = 0;
 	always @(posedge PIXELCLK)	MASTER_COUNTER <= MASTER_COUNTER + 4'h1;

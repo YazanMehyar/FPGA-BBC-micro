@@ -18,20 +18,20 @@
 `define OP_AND 3'b001
 `define OP_ORA 3'b000
 
-`define iDB_PCL	0
-`define iDB_PCH	1
-`define iDB_SB	2
-`define iDB_DIR	3
-`define iDB_ACC	4
-`define iDB_PSR	5
-`define iDB_ABH 6
+`define iDB_PCL	3'b000
+`define iDB_PCH	3'b001
+`define iDB_SB	3'b010
+`define iDB_DIR	3'b011
+`define iDB_ACC	3'b100
+`define iDB_PSR	3'b101
+`define iDB_ABH 3'b110
 
-`define SB_iDB	0
-`define SB_ACC	1
-`define SB_iX	2
-`define SB_iY	3
-`define SB_SP	4
-`define SB_AOR	5
+`define SB_iDB	3'b000
+`define SB_ACC	3'b001
+`define SB_iX	3'b010
+`define SB_iY	3'b011
+`define SB_SP	3'b100
+`define SB_AOR	3'b101
 
 `define ADBL_AOR	3'd0
 `define ADBL_PCL	3'd1
