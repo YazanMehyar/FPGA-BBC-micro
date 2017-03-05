@@ -95,9 +95,9 @@ module TOP(
 		if(RAM_en) begin
 			if(V_TURN) begin // Respond to CRTC reads and MOS6502 writes
 				vDATA <= RAM[vADDRESSBUS];
-				if(~RnW&PHI_2) RAM[pADDRESSBUS] <= pDATABUS;
+				if(~RnW&PHI_2) RAM[pADDRESSBUS[14:0]] <= pDATABUS;
 			end else
-				ram_DATA <= RAM[pADDRESSBUS];
+				ram_DATA <= RAM[pADDRESSBUS[14:0]];
 		end
 
 	always @ ( posedge PIXELCLK )

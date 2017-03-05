@@ -16,7 +16,7 @@ module TOP_test();
 	// Simulate PIXELCLK
 	reg [1:0] PIXELCOUNT = 0;
 	always @ ( posedge CLK100MHZ ) PIXELCOUNT <= PIXELCOUNT + 1;
-	wire PIXELCLK = PIXELCOUNT[1];
+	wire PIXELCLK = PIXELCOUNT[0];
 
 	// input
 	reg CPU_RESETN;
@@ -112,6 +112,7 @@ module TOP_test();
 
 		CPU_RESETN <= 1;
 		repeat (3) @(posedge VGA_VS);
+		$stop;
 
 		// Send some keys
 		MODE(4);
