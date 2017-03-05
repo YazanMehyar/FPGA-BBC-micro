@@ -39,8 +39,9 @@ module TOP(
 	wire RAM_en;
 	wire PROC_en;
 	wire hPROC_en;	// h as in half processor
-	wire CRTC_en;
+	wire CRTCF_en;
 	wire PHI_2;		// PHASE 2 of MOS6502
+	wire V_TURN;	// Video circuitry take control of ram reads
 
 	Timing_Generator timer(
 		.CLK100MHZ(CLK100MHZ),
@@ -49,6 +50,8 @@ module TOP(
 		.RAM_en(RAM_en),
 		.PROC_en(PROC_en),
 		.hPROC_en(hPROC_en),
+		.CRTCF_en(CRTCF_en),
+		.V_TURN(V_TURN),
 		.PHI_2(PHI_2));
 
 
@@ -90,9 +93,9 @@ module TOP(
 
 	always @ ( posedge PIXELCLK )
 		if(RAM_en) begin
-			if(PHI_2) begin // Respond to CRTC reads and MOS6502 writes
+			if(V_TURN) begin // Respond to CRTC reads and MOS6502 writes
 				vDATA <= RAM[vADDRESSBUS];
-				if(~RnW) RAM[pADDRESSBUS] <= pDATABUS;
+				if(~RnW&PHI_2) RAM[pADDRESSBUS] <= pDATABUS;
 			end else
 				ram_DATA <= RAM[pADDRESSBUS];
 		end
@@ -171,7 +174,7 @@ wire SYNC;
 	.dRAM_en(dRAM_en),
 	.RAM_en(RAM_en),
 	.PROC_en(PROC_en),
-	.hPROC_en(hPROC_en),
+	.CRTCF_en(CRTCF_en),
 	.PHI_2(PHI_2),
 	.nCS_CRTC(nCRTC),
 	.nCS_VULA(nVIDPROC),

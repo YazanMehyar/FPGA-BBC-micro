@@ -6,7 +6,7 @@ module Display_Control (
 	input dRAM_en,
 	input RAM_en,
 	input PROC_en,
-	input hPROC_en,
+	input CRTCF_en,
 	input PHI_2,
 	input nCS_CRTC,
 	input nCS_VULA,
@@ -242,7 +242,7 @@ module Display_Control (
 	reg [3:0] PALETTE8,PALETTE9,PALETTEA,PALETTEB;
 	reg [3:0] PALETTEC,PALETTED,PALETTEE,PALETTEF;
 
-	assign CRTC_en    = CONTROL[4]? ~PROC_en&RAM_en : hPROC_en;
+	assign CRTC_en    = CONTROL[4]? RAM_en&~CRTCF_en : PROC_en;
 	assign HALF_SPEED = ~CONTROL[4];
 
 
@@ -251,7 +251,7 @@ module Display_Control (
 	reg SHIFT_en;
 	always @ ( * ) begin
 		case (CONTROL[3:2])
-			2'b00: SHIFT_en = PROC_en;
+			2'b00: SHIFT_en = CRTCF_en;
 			2'b01: SHIFT_en = RAM_en;
 			2'b10: SHIFT_en = dRAM_en;
 			2'b11: SHIFT_en = 1'b1;
