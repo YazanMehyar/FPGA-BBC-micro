@@ -182,11 +182,11 @@ module Keyboard (
 /**************************************************************************************************/
 // TEST HELPERS
 `ifdef SIMULATION
-	initial begin
-	forever @(posedge clk) begin
-		if(clk_en&DONE) $display("Key Pressed is %H", DATA);
-	end
-	end
+	// initial begin
+	// forever @(posedge clk) begin
+	// 	if(clk_en&DONE) $display("Key Pressed is %H", DATA);
+	// end
+	// end
 `endif
 
 endmodule // Keyboard

@@ -97,7 +97,8 @@ module TOP(
 		if(RAM_en) begin
 			if(V_TURN) begin // Respond to CRTC reads and MOS6502 writes
 				vDATA <= RAM[vADDRESSBUS];
-				if(~RnW&PHI_2) RAM[pADDRESSBUS[14:0]] <= pDATABUS;
+				if(~RnW&PHI_2&~pADDRESSBUS[15])
+					RAM[pADDRESSBUS[14:0]] <= pDATABUS;
 			end else
 				ram_DATA <= RAM[pADDRESSBUS[14:0]];
 		end
@@ -241,9 +242,7 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 `ifdef SIMULATION
 
 always @ ( posedge PHI_2 ) begin
-	if(SYNC) begin
-		if(pADDRESSBUS == 16'hDC05) $stop;
-	end
+	//if(pADDRESSBUS == 16'h7E4F) $stop;
 end
 `endif
 

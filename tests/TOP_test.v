@@ -2,7 +2,7 @@
 
 module TOP_test();
 
-	initial $dumpvars(0, TOP_test);
+	// initial $dumpvars(3, TOP_test);
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
