@@ -10,11 +10,18 @@ module TOP(
 	output [3:0] VGA_G,
 	output [3:0] VGA_B,
 	output VGA_HS,
-	output VGA_VS
+	output VGA_VS,
+	
+	output SD_SCK,
+	output SD_CMD,
+	output SD_RESET,		// Card reset -- needs to be actively drawn low
+	input  SD_CD,			// Card detect
+	input  [3:0] SD_DAT
 	);
 
 	wire VCC   = 1'b1;
     wire [3:0] VCC_4 = 4'hF;
+    wire [3:0] FLOAT = 4'hz;
     wire GND   = 1'b0;
 
 /*****************************************************************************/
@@ -29,6 +36,7 @@ module TOP(
 
 /*****************************************************************************/
 
+	assign SD_RESET = GND;
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
@@ -61,6 +69,7 @@ module TOP(
 	reg [7:0] RAM [0:`KiB32];
 	reg [7:0] BBCBASIC2 [0:`KiB16];
 	reg [7:0] BBCOS12   [0:`KiB16];
+	reg [7:0] SUPERMMC	[0:`KiB16];
 
 	`ifdef SIMULATION
 		`include "RAM_init.vh"
@@ -69,6 +78,7 @@ module TOP(
 		`include "BBCOS12.vh"
 	`endif
 
+	`include "SUPERMMC.vh"
 	`include "BBCBASIC2.vh"
 
 	wire [15:0] pADDRESSBUS;
@@ -79,6 +89,7 @@ module TOP(
 
 	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
 	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
+	wire SUPERMMCen  = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ROM_BANK[0] & ~ROM_BANK[1];
 
 
 	reg [3:0] ROM_BANK;
@@ -107,6 +118,7 @@ module TOP(
 		if(RAM_en&~PHI_2)
 			if(OSBANKen) 			rom_DATA <= BBCOS12[pADDRESSBUS[13:0]];
 			else if(BASICBANKen)	rom_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
+			else if(SUPERMMCen)		rom_DATA <= SUPERMMC[pADDRESSBUS[13:0]];
 
 /******************************************************************************/
 //	Chip selects
@@ -115,6 +127,7 @@ module TOP(
 
 	wire nCRTC = ~(SHEILA & ~|pADDRESSBUS[7:3]);
 	wire nACIA = ~(SHEILA & ~|pADDRESSBUS[7:4] & pADDRESSBUS[3]);
+	wire nADLC = ~(SHEILA & ~|pADDRESSBUS[7:5] & &pADDRESSBUS[4:3]);
 	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
 	wire nROMSEL  = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & pADDRESSBUS[4] & ~RnW);
 
@@ -192,10 +205,14 @@ wire SYNC;
 	.BLUE(BLUE),
 	.FRAMESTORE_ADR(FRAMESTORE_ADR),
 	.ROW_ADDRESS(ROW_ADDRESS));
+	
+assign nIRQ = &{usr_nIRQ,sys_nIRQ};
+wire usr_nIRQ;
+wire sys_nIRQ;
 
 wire PORTB = {VCC_4, LS259_D, LS259_A};
-// Versatile Interface Adapter
-	MOS6522 via(
+// System VIA
+	MOS6522 sys_via(
 	.clk(PIXELCLK),
 	.clk_en(PROC_en),
 	.nRESET(CPU_RESETN),
@@ -206,10 +223,30 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 	.RS(pADDRESSBUS[3:0]),
 	.CA1(VGA_VS),
 	.CA2(COLUMN_MATCH),
+	.CB1(VCC),
+	.CB2(VCC),
 	.DATA(pDATABUS),
 	.PORTA(PORTA),
 	.PORTB({VCC_4,LS259_D,LS259_A}),
-	.nIRQ(nIRQ));
+	.nIRQ(sys_nIRQ));
+	
+// User VIA
+	MOS6522 usr_via(
+	.clk(PIXELCLK),
+	.clk_en(PROC_en),
+	.nRESET(CPU_RESETN),
+	.CS1(VCC),
+	.nCS2(nUVIA),
+	.PHI_2(PHI_2),
+	.RnW(RnW),
+	.RS(pADDRESSBUS[3:0]),
+	.CA1(VCC),
+	.CA2(VCC),
+	.CB1(SD_SCK),
+	.CB2(SD_DAT[0]),
+	.DATA(pDATABUS),
+	.PORTB({VCC_4,VCC_4[1:0],SD_SCK,SD_CMD}),
+	.nIRQ(usr_nIRQ));
 
 // Keyboard
 	Keyboard keyboard(
@@ -233,8 +270,8 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 	.nFDC(nFDC),
 	.nADC(nADC),
 	.nTUBE(nTUBE),
-	.nUVIA(nUVIA),
 	.nACIA(nACIA),
+	.nADLC(nADLC),
 	.DATABUS(pDATABUS));
 
 /**************************************************************************************************/
@@ -242,8 +279,10 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 `ifdef SIMULATION
 
 always @ ( posedge PHI_2 ) begin
-	//if(pADDRESSBUS == 16'h7E4F) $stop;
+	if(pADDRESSBUS[15:4] == 12'hFE6)
+		$display("%04H ; %t", pADDRESSBUS, $time);
 end
+
 `endif
 
 endmodule

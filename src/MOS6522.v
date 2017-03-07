@@ -28,6 +28,8 @@ module MOS6522 (
 	input [3:0] RS,
 	input CA1,
 	input CA2,
+	input CB1,
+	input CB2,
 
 	inout [7:0] DATA,
 	inout [7:0] PORTA,
@@ -37,6 +39,7 @@ module MOS6522 (
 
 	reg [7:0] OUTA, DDRA;
 	reg [7:0] OUTB, DDRB;
+	reg [7:0] SHIFT;
 	reg [7:0] ACR, PCR;
 	reg [15:0] T1COUNTER, T1REG;
 	reg [6:0] IFR, IER;
@@ -67,6 +70,7 @@ module MOS6522 (
 			4'h4: DATA_OUT = T1COUNTER[7:0];
 			4'h5: DATA_OUT = T1COUNTER[15:8];
 			4'h6: DATA_OUT = T1REG[7:0];
+			4'hA: DATA_OUT = SHIFT;
 			4'hB: DATA_OUT = ACR;
 			4'hC: DATA_OUT = PCR;
 			4'hD: DATA_OUT = {~nIRQ,IFR};
@@ -102,38 +106,59 @@ module MOS6522 (
 
 /****************************************************************************************/
 
-	reg CA1INT_pos, CA1INT_neg, CA1INT;
-	always @ (posedge CA1 or posedge IFR[1]) begin
-		if(IFR[1]) CA1INT_pos <= 0;
-		else CA1INT_pos <= 1;
-	end
+	
+	reg [3:0] CA1_filter;
+	reg [3:0] CA2_filter;
+	reg [3:0] CB1_filter;
+	reg [3:0] CB2_filter;
+	always @ (posedge clk)
+		if(~nRESET)	begin
+			CA1_filter <= 4'hF;
+			CA2_filter <= 4'hF;
+			CB1_filter <= 4'hF;
+			CB2_filter <= 4'hF;
+		end else if(clk_en) begin
+			CA1_filter  <= {CA1_filter[2:0],CA1};
+			CA2_filter  <= {CA2_filter[2:0],CA2};
+			CB1_filter  <= {CB1_filter[2:0],CB1};
+			CB2_filter  <= {CB2_filter[2:0],CB2};
+		end
 
-	always @ (negedge CA1 or posedge IFR[1]) begin
-		if(IFR[1]) CA1INT_neg <= 0;
-		else CA1INT_neg <= 1;
-	end
+	wire NEGEDGE_CA1 = ~|CA1_filter;
+	wire POSEDGE_CA1 =  &CA1_filter;
+	wire NEGEDGE_CA2 = ~|CA2_filter;
+	wire POSEDGE_CA2 =  &CA2_filter;
+	wire NEGEDGE_CB1 = ~|CB1_filter;
+	wire POSEDGE_CB1 =  &CB1_filter;
+	wire NEGEDGE_CB2 = ~|CB2_filter;
+	wire POSEDGE_CB2 =  &CB2_filter;
+/****************************************************************************************/
 
-	always @ (posedge clk) begin
-		if(~nRESET) CA1INT <= 0;
-		else 		CA1INT <= PCR[0]? CA1INT_pos : CA1INT_neg;
-	end
+// -- A side
+
+	reg CA1INT;
+	always @ (posedge clk)
+		if(~nRESET|IFR[1])	CA1INT <= 0;
+		else 				CA1INT <= PCR[0]? POSEDGE_CA1 : NEGEDGE_CA1;
 
 
-	reg CA2INT_pos, CA2INT_neg, CA2INT;
-	always @ (posedge CA2 or posedge IFR[0]) begin
-		if(IFR[0]) CA2INT_pos <= 0;
-		else CA2INT_pos <= 1;
-	end
+	reg CA2INT;
+	always @ (posedge clk)
+		if(~nRESET|IFR[0])	CA2INT <= 0;
+		else 				CA2INT <= PCR[2]? POSEDGE_CA2 : NEGEDGE_CA2;
 
-	always @ (negedge CA2 or posedge IFR[0]) begin
-		if(IFR[0]) CA2INT_neg <= 0;
-		else CA2INT_neg <= 1;
-	end
+// -- B side
+	
+	reg CB1INT;
+	always @ (posedge clk)
+		if(~nRESET|IFR[4])	CB1INT <= 0;
+		else 				CB1INT <= PCR[4]? POSEDGE_CB1 : NEGEDGE_CB1;
 
-	always @ (posedge clk) begin
-		if(~nRESET) CA2INT <= 0;
-		else 		CA2INT <= PCR[2]? CA2INT_pos : CA2INT_neg;
-	end
+
+	reg CB2INT;
+	always @ (posedge clk)
+		if(~nRESET|IFR[3])	CB2INT <= 0;
+		else 				CB2INT <= PCR[6]? POSEDGE_CB2 : NEGEDGE_CB2;
 
 /****************************************************************************************/
 
@@ -142,15 +167,25 @@ module MOS6522 (
 			IFR <= 0;
 		end else if(clk_en)
 			if(CS) case (RS) // Write
+					4'h0:	   IFR[4:3] <= 2'b00;
 					4'h1,4'hF: IFR[1:0] <= 2'b00;
-					4'h4:      if(RnW) IFR[6] <= 1'b0;
+					4'h4:	   if(RnW) IFR[6] <= 1'b0;
 					4'h5:      if(~RnW)IFR[6] <= 1'b0;
 					4'hD:      if(~RnW)IFR    <= ~DATA[6:0] & IFR;
 			endcase else begin
 				IFR[0] <= CA2INT | IFR[0];
 				IFR[1] <= CA1INT | IFR[1];
+				IFR[3] <= CB2INT | IFR[3];
+				IFR[4] <= CB1INT | IFR[4];
 				IFR[6] <= T1INT & ~|T1COUNTER  | IFR[6];
 			end
+	end
+	
+	always @ (posedge clk) begin
+		if(~nRESET)	SHIFT <= 0;
+		else if(clk_en)
+			if(CS && RS==4'hA)	SHIFT <= DATA;
+			else if(CB1INT)		SHIFT <= {SHIFT[6:0],CB2};
 	end
 
 /****************************************************************************************/
@@ -176,19 +211,18 @@ module MOS6522 (
 
 /****************************************************************************************/
 
-/*
-	True functionality is as follows for port A. But since port B tied to VCC,
-	the direction is never changing.
-	
-*/
-
 	assign PORTA = nRESET?
 					{DDRA[7]? OUTA[7]: 1'bz, DDRA[6]? OUTA[6]: 1'bz,
 					DDRA[5]? OUTA[5]: 1'bz, DDRA[4]? OUTA[4]: 1'bz,
 					DDRA[3]? OUTA[3]: 1'bz, DDRA[2]? OUTA[2]: 1'bz,
 					DDRA[1]? OUTA[1]: 1'bz, DDRA[0]? OUTA[0]: 1'bz} : 8'hzz;
 
-	assign PORTB = {4'hz,OUTB[3:0]};
+	assign PORTB = nRESET?
+					{DDRB[7]? OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
+					DDRB[5]? OUTB[5]:1'bz, DDRB[4]? OUTB[4]:1'bz,
+					DDRB[3]? OUTB[3]:1'bz, DDRB[2]? OUTB[2]:1'bz,
+					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;
+		
 
 	always @ (posedge clk) begin
 		nIRQ <= ~|(IFR&IER);
