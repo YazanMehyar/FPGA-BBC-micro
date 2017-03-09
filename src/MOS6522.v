@@ -106,59 +106,52 @@ module MOS6522 (
 
 /****************************************************************************************/
 
+	wire POSEDGE_CA1, NEGEDGE_CA1;
+	Edge_Trigger #(0) CA1_NEG(.clk(clk),.IN(CA1),.EDGE(NEGEDGE_CA1));
+	Edge_Trigger #(1) CA1_POS(.clk(clk),.IN(CA1),.EDGE(POSEDGE_CA1));
+		
+	wire POSEDGE_CA2, NEGEDGE_CA2;
+	Edge_Trigger #(0) CA2_NEG(.clk(clk),.IN(CA2),.EDGE(NEGEDGE_CA2));
+	Edge_Trigger #(1) CA2_POS(.clk(clk),.IN(CA2),.EDGE(POSEDGE_CA2));
+		
+		
+	wire POSEDGE_CB1, NEGEDGE_CB1;
+	Edge_Trigger #(0) CB1_NEG(.clk(clk),.IN(CB1),.EDGE(NEGEDGE_CB1));
+	Edge_Trigger #(1) CB1_POS(.clk(clk),.IN(CB1),.EDGE(POSEDGE_CB1));
+		
+	wire POSEDGE_CB2, NEGEDGE_CB2;
+	Edge_Trigger #(0) CB2_NEG(.clk(clk),.IN(CB2),.EDGE(NEGEDGE_CB2));
+	Edge_Trigger #(1) CB2_POS(.clk(clk),.IN(CB2),.EDGE(POSEDGE_CB2));
+		
+		
 	
-	reg [3:0] CA1_filter;
-	reg [3:0] CA2_filter;
-	reg [3:0] CB1_filter;
-	reg [3:0] CB2_filter;
-	always @ (posedge clk)
-		if(~nRESET)	begin
-			CA1_filter <= 4'hF;
-			CA2_filter <= 4'hF;
-			CB1_filter <= 4'hF;
-			CB2_filter <= 4'hF;
-		end else if(clk_en) begin
-			CA1_filter  <= {CA1_filter[2:0],CA1};
-			CA2_filter  <= {CA2_filter[2:0],CA2};
-			CB1_filter  <= {CB1_filter[2:0],CB1};
-			CB2_filter  <= {CB2_filter[2:0],CB2};
-		end
-
-	wire NEGEDGE_CA1 = ~|CA1_filter;
-	wire POSEDGE_CA1 =  &CA1_filter;
-	wire NEGEDGE_CA2 = ~|CA2_filter;
-	wire POSEDGE_CA2 =  &CA2_filter;
-	wire NEGEDGE_CB1 = ~|CB1_filter;
-	wire POSEDGE_CB1 =  &CB1_filter;
-	wire NEGEDGE_CB2 = ~|CB2_filter;
-	wire POSEDGE_CB2 =  &CB2_filter;
 /****************************************************************************************/
-
+	wire INT_ACK = clk_en & ~CS;
 // -- A side
 
 	reg CA1INT;
 	always @ (posedge clk)
-		if(~nRESET|IFR[1])	CA1INT <= 0;
-		else 				CA1INT <= PCR[0]? POSEDGE_CA1 : NEGEDGE_CA1;
+		if(~nRESET|IFR[1])			CA1INT <= 0;
+		else if(~CA1INT|INT_ACK)	CA1INT <= PCR[0]? POSEDGE_CA1 : NEGEDGE_CA1;
 
 
 	reg CA2INT;
 	always @ (posedge clk)
-		if(~nRESET|IFR[0])	CA2INT <= 0;
-		else 				CA2INT <= PCR[2]? POSEDGE_CA2 : NEGEDGE_CA2;
+		if(~nRESET|IFR[0])			CA2INT <= 0;
+		else if(~CA2INT|INT_ACK)	CA2INT <= PCR[2]? POSEDGE_CA2 : NEGEDGE_CA2;
 
 // -- B side
 	
 	reg CB1INT;
 	always @ (posedge clk)
-		if(~nRESET|IFR[4])	CB1INT <= 0;
-		else 				CB1INT <= PCR[4]? POSEDGE_CB1 : NEGEDGE_CB1;
+		if(~nRESET|IFR[4])			CB1INT <= 0;
+		else if(~CB1INT|INT_ACK)	CB1INT <= PCR[4]? POSEDGE_CB1 : NEGEDGE_CB1;
 
 
 	reg CB2INT;
 	always @ (posedge clk)
-		if(~nRESET|IFR[3])	CB2INT <= 0;
-		else 				CB2INT <= PCR[6]? POSEDGE_CB2 : NEGEDGE_CB2;
+		if(~nRESET|IFR[3])			CB2INT <= 0;
+		else if(~CB2INT|INT_ACK)	CB2INT <= PCR[6]? POSEDGE_CB2 : NEGEDGE_CB2;
 
 /****************************************************************************************/
 

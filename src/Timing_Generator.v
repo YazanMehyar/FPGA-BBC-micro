@@ -10,6 +10,7 @@ module Timing_Generator(
 	output RAM_en,
 	output dRAM_en,
 	output CRTCF_en,
+	output CRTCS_en,
 	output reg V_TURN);
 
 	//NB Both counters are initialised to aid with simulation
@@ -25,8 +26,15 @@ module Timing_Generator(
 	assign dRAM_en = MASTER_COUNTER[0];
 	assign RAM_en  = &MASTER_COUNTER[1:0];
 	assign CRTCF_en = &MASTER_COUNTER[2:0];
-	assign PROC_en = &MASTER_COUNTER[3:0];
-	assign hPROC_en= &MASTER_COUNTER[4:0];
+	assign CRTCS_en = &MASTER_COUNTER[3:0];
+	
+	reg [2:0] PROC_CLK_GEN = 3'b001;
+	always @(posedge PIXELCLK)
+		if(CRTCF_en) PROC_CLK_GEN <= {PROC_CLK_GEN[1:0],PROC_CLK_GEN[2]};
+		
+		
+	assign PROC_en = PROC_CLK_GEN[2]&CRTCF_en;
+	assign hPROC_en= PROC_CLK_GEN[2]&CRTCS_en;
 
 	always @ (posedge PIXELCLK)
 		if(CRTCF_en) PHI_2 <= ~PROC_en;

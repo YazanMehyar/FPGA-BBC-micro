@@ -2,7 +2,7 @@
 
 module TOP_test();
 
-	initial $dumpvars(3, TOP_test);
+	//initial $dumpvars(3, TOP_test);
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
@@ -39,8 +39,7 @@ module TOP_test();
 		.VGA_G(VGA_G),
 		.VGA_B(VGA_B),
 		.VGA_HS(VGA_HS),
-		.VGA_VS(VGA_VS),
-		.SD_DAT(SD_DAT));
+		.VGA_VS(VGA_VS));
 
 /******************************************************************************/
 
@@ -110,15 +109,15 @@ module TOP_test();
 
 		CPU_RESETN <= 0;
 		PS2_DATA <= 1;
-		repeat (16) @(posedge CLK100MHZ);
+		repeat (100) @(posedge CLK100MHZ);
 
 		CPU_RESETN <= 1;
-		repeat (8) @(posedge VGA_VS);
+		repeat (72) @(posedge VGA_VS);
 		$stop;
 
 		// Send some keys
 		//MODE(4);
-		//PRESS_KEY(8'h1B);
+		PRESS_KEY(8'h1B);
 
 		//$stop;
 		$finish;

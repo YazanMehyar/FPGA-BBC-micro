@@ -1,19 +1,18 @@
 [*]
 [*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Sat Mar  4 23:18:49 2017
+[*] Tue Mar  7 21:58:26 2017
 [*]
 [dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/TOP_test.vcd"
-[dumpfile_mtime] "Sat Mar  4 23:13:30 2017"
-[dumpfile_size] 441530560
-[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/TOP.gtkw"
-[timestart] 4041550
+[dumpfile_mtime] "Tue Mar  7 20:31:05 2017"
+[dumpfile_size] 510592567
+[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/TOP.gtkw"
+[timestart] 53387310
 [size] 1916 1157
 [pos] -1 -1
-*-11.000000 4092775 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-11.000000 53393905 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP_test.
 [treeopen] TOP_test.top.
 [treeopen] TOP_test.top.keyboard.
-[treeopen] TOP_test.top.pocessor.control.
 [sst_width] 223
 [signals_width] 257
 [sst_expanded] 1
@@ -36,7 +35,6 @@ TOP_test.top.pocessor.Data_bus[7:0]
 TOP_test.top.pocessor.RnW
 TOP_test.top.pocessor.SYNC
 @22
-TOP_test.top.pocessor.control.IR[7:0]
 TOP_test.top.pocessor.Acc[7:0]
 TOP_test.top.pocessor.iX[7:0]
 TOP_test.top.pocessor.iY[7:0]
@@ -53,8 +51,6 @@ TOP_test.top.dc.CRTC_en
 @22
 TOP_test.top.vDATA[7:0]
 TOP_test.top.dc.H_COUNTER[7:0]
-@29
-TOP_test.top.dc.CRTC_SYNC
 @28
 TOP_test.top.dc.NEWLINE
 @22
@@ -73,20 +69,16 @@ TOP_test.top.BLUE
 -VIA
 @28
 TOP_test.top.nVIA
-TOP_test.top.via.nIRQ
-@22
-TOP_test.top.via.IER[6:0]
-TOP_test.top.via.IFR[6:0]
-TOP_test.top.via.PORTA[7:0]
-TOP_test.top.via.PORTB[7:0]
+TOP_test.top.sys_nIRQ
+TOP_test.top.nUVIA
+@29
+TOP_test.top.usr_nIRQ
 @200
 -
 -Keyboard
 @28
 TOP_test.top.keyboard.PS2_CLK
 TOP_test.top.keyboard.PS2_DATA
-TOP_test.top.keyboard.ps2.CAPTURE
-TOP_test.top.keyboard.ps2.RELEASE
 TOP_test.top.keyboard.DONE
 TOP_test.top.keyboard.KEY_RELEASE
 TOP_test.top.keyboard.VALID_KEY
