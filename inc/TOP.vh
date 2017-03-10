@@ -1,6 +1,6 @@
-`define KiB16 16383
-`define KiB32 32767
-`define KiB64 65535
+`define KiB16 14'h3FFF
+`define KiB32 15'h7FFF
+`define KiB64 16'hFFFF
 `define CLKPERIOD 10
 
 `timescale 1ns/1ns

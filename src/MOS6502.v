@@ -2,7 +2,7 @@
 
 module MOS6502 (
 	// Test pins
-	`ifdef SIMULATION
+	`ifdef SIMULATION_6502
 		input [2:0] test_reg_select,
 		output reg [7:0] test_value_out,
 	`endif
@@ -54,7 +54,7 @@ module MOS6502 (
 
 /**************************************************************************************************/
 // TEST HELPER
-	`ifdef SIMULATION
+	`ifdef SIMULATION_6502
 	    always @ ( * ) begin
 		    case(test_reg_select)
 		    3'b000: test_value_out = Acc;
