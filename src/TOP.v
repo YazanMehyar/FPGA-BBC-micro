@@ -10,7 +10,11 @@ module TOP(
 	output [3:0] VGA_G,
 	output [3:0] VGA_B,
 	output VGA_HS,
-	output VGA_VS
+	output VGA_VS,
+	
+	input [15:0] SW,
+	output AUD_SD,
+	output AUD_PWM
 	);
 
 	wire VCC   = 1'b1;
@@ -27,9 +31,12 @@ module TOP(
 	wire [7:0] PORTA;
 	wire COLUMN_MATCH;
 	wire RED, GREEN, BLUE;
+	wire SOUND;
 
 /*****************************************************************************/
 
+	assign AUD_SD  = 1'b1;				 // audio enable
+	assign AUD_PWM = SW[2] & SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
@@ -65,7 +72,7 @@ module TOP(
 	reg [7:0] BBCBASIC2 [0:`KiB16];
 	reg [7:0] BBCOS12   [0:`KiB16];
 	reg [7:0] Game		[0:`KiB16];
-	// reg [7:0] SUPERMMC	[0:`KiB16];
+	reg [7:0] SUPERMMC	[0:`KiB16];
 
 	`ifdef SIMULATION
 		`include "RAM_init.vh"
@@ -74,7 +81,7 @@ module TOP(
 		`include "BBCOS12.vh"
 	`endif
 
-	// `include "SUPERMMC.vh"
+	`include "SUPERMMC.vh"
 	`include "Game.vh"
 	`include "BBCBASIC2.vh"
 
@@ -86,8 +93,8 @@ module TOP(
 
 	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
 	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
-	//wire SUPERMMCen  = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ROM_BANK[0] & ~ROM_BANK[1];
-	wire GAMEen		 = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~ROM_BANK[0] & ROM_BANK[1];
+	wire SUPERMMCen  = SW[1] & pADDRESSBUS[15] & ~pADDRESSBUS[14] & ROM_BANK[0] & ~ROM_BANK[1];
+	wire GAMEen		 = SW[0] & pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~ROM_BANK[0] & ROM_BANK[1];
 
 
 	reg [3:0] ROM_BANK;
@@ -116,7 +123,7 @@ module TOP(
 		if(RAM_en&~PHI_2)
 			if(OSBANKen) 			rom_DATA <= BBCOS12[pADDRESSBUS[13:0]];
 			else if(BASICBANKen)	rom_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
-			//else if(SUPERMMCen)		rom_DATA <= SUPERMMC[pADDRESSBUS[13:0]];
+			else if(SUPERMMCen)		rom_DATA <= SUPERMMC[pADDRESSBUS[13:0]];
 			else if(GAMEen)			rom_DATA <= Game[pADDRESSBUS[13:0]];
 
 /******************************************************************************/
@@ -243,6 +250,14 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 	.PS2_DATA(PS2_DATA),
 	.column_match(COLUMN_MATCH),
 	.row_match(PORTA[7]));
+	
+// Sound
+	Sound_Generator sound(
+	.clk(PIXELCLK),
+	.clk_en(PROC_en),
+	.nWE(LS259_reg[0]),
+	.DATA(PORTA),
+	.PWM(SOUND));
 
 
 // Extra (MOCK) Peripherals
@@ -261,9 +276,11 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 // TEST_ASSISTANCE
 `ifdef SIMULATION
 
-always @ ( posedge PHI_2 ) begin
-	if(pADDRESSBUS[15:0] == 16'hDC05)
+always @ ( posedge PROC_en ) begin
+	if(~LS259_reg[0]) begin
 		$display("%04H ; %t", pADDRESSBUS, $time);
+		$display("DATA: %H", PORTA);
+	end
 end
 
 `endif

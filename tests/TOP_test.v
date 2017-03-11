@@ -112,14 +112,10 @@ module TOP_test();
 		repeat (100) @(posedge CLK100MHZ);
 
 		CPU_RESETN <= 1;
-		repeat (72) @(posedge VGA_VS);
+		repeat (100) @(posedge VGA_VS);
+		PRESS_KEY(8'h29);
+
 		$stop;
-
-		// Send some keys
-		//MODE(4);
-		PRESS_KEY(8'h1B);
-
-		//$stop;
 		$finish;
 	end
 

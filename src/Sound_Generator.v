@@ -78,13 +78,13 @@ module Sound_Generator (
 				else				fcount3 <= fcount3 - 1;
 			`else
 				if(~|fcount1)	fcount1 <= frequncy_1;
-				else				fcount1 <= fcount1 - 1;
+				else			fcount1 <= fcount1 - 1;
 
 				if(~|fcount2)	fcount2 <= frequncy_2;
-				else				fcount2 <= fcount2 - 1;
+				else			fcount2 <= fcount2 - 1;
 
 				if(~|fcount3)	fcount3 <= frequncy_3;
-				else				fcount3 <= fcount3 - 1;
+				else			fcount3 <= fcount3 - 1;
 			`endif
 
 		end
