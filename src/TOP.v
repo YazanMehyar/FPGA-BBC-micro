@@ -13,13 +13,20 @@ module TOP(
 	output VGA_VS,
 	
 	input [15:0] SW,
+	output[15:0] LED,
+	
 	output AUD_SD,
-	output AUD_PWM
+	output AUD_PWM,
+	
+	input  SD_CD,			// Active low SD card detect
+	output [3:0] SD_DAT,
+	output SD_RESET,
+	output SD_SCK,
+	output SD_CMD
 	);
 
 	wire VCC   = 1'b1;
     wire [3:0] VCC_4 = 4'hF;
-    wire [3:0] FLOAT = 4'hz;
     wire GND   = 1'b0;
 
 /*****************************************************************************/
@@ -36,10 +43,13 @@ module TOP(
 /*****************************************************************************/
 
 	assign AUD_SD  = 1'b1;				 // audio enable
-	assign AUD_PWM = SW[2] & SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
+	assign AUD_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
+	assign SD_DAT[3]= 1'b0;	// Active low chip select (in SPI mode)
+	assign SD_RESET = 1'b0; // Active High Reset
+	assign LED[0] = ~SD_CD;
 
 /*****************************************************************************/
 	wire PIXELCLK;
@@ -71,18 +81,17 @@ module TOP(
 	reg [7:0] RAM [0:`KiB32];
 	reg [7:0] BBCBASIC2 [0:`KiB16];
 	reg [7:0] BBCOS12   [0:`KiB16];
-	reg [7:0] Game		[0:`KiB16];
-	reg [7:0] SUPERMMC	[0:`KiB16];
+	reg [7:0] DFS		[0:`KiB16];
 
 	`ifdef SIMULATION
-		`include "RAM_init.vh"
 		`include "TEST_BBCOS12.vh"
+		integer i;
+		initial for(i = 0; i <= `KiB32; i = i + 1) RAM[i] = 0;
 	`else
 		`include "BBCOS12.vh"
 	`endif
 
-	`include "SUPERMMC.vh"
-	`include "Game.vh"
+	`include "DFS.vh"
 	`include "BBCBASIC2.vh"
 
 	wire [15:0] pADDRESSBUS;
@@ -92,9 +101,8 @@ module TOP(
 	wire [7:0] pDATA; // processor
 
 	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
-	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
-	wire SUPERMMCen  = SW[1] & pADDRESSBUS[15] & ~pADDRESSBUS[14] & ROM_BANK[0] & ~ROM_BANK[1];
-	wire GAMEen		 = SW[0] & pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~ROM_BANK[0] & ROM_BANK[1];
+	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & &ROM_BANK;
+	wire DFSen  	 = ~SD_CD & pADDRESSBUS[15] & ~pADDRESSBUS[14] & ROM_BANK[0] & ~ROM_BANK[1];
 
 
 	reg [3:0] ROM_BANK;
@@ -123,8 +131,7 @@ module TOP(
 		if(RAM_en&~PHI_2)
 			if(OSBANKen) 			rom_DATA <= BBCOS12[pADDRESSBUS[13:0]];
 			else if(BASICBANKen)	rom_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
-			else if(SUPERMMCen)		rom_DATA <= SUPERMMC[pADDRESSBUS[13:0]];
-			else if(GAMEen)			rom_DATA <= Game[pADDRESSBUS[13:0]];
+			else if(DFSen)			rom_DATA <= DFS[pADDRESSBUS[13:0]];
 
 /******************************************************************************/
 //	Chip selects
@@ -215,9 +222,8 @@ wire SYNC;
 	
 wire usr_nIRQ;
 wire sys_nIRQ;
-assign nIRQ = sys_nIRQ;
+assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 
-wire PORTB = {VCC_4, LS259_D, LS259_A};
 // System VIA
 	MOS6522 sys_via(
 	.clk(PIXELCLK),
@@ -237,6 +243,24 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(sys_nIRQ));
 
+// User VIA
+	MOS6522 usr_via(
+	.clk(PIXELCLK),
+	.clk_en(PROC_en),
+	.nRESET(CPU_RESETN),
+	.CS1(VCC),
+	.nCS2(nUVIA),
+	.PHI_2(PHI_2),
+	.RnW(RnW),
+	.RS(pADDRESSBUS[3:0]),
+	.CA1(VCC),
+	.CA2(VCC),
+	.CB1(SD_SCK),
+	.CB2(SD_DAT[0]),
+	.DATA(pDATABUS),
+	.PORTA({VCC_4,VCC_4}),
+	.PORTB({VCC_4,VCC,VCC,SD_SCK,SD_CMD}),
+	.nIRQ(usr_nIRQ));
 
 // Keyboard
 	Keyboard keyboard(
@@ -275,13 +299,6 @@ wire PORTB = {VCC_4, LS259_D, LS259_A};
 /**************************************************************************************************/
 // TEST_ASSISTANCE
 `ifdef SIMULATION
-
-always @ ( posedge PROC_en ) begin
-	if(~LS259_reg[0]) begin
-		$display("%04H ; %t", pADDRESSBUS, $time);
-		$display("DATA: %H", PORTA);
-	end
-end
 
 `endif
 

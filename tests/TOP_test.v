@@ -21,7 +21,6 @@ module TOP_test();
 	// input
 	reg CPU_RESETN;
 	reg PS2_DATA;
-	wire SD_DAT = 1'b0;
 
 	// output
 	wire [3:0] VGA_R;
@@ -39,7 +38,8 @@ module TOP_test();
 		.VGA_G(VGA_G),
 		.VGA_B(VGA_B),
 		.VGA_HS(VGA_HS),
-		.VGA_VS(VGA_VS));
+		.VGA_VS(VGA_VS),
+		.SD_CD(1'b0));
 
 /******************************************************************************/
 

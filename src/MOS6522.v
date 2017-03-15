@@ -174,11 +174,19 @@ module MOS6522 (
 			end
 	end
 	
+	reg CAPTURE;
 	always @ (posedge clk) begin
-		if(~nRESET)	SHIFT <= 0;
-		else if(clk_en)
+		if(~nRESET) begin
+			SHIFT	<= 0;
+			CAPTURE <= 0;
+		end else if(clk_en)
 			if(CS && RS==4'hA)	SHIFT <= DATA;
-			else if(CB1INT)		SHIFT <= {SHIFT[6:0],CB2};
+			else if(CAPTURE) begin
+				if(CB1INT) begin
+					SHIFT <= {SHIFT[6:0],CB2};
+					CAPTURE <= 0;
+				end
+			end else if(~CB1INT) CAPTURE <= 1;
 	end
 
 /****************************************************************************************/
