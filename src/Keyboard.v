@@ -72,7 +72,7 @@ module Keyboard (
 			8'h3B: BBC_CODE = 7'h45; // j
 			8'h42: BBC_CODE = 7'h46; // k
 			8'h4B: BBC_CODE = 7'h56; // l
-			8'h4C: BBC_CODE = 7'h67; // ; / : to ; / +
+			8'h4C: BBC_CODE = 7'h57; // ; / : to ; / +
 			8'h52: BBC_CODE = 7'h28; // ' / " to _ / <pound>
 			8'h0E: BBC_CODE = 7'h18; // ` / ~ to ^ / ~
 			8'h12: BBC_CODE = 7'h00; // LEFT SHIFT
