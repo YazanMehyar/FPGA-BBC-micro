@@ -2,7 +2,11 @@
 
 module TOP_test();
 
-	//initial $dumpvars(3, TOP_test);
+	event START_LOG;
+	initial begin
+		@(START_LOG);
+		$dumpvars(3, TOP_test);
+	end
 
 	reg CLK100MHZ = 0;
 	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
@@ -59,7 +63,7 @@ module TOP_test();
 			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
 			PS2_DATA <= ^DATA;
 
-			@(posedge PS2_CLK);repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
 			PS2_DATA <= 1'b1;
 			@(posedge PS2_CLK);
 		end
@@ -70,13 +74,13 @@ module TOP_test();
 		begin
 			@(posedge PS2_CLK);
 				PS2_SEND(KEY);
-				//$display("PRINTING %H", KEY);
-			@(posedge VGA_VS);
+				$display("PRINTING %H", KEY);
+			repeat (4) @(posedge VGA_VS);
 
 			@(posedge PS2_CLK);
 				PS2_SEND(8'hF0);
 				PS2_SEND(KEY);
-			repeat (2)	@(posedge VGA_VS);
+			@(posedge VGA_VS);
 		end
 	endtask
 
@@ -112,8 +116,21 @@ module TOP_test();
 		repeat (100) @(posedge CLK100MHZ);
 
 		CPU_RESETN <= 1;
-		repeat (100) @(posedge VGA_VS);
-		PRESS_KEY(8'h29);
+		repeat (10) @(posedge VGA_VS);
+		@(posedge PS2_CLK);
+			PS2_SEND(8'h12);
+			PRESS_KEY(8'h55);
+		@(posedge PS2_CLK);
+			PS2_SEND(8'hF0);
+			PS2_SEND(8'h12);
+		@(posedge VGA_VS);
+		PRESS_KEY(8'h23);
+		PRESS_KEY(8'h21);
+		PRESS_KEY(8'h1C);
+		PRESS_KEY(8'h2C);
+		-> START_LOG;
+		PRESS_KEY(8'h5A);
+		repeat (3) @(posedge VGA_VS);
 
 		$stop;
 		$finish;

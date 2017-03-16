@@ -48,7 +48,9 @@ module TOP(
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
 	assign SD_DAT[3]= 1'b0;	// Active low chip select (in SPI mode)
+	assign SD_DAT[0]= 1'b1;
 	assign SD_RESET = 1'b0; // Active High Reset
+	
 	assign LED[0] = ~SD_CD;
 
 /*****************************************************************************/
@@ -101,8 +103,8 @@ module TOP(
 	wire [7:0] pDATA; // processor
 
 	wire OSBANKen 	 = &pADDRESSBUS[15:14] & ~SHEILA;
-	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & &ROM_BANK;
-	wire DFSen  	 = ~SD_CD & pADDRESSBUS[15] & ~pADDRESSBUS[14] & ROM_BANK[0] & ~ROM_BANK[1];
+	wire BASICBANKen = pADDRESSBUS[15] & ~pADDRESSBUS[14] & ~|ROM_BANK;
+	wire DFSen  	 = pADDRESSBUS[15] & ~pADDRESSBUS[14] & (ROM_BANK == 4'h1);
 
 
 	reg [3:0] ROM_BANK;
@@ -228,6 +230,7 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 	MOS6522 sys_via(
 	.clk(PIXELCLK),
 	.clk_en(PROC_en),
+	.clk_hen(hPROC_en),
 	.nRESET(CPU_RESETN),
 	.CS1(VCC),
 	.nCS2(nVIA),
@@ -247,6 +250,7 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 	MOS6522 usr_via(
 	.clk(PIXELCLK),
 	.clk_en(PROC_en),
+	.clk_hen(hPROC_en),
 	.nRESET(CPU_RESETN),
 	.CS1(VCC),
 	.nCS2(nUVIA),
@@ -299,7 +303,14 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 /**************************************************************************************************/
 // TEST_ASSISTANCE
 `ifdef SIMULATION
-
+	reg CATCH = 0;
+	always @ (posedge PHI_2) begin
+		if(~nUVIA) begin
+			$display("User via access @ %012t", $time);
+			$display("\tRegister: %d", pADDRESSBUS[3:0]);
+			#1 $display("\tValue is: %02H - %s", pDATABUS, RnW? "READ":"WRITE");
+		end
+	end
 `endif
 
 endmodule

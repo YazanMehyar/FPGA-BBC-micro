@@ -4,14 +4,11 @@
 	which connected to these parts were dropped.
 
 	The following features were left out:
-	- Interrupt controls CB1, CB2
-	- Shift register
+	- Shift register (Some functionality implemented)
 	- Handshake mode
 	- Pulse mode
 	- Data latching mode
-	- Timer 1 PB7 output
 	- T2 Timer
-	- Independent interrupt mode
 	- CA2 output modes
 */
 
@@ -20,6 +17,7 @@
 module MOS6522 (
 	input clk,
 	input clk_en,
+	input clk_hen,
 	input CS1,
 	input nCS2,
 	input nRESET,
@@ -28,7 +26,7 @@ module MOS6522 (
 	input [3:0] RS,
 	input CA1,
 	input CA2,
-	input CB1,
+	inout CB1,
 	input CB2,
 
 	inout [7:0] DATA,
@@ -42,13 +40,15 @@ module MOS6522 (
 	reg [7:0] SHIFT;
 	reg [7:0] ACR, PCR;
 	reg [15:0] T1COUNTER, T1REG;
+	reg [7:0]  T2REG;
+	reg [15:0] T2COUNTER;
 	reg [6:0] IFR, IER;
 
 	wire CS = CS1&~nCS2;
 
 /****************************************************************************************/
 
-	// DATA
+	// DATA OUT
 	reg [7:0] DATA_OUT;
 	assign DATA = (PHI_2&CS&RnW&nRESET)? DATA_OUT : 8'hzz;
 
@@ -70,6 +70,9 @@ module MOS6522 (
 			4'h4: DATA_OUT = T1COUNTER[7:0];
 			4'h5: DATA_OUT = T1COUNTER[15:8];
 			4'h6: DATA_OUT = T1REG[7:0];
+			4'h7: DATA_OUT = T1REG[15:8];
+			4'h8: DATA_OUT = T2COUNTER[7:0];
+			4'h9: DATA_OUT = T2COUNTER[15:8];
 			4'hA: DATA_OUT = SHIFT;
 			4'hB: DATA_OUT = ACR;
 			4'hC: DATA_OUT = PCR;
@@ -84,10 +87,9 @@ module MOS6522 (
 	// Most Internal Registers
 	always @ (posedge clk) begin
 		if(~nRESET) begin
-			ACR <= 0; PCR <= 0;
+			ACR  <= 0;  PCR <= 0;
 			DDRA <= 0; DDRB <= 0;
-			OUTB <= 0; OUTA <= 0;
-			IER <= 0;
+			IER  <= 0;
 		end else if(clk_en)
 			if(CS & ~RnW) case (RS)
 				4'h0: OUTB <= DATA;
@@ -98,6 +100,7 @@ module MOS6522 (
 				4'h4,
 				4'h6: T1REG[7:0] <= DATA;
 				4'h7: T1REG[15:8]<= DATA;
+				4'h8: T2REG<= DATA;
 				4'hB: ACR  <= DATA;
 				4'hC: PCR  <= DATA;
 				4'hE: IER  <= DATA[7]? DATA[6:0] | IER : ~DATA[6:0] & IER;
@@ -154,61 +157,107 @@ module MOS6522 (
 		else if(~CB2INT|INT_ACK)	CB2INT <= PCR[6]? POSEDGE_CB2 : NEGEDGE_CB2;
 
 /****************************************************************************************/
+// Flag register
+
+	wire INDEPENDANT_CB2 = ~PCR[7] & PCR[5];
+	wire INDEPENDANT_CA2 = ~PCR[3] & PCR[1];
 
 	always @ (posedge clk) begin
 		if(~nRESET)	begin
 			IFR <= 0;
 		end else if(clk_en)
 			if(CS) case (RS) // Write
-					4'h0:	   IFR[4:3] <= 2'b00;
-					4'h1,4'hF: IFR[1:0] <= 2'b00;
+					4'h0:	   IFR[4:3] <= {1'b0, INDEPENDANT_CB2? IFR[3] : 1'b0};
+					4'h1,4'hF: IFR[1:0] <= {1'b0, INDEPENDANT_CA2? IFR[0] : 1'b0};
 					4'h4:	   if(RnW) IFR[6] <= 1'b0;
 					4'h5:      if(~RnW)IFR[6] <= 1'b0;
 					4'hD:      if(~RnW)IFR    <= ~DATA[6:0] & IFR;
 			endcase else begin
 				IFR[0] <= CA2INT | IFR[0];
 				IFR[1] <= CA1INT | IFR[1];
+				IFR[2] <= SHIFTER_IRQ | IFR[2];
 				IFR[3] <= CB2INT | IFR[3];
 				IFR[4] <= CB1INT | IFR[4];
-				IFR[6] <= T1INT & ~|T1COUNTER  | IFR[6];
+				IFR[6] <= ~|T1COUNTER | IFR[6];
 			end
 	end
 	
-	reg CAPTURE;
-	always @ (posedge clk) begin
-		if(~nRESET) begin
-			SHIFT	<= 0;
-			CAPTURE <= 0;
-		end else if(clk_en)
-			if(CS && RS==4'hA)	SHIFT <= DATA;
-			else if(CAPTURE) begin
-				if(CB1INT) begin
-					SHIFT <= {SHIFT[6:0],CB2};
-					CAPTURE <= 0;
-				end
-			end else if(~CB1INT) CAPTURE <= 1;
-	end
-
 /****************************************************************************************/
+// Shift register
 
-	reg T1INT, T1IRQ;
-	always @ (posedge clk) begin
-		if(~nRESET) begin
-			T1INT    <= 0;
-			T1COUNTER<= 0;
-			T1IRQ    <= 0;
-		end else if(clk_en)
-			if(CS && RS==4'h5 && ~RnW) begin
-				T1COUNTER<= {DATA,T1REG[7:0]};
-				T1INT    <= 1;
-				T1IRQ    <= 0;
-			end else begin
-				T1IRQ <= T1INT & ~|T1COUNTER;
+	assign CB1 = SHIFT_MODE2? CB1_CLK : 1'bz;
 
-				if(~|T1COUNTER) T1COUNTER <= T1REG;
-				else if(~T1IRQ)	T1COUNTER <= T1COUNTER + 16'hFFFF;
+	wire SHIFT_ACCES = CS && RS == 4'hA;
+	wire SHIFT_MODE0 = ACR[4:2] == 3'b000;
+	wire SHIFT_MODE2 = ACR[4:2] == 3'b010;
+	
+	reg [2:0] SHIFT_COUNT;
+	reg CB1_CLK;
+	reg SHIFT_COUNTING;
+	reg SHIFTER_IRQ;
+	reg CB1_POSEDGE;
+	
+	always @ (posedge clk)
+		if(~nRESET) SHIFTER_IRQ <= 0;
+		else if(clk_en) SHIFTER_IRQ <= ~|SHIFT_COUNT & SHIFT_COUNTING;
+	
+	always @ (posedge clk)
+		if(~nRESET)
+			CB1_POSEDGE <= 0;
+		else if(~CB1_POSEDGE|clk_hen)
+			CB1_POSEDGE <= POSEDGE_CB1;
+	
+	always @ (posedge clk)
+		if(clk_en)
+			if(SHIFT_ACCES) begin
+				SHIFT_COUNT <= 3'h7;
+				CB1_CLK		<= 1;
+				SHIFT		<= DATA;
+				SHIFT_COUNTING <= 1;
 			end
-	end
+		else if(clk_hen) begin
+			if(~CB1_CLK | SHIFT_COUNTING)
+				CB1_CLK <= ~CB1_CLK;
+			
+			SHIFT_COUNTING <= |SHIFT_COUNT;
+			
+			if(~CB1_CLK & |SHIFT_COUNT)
+				SHIFT_COUNT <= SHIFT_COUNT + 3'h7;
+				
+			if(SHIFT_MODE0)
+				SHIFT <= CB1_POSEDGE? {SHIFT[6:0],CB2} : SHIFT;
+			else if(SHIFT_MODE2)
+				SHIFT <= ~CB1_CLK?    {SHIFT[6:0],CB2} : SHIFT;
+				
+		end
+	
+/****************************************************************************************/
+// T1COUNTER
+
+	wire T1_WRITE = CS && RS == 4'h5 && ~RnW;
+	always @ (posedge clk)
+		if(clk_en)
+			if(T1_WRITE)
+				T1COUNTER <= {DATA,T1REG[7:0]};
+			else if(~|T1COUNTER)
+				T1COUNTER <= T1REG;
+			else if(clk_hen)
+				T1COUNTER <= T1COUNTER + 16'hFFFF;
+				
+				
+	reg PB7;
+	always @ (posedge clk)
+		if(clk_en)
+			if(ACR[6]) begin
+				if(~T1COUNTER) PB7 <= ~PB7;
+			end else begin
+				if(PB7)	PB7 <= ~T1_WRITE;
+				else	PB7 <= ~|T1COUNTER;
+			end
+			
+/****************************************************************************************/
+// T2COUNTER
+
 
 /****************************************************************************************/
 
@@ -219,7 +268,7 @@ module MOS6522 (
 					DDRA[1]? OUTA[1]: 1'bz, DDRA[0]? OUTA[0]: 1'bz} : 8'hzz;
 
 	assign PORTB = nRESET?
-					{DDRB[7]? OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
+					{DDRB[7]? ACR[7]? PB7:OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
 					DDRB[5]? OUTB[5]:1'bz, DDRB[4]? OUTB[4]:1'bz,
 					DDRB[3]? OUTB[3]:1'bz, DDRB[2]? OUTB[2]:1'bz,
 					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;
