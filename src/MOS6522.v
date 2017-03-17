@@ -157,7 +157,7 @@ module MOS6522 (
 			endcase else begin
 				IFR[0] <= CA2INT | IFR[0];
 				IFR[1] <= CA1INT | IFR[1];
-				//IFR[2] <= SR_INT | IFR[2];
+				IFR[2] <= SR_INT | IFR[2];
 				IFR[3] <= CB2INT | IFR[3];
 				IFR[4] <= CB1INT | IFR[4];
 				IFR[5] <= T2_INT | IFR[5];
@@ -197,8 +197,43 @@ module MOS6522 (
 /****************************************************************************************/
 // SHIFTER
 
+	wire SR_INT   = |ACR[3:2] & SR_ACTIVE & ~|SR_COUNT;
+	wire SR_IN    = ACR[4]? SR[7] : CB2;
+	wire SR_SHIFT = ACR[4]? NEGEDGE_CB1 : POSEDGE_CB1;
+	wire SR_ACCESS= CS && (RS==4'hA);
+	
+	reg SR_ACTIVE;
+	always @ (posedge clk)
+		if(clk_en)
+			if(~SR_ACTIVE) SR_ACTIVE <= SR_ACCESS;
+			else		   SR_ACTIVE <= |SR_COUNT;
 	
 	
+	reg CB1_TRIGGER;
+	always @ (*) casex(ACR[4:2])
+		3'b001: CB1_TRIGGER = ~|T2COUNTER[7:0];
+		3'b10x: CB1_TRIGGER = ~|T2COUNTER[7:0];
+		3'bx10: CB1_TRIGGER = clk_en;
+		default:CB1_TRIGGER = 1'bx;
+	endcase
+	
+	always @ (posedge clk)
+		if(clk_en)
+			if(SR_ACCESS)
+				CB1_out <= 1'b1;
+			else if(CB1_TRIGGER) 
+				CB1_out <= ~CB1_out;
+	
+	reg [2:0] SR_COUNT;
+	always @ (posedge clk)
+		if(clk_en)
+			if(SR_ACCESS) begin
+				SR <= DATA;
+				SR_COUNT <= 3'h7;
+			end else if(SR_SHIFT) begin
+				SR <= {SR[6:0],SR_IN};
+				SR_COUNT <= SR_COUNT + 3'h7;
+			end
 /****************************************************************************************/
 // T1COUNTER
 

@@ -13,7 +13,7 @@ VI=vvp
 VIFLAGS=-s -M $(VPI) $(VPIm)
 
 R_OBJ=$(addprefix $(BIN), $(shell ls $(BIN) | grep '.*\.vvp$$'))
-R_DMP=$(addprefix $(SIMDMP), $(shell ls $(SIMDMP) | grep '.*\.vcd$$'))
+R_DMP=$(addprefix $(SIMDMP), $(shell ls $(SIMDMP) | grep '.*\.lxt$$'))
 SRCF=$(addprefix $(SRC), $(shell ls $(SRC) | grep '.*\.v$$'))
 
 bn=$(addsuffix $(2),$(basename $(1)))
@@ -27,9 +27,8 @@ bn=$(addsuffix $(2),$(basename $(1)))
 	$(TEST)$(call bn,$@,.v) $(SRCF)
 
 %.sim: $(BIN)%.vvp
-	$(VI) $(VIFLAGS) $< \
-	test -e dump.vcd && mv dump.vcd $(SIMDMP)$(call bn,$@,.vcd)
-#	&& gtkwave -O /dev/null $(SIMDMP)$(call bn,$@,.vcd) &
+	$(VI) $(VIFLAGS) $< -lxt\
+	test -e dump.lxt && mv dump.lxt $(SIMDMP)$(call bn,$@,.lxt)
 
 $(BIN)%.vvp: $(TEST)%.v $(SRCF)
 	$(VC) $(VCFLAGS) -s $(call bn,$(notdir $@),) -o $@ \

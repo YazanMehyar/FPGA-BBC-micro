@@ -19,9 +19,9 @@ module TOP(
 	output AUD_PWM,
 	
 	input  SD_CD,			// Active low SD card detect
-	output [3:0] SD_DAT,
+	inout [3:0] SD_DAT,
 	output SD_RESET,
-	output SD_SCK,
+	inout  SD_SCK,
 	output SD_CMD
 	);
 
@@ -47,12 +47,12 @@ module TOP(
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
-	assign SD_DAT[3]= 1'b0;	// Active low chip select (in SPI mode)
-	assign SD_DAT[0]= 1'b1;
-	assign SD_RESET = 1'b0; // Active High Reset
+	assign SD_DAT[3:1] = 3'b000;		// Active low chip select (in SPI mode)
+	assign SD_DAT[0]= 1'bz;
+	assign SD_RESET = 1'b0; 			// Active High Reset
 	
 	assign LED[0] = ~SD_CD;
-	assign LED[15]= SD_DAT[3];
+	assign LED[15]= SD_DAT[0];
 
 /*****************************************************************************/
 	wire PIXELCLK;

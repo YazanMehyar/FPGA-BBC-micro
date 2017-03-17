@@ -5,6 +5,7 @@ module TOP_test();
 	event START_LOG;
 	initial begin
 		@(START_LOG);
+		$dumpfile("dump.lxt");
 		$dumpvars(3, TOP_test);
 	end
 
@@ -32,6 +33,7 @@ module TOP_test();
 	wire [3:0] VGA_B;
 	wire VGA_HS;
 	wire VGA_VS;
+	wire [3:0] SD_DAT = 4'bzzz0;
 
 	TOP top(
 		.CLK100MHZ(CLK100MHZ),
@@ -43,7 +45,8 @@ module TOP_test();
 		.VGA_B(VGA_B),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS),
-		.SD_CD(1'b0));
+		.SD_CD(1'b0),
+		.SD_DAT(SD_DAT));
 
 /******************************************************************************/
 
@@ -110,11 +113,10 @@ module TOP_test();
 
 	initial begin
 		$start_screen;
-
+		-> START_LOG;
 		CPU_RESETN <= 0;
 		PS2_DATA <= 1;
 		repeat (100) @(posedge CLK100MHZ);
-
 		CPU_RESETN <= 1;
 		repeat (8) @(posedge VGA_VS);
 		@(posedge PS2_CLK);
@@ -128,7 +130,6 @@ module TOP_test();
 		PRESS_KEY(8'h21);
 		PRESS_KEY(8'h1C);
 		PRESS_KEY(8'h2C);
-		-> START_LOG;
 		PRESS_KEY(8'h5A);
 		repeat (3) @(posedge VGA_VS);
 
