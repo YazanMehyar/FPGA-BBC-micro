@@ -52,6 +52,7 @@ module TOP(
 	assign SD_RESET = 1'b0; // Active High Reset
 	
 	assign LED[0] = ~SD_CD;
+	assign LED[15]= SD_DAT[3];
 
 /*****************************************************************************/
 	wire PIXELCLK;
@@ -142,13 +143,13 @@ module TOP(
 
 	wire nCRTC = ~(SHEILA & ~|pADDRESSBUS[7:3]);
 	wire nACIA = ~(SHEILA & ~|pADDRESSBUS[7:4] & pADDRESSBUS[3]);
-	wire nADLC = ~(SHEILA & ~|pADDRESSBUS[7:5] & &pADDRESSBUS[4:3]);
 	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
 	wire nROMSEL  = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & pADDRESSBUS[4] & ~RnW);
 
 	wire nVIA = ~(SHEILA & ~pADDRESSBUS[7] & pADDRESSBUS[6] & ~pADDRESSBUS[5]);
 	wire nUVIA= ~(SHEILA & ~pADDRESSBUS[7] & &pADDRESSBUS[6:5]);
 	wire nFDC = ~(SHEILA & pADDRESSBUS[7] & ~|pADDRESSBUS[6:5]);
+	wire nADLC= ~(SHEILA & pADDRESSBUS[7] & ~pADDRESSBUS[6] & pADDRESSBUS[5]);
 	wire nADC = ~(SHEILA & &pADDRESSBUS[7:6] & ~pADDRESSBUS[5]);
 	wire nTUBE= ~(SHEILA & &pADDRESSBUS[7:5]);
 
@@ -182,11 +183,13 @@ module TOP(
 	assign vADDRESSBUS = {caa,FRAMESTORE_ADR[7:0],ROW_ADDRESS[2:0]};
 
 /******************************************************************************/
+	wire SLOW_PROC = ~&{nVIA,nUVIA,nADC,nACIA};
+
 wire SYNC;
 // Processor
 	MOS6502 pocessor(
 	.clk(PIXELCLK),
-	.clk_en(PROC_en),
+	.clk_en(SLOW_PROC? hPROC_en : PROC_en),
 	.PHI_2(PHI_2),
 	.nRESET(CPU_RESETN),
 	.SYNC(SYNC),
@@ -229,8 +232,7 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 // System VIA
 	MOS6522 sys_via(
 	.clk(PIXELCLK),
-	.clk_en(PROC_en),
-	.clk_hen(hPROC_en),
+	.clk_en(hPROC_en),
 	.nRESET(CPU_RESETN),
 	.CS1(VCC),
 	.nCS2(nVIA),
@@ -246,11 +248,12 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(sys_nIRQ));
 
+wire [7:0] HiZ_8 = 8'hzz;
+wire HiZ_1 = 1'bz;
 // User VIA
 	MOS6522 usr_via(
 	.clk(PIXELCLK),
-	.clk_en(PROC_en),
-	.clk_hen(hPROC_en),
+	.clk_en(hPROC_en),
 	.nRESET(CPU_RESETN),
 	.CS1(VCC),
 	.nCS2(nUVIA),
@@ -258,11 +261,11 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 	.RnW(RnW),
 	.RS(pADDRESSBUS[3:0]),
 	.CA1(VCC),
-	.CA2(VCC),
+	.CA2(HiZ_1),
 	.CB1(SD_SCK),
 	.CB2(SD_DAT[0]),
 	.DATA(pDATABUS),
-	.PORTA({VCC_4,VCC_4}),
+	.PORTA(HiZ_8),
 	.PORTB({VCC_4,VCC,VCC,SD_SCK,SD_CMD}),
 	.nIRQ(usr_nIRQ));
 

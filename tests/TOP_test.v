@@ -116,7 +116,7 @@ module TOP_test();
 		repeat (100) @(posedge CLK100MHZ);
 
 		CPU_RESETN <= 1;
-		repeat (10) @(posedge VGA_VS);
+		repeat (8) @(posedge VGA_VS);
 		@(posedge PS2_CLK);
 			PS2_SEND(8'h12);
 			PRESS_KEY(8'h55);
