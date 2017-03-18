@@ -114,8 +114,8 @@ module MOS6522 (
 
 /****************************************************************************************/
 
-	assign CB1 = ~&ACR[3:2]&|ACR[4:2]?	CB1_out : 1'bz;
-	assign CB2 = PCR[7]|ACR[4]?			CB2_out : 1'bz;
+	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]?	CB1_out : 1'bz;
+	assign CB2 = nRESET&PCR[7]|ACR[4]?			CB2_out : 1'bz;
 
 	wire INT_ACK = clk_en & ~CS;
 
@@ -200,7 +200,7 @@ module MOS6522 (
 	Edge_Trigger #(1) CB1_POSSR(.clk(clk),.IN(CB1),.En(clk_en),.EDGE(POSSR_CB1));
 
 	wire SR_IN    = ACR[4]? SR[7] : CB2;
-	wire SR_SHIFT = SR_ACTIVE & (ACR[4]? POSSR_CB1 : NEGSR_CB1);
+	wire SR_SHIFT = (SR_ACTIVE|~|ACR[3:2]) & (ACR[4]? POSSR_CB1 : NEGSR_CB1);
 	wire SR_ACCESS= CS && (RS==4'hA);
 
 	reg SR_ACTIVE;
@@ -208,7 +208,7 @@ module MOS6522 (
 		if(~nRESET)
 			SR_ACTIVE <= 0;
 		else if(clk_en)
-			if(~SR_ACTIVE) SR_ACTIVE <= SR_ACCESS;
+			if(~SR_ACTIVE) SR_ACTIVE <= SR_ACCESS&|ACR[3:2];
 			else		   SR_ACTIVE <= |SR_COUNT;
 
 

@@ -35,7 +35,7 @@ module TOP_test();
 	wire VGA_VS;
 	wire [3:0] SD_DAT = {4'bzzz,SD_MISO};
 	wire inSCK;
-	wire SD_SCK = inSCK? PS2_CLK : 1'bz;
+	wire SD_SCK = inSCK? 1'b1 : 1'bz;
 
 	reg SD_MISO = 0;
 	always @ (posedge SD_SCK) begin
