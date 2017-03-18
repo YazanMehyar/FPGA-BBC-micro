@@ -11,13 +11,17 @@ module TOP(
 	output [3:0] VGA_B,
 	output VGA_HS,
 	output VGA_VS,
-	
+
 	input [15:0] SW,
 	output[15:0] LED,
-	
+
 	output AUD_SD,
 	output AUD_PWM,
-	
+
+	`ifdef SIMULATION
+		output inSCK,
+	`endif
+
 	input  SD_CD,			// Active low SD card detect
 	inout [3:0] SD_DAT,
 	output SD_RESET,
@@ -50,7 +54,7 @@ module TOP(
 	assign SD_DAT[3:1] = 3'b000;		// Active low chip select (in SPI mode)
 	assign SD_DAT[0]= 1'bz;
 	assign SD_RESET = 1'b0; 			// Active High Reset
-	
+
 	assign LED[0] = ~SD_CD;
 	assign LED[15]= SD_DAT[0];
 
@@ -88,6 +92,7 @@ module TOP(
 
 	`ifdef SIMULATION
 		`include "TEST_BBCOS12.vh"
+		wire inSCK;
 		integer i;
 		initial for(i = 0; i <= `KiB32; i = i + 1) RAM[i] = 0;
 	`else
@@ -224,7 +229,7 @@ wire SYNC;
 	.BLUE(BLUE),
 	.FRAMESTORE_ADR(FRAMESTORE_ADR),
 	.ROW_ADDRESS(ROW_ADDRESS));
-	
+
 wire usr_nIRQ;
 wire sys_nIRQ;
 assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
@@ -248,8 +253,6 @@ assign nIRQ = sys_nIRQ&(usr_nIRQ|SD_CD);
 	.PORTB({VCC_4,LS259_D,LS259_A}),
 	.nIRQ(sys_nIRQ));
 
-wire [7:0] HiZ_8 = 8'hzz;
-wire HiZ_1 = 1'bz;
 // User VIA
 	MOS6522 usr_via(
 	.clk(PIXELCLK),
@@ -261,11 +264,13 @@ wire HiZ_1 = 1'bz;
 	.RnW(RnW),
 	.RS(pADDRESSBUS[3:0]),
 	.CA1(VCC),
-	.CA2(HiZ_1),
+	.CA2(VCC),
 	.CB1(SD_SCK),
 	.CB2(SD_DAT[0]),
 	.DATA(pDATABUS),
-	.PORTA(HiZ_8),
+	`ifdef SIMULATION
+		.inSCK(inSCK),
+	`endif
 	.PORTB({VCC_4,VCC,VCC,SD_SCK,SD_CMD}),
 	.nIRQ(usr_nIRQ));
 
@@ -281,7 +286,7 @@ wire HiZ_1 = 1'bz;
 	.PS2_DATA(PS2_DATA),
 	.column_match(COLUMN_MATCH),
 	.row_match(PORTA[7]));
-	
+
 // Sound
 	Sound_Generator sound(
 	.clk(PIXELCLK),
@@ -306,14 +311,11 @@ wire HiZ_1 = 1'bz;
 /**************************************************************************************************/
 // TEST_ASSISTANCE
 `ifdef SIMULATION
-	reg CATCH = 0;
-	always @ (posedge PHI_2) begin
-		if(~nUVIA) begin
+	always @ (posedge PHI_2)
+		if(~nUVIA && pADDRESSBUS[3:0] == 4'hA) begin
 			$display("User via access @ %012t", $time);
-			$display("\tRegister: %d", pADDRESSBUS[3:0]);
 			#1 $display("\tValue is: %02H - %s", pDATABUS, RnW? "READ":"WRITE");
 		end
-	end
 `endif
 
 endmodule

@@ -27,7 +27,8 @@ bn=$(addsuffix $(2),$(basename $(1)))
 	$(TEST)$(call bn,$@,.v) $(SRCF)
 
 %.sim: $(BIN)%.vvp
-	$(VI) $(VIFLAGS) $< -lxt\
+	IVERILOG_DUMPER=lxt2 \
+	$(VI) $(VIFLAGS) $< \
 	test -e dump.lxt && mv dump.lxt $(SIMDMP)$(call bn,$@,.lxt)
 
 $(BIN)%.vvp: $(TEST)%.v $(SRCF)
