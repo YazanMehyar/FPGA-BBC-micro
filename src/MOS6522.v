@@ -25,10 +25,6 @@ module MOS6522 (
 	inout [7:0] PORTA,
 	inout [7:0] PORTB,
 
-	`ifdef SIMULATION
-		output inSCK,
-	`endif
-
 	output nIRQ);
 
 	reg [7:0] OUTA, DDRA;
@@ -40,7 +36,6 @@ module MOS6522 (
 	reg [6:0] IFR, IER;
 
 	`ifdef SIMULATION
-		assign inSCK = (&ACR[3:2] | ~|ACR[4:2]) & ~DDRB[1];
 		initial begin
 			T1COUNTER = 0;
 			T2COUNTER = 0;
@@ -141,8 +136,133 @@ module MOS6522 (
 	wire CA2INT = PCR[2]? POSEDGE_CA2 : NEGEDGE_CA2;
 	wire CB1INT = PCR[4]? POSEDGE_CB1 : NEGEDGE_CB1;
 	wire CB2INT = PCR[6]? POSEDGE_CB2 : NEGEDGE_CB2;
+
+/****************************************************************************************/
+// HANDSHAKE & PULSE MODES
+
+	reg CB1_out;
+	reg CB2_out;
+
+	wire ORB_WRITE = ~|RS & ~RnW & CS;
+
+	always @ (posedge clk) begin
+		if(ACR[4])
+			CB2_out <= SR[7];
+		else if(PCR[6])
+			CB2_out <= PCR[5];
+		else if(CB2_out)
+			CB2_out <= ~ORB_WRITE;
+		else
+			CB2_out <= PCR[5]? clk_en : CB1INT;
+	end
+
+	wire CB1_TRIGGER = CB1_TRIGGER_FACTOR & SR_ACTIVE & ~SR_INT;
+	
+	reg CB1_TRIGGER_FACTOR;
+	always @ (*) casex(ACR[4:2])
+		3'b001: CB1_TRIGGER_FACTOR = ~|T2COUNTER[7:0];
+		3'b10x: CB1_TRIGGER_FACTOR = ~|T2COUNTER[7:0];
+		3'bx10: CB1_TRIGGER_FACTOR = clk_en;
+		default:CB1_TRIGGER_FACTOR = 1'b0;
+	endcase
+
+	always @ (posedge clk)
+		if(~nRESET)
+			CB1_out <= 1;
+		else if(CB1_TRIGGER & clk_en)
+			CB1_out <= ~CB1_out;
+				
+/****************************************************************************************/
+// SHIFTER
+
+	wire POSSR_CB1, NEGSR_CB1;
+	Edge_Trigger #(0) CB1_NEGSR(.clk(clk),.IN(CB1),.En(1'b1),.EDGE(NEGSR_CB1));
+	Edge_Trigger #(1) CB1_POSSR(.clk(clk),.IN(CB1),.En(1'b1),.EDGE(POSSR_CB1));
+	wire SR_EDGE   = ACR[4]? NEGSR_CB1 : POSSR_CB1;
+	
+	wire SR_ENABLE = |ACR[3:2];
+	wire SR_IN     = ACR[4]? SR[7] : CB2;
+	wire SR_ACCESS = CS && (RS==4'hA);
+
+	reg SR_ACTIVE;
+	always @ (posedge clk)
+		if(~nRESET)
+			SR_ACTIVE <= 0;
+		else if(clk_en)
+			if(~SR_ACTIVE) SR_ACTIVE <= SR_ACCESS & SR_ENABLE;
+			else		   SR_ACTIVE <= |SR_COUNT;
+
+	wire SR_INT_TRIGGER = SR_ENABLE & SR_ACTIVE & ~|SR_COUNT;
+	wire SR_SHIFT		= (SR_ACTIVE|~SR_ENABLE) & SR_EDGE;
+	reg [3:0] SR_COUNT;
+	always @ (posedge clk)
+		if(SR_ACCESS & clk_en) begin
+			SR <= DATA;
+			SR_COUNT <= 4'h8;
+		end else if(SR_SHIFT) begin
+			SR <= {SR[6:0],SR_IN};
+			SR_COUNT <= SR_COUNT + 4'hF;
+		end
+
+/****************************************************************************************/
+// T1COUNTER
+
+	wire T1_INT_TRIGGER = ACR[6]?~|T1COUNTER:~|{PB7,T1COUNTER};
+	wire T1_WRITE = CS && RS == 4'h5 && ~RnW;
+	
+	always @ (posedge clk)
+		if(clk_en)
+			if(T1_WRITE)
+				T1COUNTER <= {DATA,T1REG[7:0]};
+			else if(~|T1COUNTER)
+				T1COUNTER <= T1REG;
+			else if(clk_en)
+				T1COUNTER <= T1COUNTER + 16'hFFFF;
+
+
+	reg PB7;
+	always @ (posedge clk)
+		if(clk_en)
+			if(ACR[6])		PB7 <= ~|T1COUNTER? ~PB7 : PB7;
+			else if(PB7)	PB7 <= ~T1_WRITE;
+			else			PB7 <= ~|T1COUNTER;
+
+	
+/****************************************************************************************/
+// T2COUNTER
+
+	wire PB6_NEGEDGE;
+	wire T2_WRITE = CS && RS == 4'h9 && ~RnW;
+	wire T2_INT_TRIGGER = ~|{nT2INTEn,T2COUNTER};
+
+	Edge_Trigger #(0) PB6_NEG(.clk(clk),.IN(PORTB[6]),.En(clk_en),.EDGE(PB6_NEGEDGE));
+
+	always @ (posedge clk)
+		if(clk_en)
+			if(T2_WRITE) begin
+				T2COUNTER  <= {DATA,T2REG[7:0]};
+				T2REG[15:8]<= DATA;
+			end else if(~|T2COUNTER & ~ACR[5])
+				T2COUNTER <= T2REG;
+			else if(clk_en)
+				if(ACR[5])	T2COUNTER <= T2COUNTER + {16{PB6_NEGEDGE}};
+				else		T2COUNTER <= T2COUNTER + 16'hFFFF;
+
+	reg nT2INTEn;
+	always @ (posedge clk)
+		if(clk_en)
+			if(nT2INTEn) nT2INTEn <= ~T2_WRITE;
+			else		 nT2INTEn <= ~|T2COUNTER;
+
+
 /****************************************************************************************/
 // Flag register
+
+	wire T2_INT, T1_INT, SR_INT;
+	Edge_Trigger #(1) POSEDGE_SR(.clk(clk),.IN(SR_INT_TRIGGER),.En(INT_ACK),.EDGE(SR_INT));
+	Edge_Trigger #(1) POSEDGE_T2(.clk(clk),.IN(T2_INT_TRIGGER),.En(INT_ACK),.EDGE(T2_INT));
+	Edge_Trigger #(1) POSEDGE_T1(.clk(clk),.IN(T1_INT_TRIGGER),.En(INT_ACK),.EDGE(T1_INT));
+
 
 	wire INDEPENDANT_CB2 = ~PCR[7] & PCR[5];
 	wire INDEPENDANT_CA2 = ~PCR[3] & PCR[1];
@@ -172,129 +292,6 @@ module MOS6522 (
 	end
 
 /****************************************************************************************/
-// HANDSHAKE & PULSE MODES
-
-	reg CB1_out;
-	reg CB2_out;
-
-	wire ORB_WRITE = ~|RS & ~RnW & CS;
-	wire ORA_ACCESS= (&RS | (RS == 1)) & CS;
-
-	always @ (posedge clk) begin
-		if(ACR[4])
-			CB2_out <= SR[7];
-		else if(PCR[6])
-			CB2_out <= PCR[5];
-		else if(CB2_out)
-			CB2_out <= ~ORB_WRITE;
-		else
-			CB2_out <= PCR[5]? clk_en : CB1INT;
-	end
-
-
-/****************************************************************************************/
-// SHIFTER
-
-	wire POSSR_CB1, NEGSR_CB1;
-	Edge_Trigger #(0) CB1_NEGSR(.clk(clk),.IN(CB1),.En(clk_en),.EDGE(NEGSR_CB1));
-	Edge_Trigger #(1) CB1_POSSR(.clk(clk),.IN(CB1),.En(clk_en),.EDGE(POSSR_CB1));
-
-	wire SR_IN    = ACR[4]? SR[7] : CB2;
-	wire SR_SHIFT = (SR_ACTIVE|~|ACR[3:2]) & (ACR[4]? POSSR_CB1 : NEGSR_CB1);
-	wire SR_ACCESS= CS && (RS==4'hA);
-
-	reg SR_ACTIVE;
-	always @ (posedge clk)
-		if(~nRESET)
-			SR_ACTIVE <= 0;
-		else if(clk_en)
-			if(~SR_ACTIVE) SR_ACTIVE <= SR_ACCESS&|ACR[3:2];
-			else		   SR_ACTIVE <= |SR_COUNT;
-
-
-	reg CB1_TRIGGER;
-	always @ (*) casex(ACR[4:2])
-		3'b001: CB1_TRIGGER = ~|T2COUNTER[7:0];
-		3'b10x: CB1_TRIGGER = ~|T2COUNTER[7:0];
-		3'bx10: CB1_TRIGGER = clk_en;
-		default:CB1_TRIGGER = 1'b0;
-	endcase
-
-	always @ (posedge clk)
-		if(~nRESET)
-			CB1_out <= 1;
-		else if(clk_en)
-			if(SR_ACCESS)
-				CB1_out <= 1;
-			else if(CB1_TRIGGER&SR_ACTIVE&~SR_INT)
-				CB1_out <= ~CB1_out;
-
-	reg [3:0] SR_COUNT;
-	always @ (posedge clk)
-		if(clk_en)
-			if(SR_ACCESS) begin
-				SR <= DATA;
-				SR_COUNT <= 4'h8;
-			end else if(SR_SHIFT) begin
-				SR <= {SR[6:0],SR_IN};
-				SR_COUNT <= SR_COUNT + 4'hF;
-			end
-
-	wire SR_INT;
-	Edge_Trigger #(1) POSEDGE_SR(.clk(clk),.IN(|ACR[3:2]&SR_ACTIVE&~|SR_COUNT),.En(INT_ACK),.EDGE(SR_INT));
-/****************************************************************************************/
-// T1COUNTER
-
-	wire T1_WRITE = CS && RS == 4'h5 && ~RnW;
-	always @ (posedge clk)
-		if(clk_en)
-			if(T1_WRITE)
-				T1COUNTER <= {DATA,T1REG[7:0]};
-			else if(~|T1COUNTER)
-				T1COUNTER <= T1REG;
-			else if(clk_en)
-				T1COUNTER <= T1COUNTER + 16'hFFFF;
-
-
-	reg PB7;
-	always @ (posedge clk)
-		if(clk_en)
-			if(ACR[6])		PB7 <= ~|T1COUNTER? ~PB7 : PB7;
-			else if(PB7)	PB7 <= ~T1_WRITE;
-			else			PB7 <= ~|T1COUNTER;
-
-	wire T1_INT;
-	Edge_Trigger #(1) POSEDGE_T1(.clk(clk),.IN(ACR[6]?~|T1COUNTER:~|{PB7,T1COUNTER}),.En(INT_ACK),.EDGE(T1_INT));
-
-/****************************************************************************************/
-// T2COUNTER
-
-	wire PB6_NEGEDGE;
-	Edge_Trigger #(0) PB6_NEG(.clk(clk),.IN(PORTB[6]),.En(clk_en),.EDGE(PB6_NEGEDGE));
-
-	wire T2_WRITE = CS && RS == 4'h9 && ~RnW;
-	always @ (posedge clk)
-		if(clk_en)
-			if(T2_WRITE) begin
-				T2COUNTER  <= {DATA,T2REG[7:0]};
-				T2REG[15:8]<= DATA;
-			end else if(~|T2COUNTER & ~ACR[5])
-				T2COUNTER <= T2REG;
-			else if(clk_en)
-				if(ACR[5])	T2COUNTER <= T2COUNTER + {16{PB6_NEGEDGE}};
-				else		T2COUNTER <= T2COUNTER + 16'hFFFF;
-
-	reg nT2INTEn;
-	always @ (posedge clk)
-		if(clk_en)
-			if(nT2INTEn) nT2INTEn <= ~T2_WRITE;
-			else		 nT2INTEn <= ~|T2COUNTER;
-
-	wire T2_INT;
-	Edge_Trigger #(1) POSEDGE_T2(.clk(clk),.IN(~|{nT2INTEn,T2COUNTER}),.En(INT_ACK),.EDGE(T2_INT));
-
-
-/****************************************************************************************/
 
 	assign PORTA = nRESET?
 					{DDRA[7]? OUTA[7]: 1'bz, DDRA[6]? OUTA[6]: 1'bz,
@@ -312,3 +309,4 @@ module MOS6522 (
 	assign nIRQ = ~|(IFR&IER);
 
 endmodule // MOS6522
+
