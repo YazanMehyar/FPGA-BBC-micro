@@ -3,7 +3,7 @@
 module TOP(
 	input CLK100MHZ,
 	input CPU_RESETN,
-	
+
 	input PS2_CLK,
 	input PS2_DATA,
 
@@ -22,8 +22,7 @@ module TOP(
 	inout [3:0] SD_DAT,
 	output SD_RESET,
 	output SD_SCK,
-	output SD_CMD
-	);
+	output SD_CMD);
 
 	wire VCC   = 1'b1;
     wire [3:0] VCC_4 = 4'hF;
@@ -90,7 +89,7 @@ module TOP(
 	wire SYNC;
 	wire usr_nIRQ;
 	wire sys_nIRQ;
-	
+
 	wire RnW;
 	wire nIRQ;
 	wire COLUMN_MATCH;
@@ -108,7 +107,7 @@ module TOP(
 	assign pDATABUS =  RnW&~SHEILA?		pDATA : 8'hzz;
 	assign pDATA	=  pADDRESSBUS[15]? rom_DATA : ram_DATA;
 	assign nIRQ		= &{sys_nIRQ,usr_nIRQ};
-	
+
 //	Chip selects
 
 	wire nCRTC = ~(SHEILA & ~|pADDRESSBUS[7:3]);
@@ -132,14 +131,14 @@ module TOP(
 
 
 	always @ ( posedge PIXELCLK )
-		if(RAM_en) begin
+		if(RAM_en)
 			if(V_TURN) begin // Respond to CRTC reads and MOS6502 writes
 				vDATA <= RAM[vADDRESSBUS];
 				if(~RnW&PHI_2&~pADDRESSBUS[15])
 					RAM[pADDRESSBUS[14:0]] <= pDATABUS;
-			end else
+			end else begin
 				ram_DATA <= RAM[pADDRESSBUS[14:0]];
-		end
+			end
 
 	always @ ( posedge PIXELCLK )
 		if(RAM_en&~PHI_2)
@@ -317,4 +316,3 @@ module TOP(
 `endif
 
 endmodule
-
