@@ -19,20 +19,13 @@ module TOP(
 	output AUD_PWM,
 
 	input  SD_CD,			// Active low SD card detect
-	inout [3:0] SD_DAT,
+	inout  [3:0] SD_DAT,
 	output SD_RESET,
 	output SD_SCK,
 	output SD_CMD);
 
 	wire VCC   = 1'b1;
     wire [3:0] VCC_4 = 4'hF;
-
-	assign AUD_SD  = 1'b1;				 // audio enable
-	assign AUD_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
-	assign VGA_R = {4{RED}};
-	assign VGA_G = {4{GREEN}};
-	assign VGA_B = {4{BLUE}};
-	assign LED[0] = ~SD_CD;
 
 /*****************************************************************************/
 
@@ -94,6 +87,8 @@ module TOP(
 	wire nIRQ;
 	wire COLUMN_MATCH;
 	wire MOSI, MISO, SCK;
+	wire SOUND;
+	wire BLUE, RED, GREEN;
 
 	wire SHEILA		= &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 	wire OSBANKen	= &pADDRESSBUS[15:14] & ~SHEILA;
@@ -282,20 +277,7 @@ module TOP(
 		.DATA(PORTA),
 		.PWM(SOUND)
 	);
-
-// SDHC controller
-	SDHC_Control sdhc(
-		.clk(CLK100MHZ),
-		.SD_CD(SD_CD),
-		.SD_RESET(SD_RESET),
-		.SD_SCK(SD_SCK),
-		.SD_CMD(SD_CMD),
-		.SD_DAT(SD_DAT),
-		.MISO(MISO),
-		.MOSI(MOSI),
-		.SCK(SCK)
-	);
-
+	
 // Extra (MOCK) Peripherals
 	Extra_Peripherals extra(
 		.PHI_2(PHI_2),
@@ -310,6 +292,18 @@ module TOP(
 	);
 
 /**************************************************************************************************/
+	assign AUD_SD  = 1'b1;				 // audio enable
+	assign AUD_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
+	assign VGA_R = {4{RED}};
+	assign VGA_G = {4{GREEN}};
+	assign VGA_B = {4{BLUE}};
+	assign LED[0] = ~SD_CD;
+	assign SD_RESET = 0;
+	assign SD_SCK = SCK;
+	assign SD_CMD = MOSI;
+	assign MISO = SD_DAT[0];
+	assign SD_DAT[3:1] = 3'b000;
+
 // TEST_ASSISTANCE
 `ifdef SIMULATION
 

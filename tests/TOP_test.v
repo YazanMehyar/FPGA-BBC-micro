@@ -34,12 +34,11 @@ module TOP_test();
 	wire VGA_HS;
 	wire VGA_VS;
 	wire [3:0] SD_DAT = {4'bzzz,SD_MISO};
-	wire inSCK;
-	wire SD_SCK = inSCK? 1'b1 : 1'bz;
+	wire SD_SCK;
 
 	reg SD_MISO = 0;
 	always @ (posedge SD_SCK) begin
-		SD_MISO <= $urandom_range(0,1);
+		SD_MISO <= $urandom_range(0,5)/5;
 	end
 
 	TOP top(
@@ -54,8 +53,8 @@ module TOP_test();
 		.VGA_VS(VGA_VS),
 		.SD_CD(1'b0),
 		.SD_DAT(SD_DAT),
-		.SD_SCK(SD_SCK),
-		.inSCK(inSCK));
+		.SD_SCK(SD_SCK)
+	);
 
 /******************************************************************************/
 

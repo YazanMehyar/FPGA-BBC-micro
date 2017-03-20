@@ -69,6 +69,8 @@ module SDHC_Control (
 	reg [7:0] SR_IN;
 	reg LOAD;
 	reg DONE;
+	reg VALID;
+	reg OUT_OF_TIME;
 
 /***************************************************************************************/
 // Shift control
@@ -174,8 +176,8 @@ module SDHC_Control (
 	end
 
 
-	always @ ( * )
-		casex (SD_STATE)
+	always @ ( * ) begin
+		casex (SD_STATE)	// DONE
 			`NO_CARD:		DONE = 1;
 			`SD_1msW,
 			`SD_74DW:		DONE = COUNTER0;
@@ -184,7 +186,19 @@ module SDHC_Control (
 			7'bxxx_1011,
 			7'bxxx_100x,
 			7'bxxx_x1xx:	DONE = SR_DONE;
+			default:		DONE = 0;
 		endcase
+		
+		casex (SD_STATE)	// VALID
+			`SD_CHKR0:		VALID = SR == 8'h01;
+			`SD_CHKR81:		VALID = SR == 8'h00;
+			`SD_CHKR82:		VALID = SR == 8'h00;
+			`SD_CHKR83:		VALID = SR == 8'h01;
+			`SD_CHKR84:		VALID = SR == 8'hAA;
+			7'bxxx_1011:	VALID = SR == 8'h00;
+			default:		VALID = 0;
+		endcase
+	end
 
 /****************************************************************************************/
 
@@ -197,7 +211,9 @@ module SDHC_Control (
 	assign clk_en = ~|clkCOUNT[2:0];
 	assign iSCK  = EARLY? clkCOUNT[7] : SNDCLK;
 	assign iCMD  = EARLY? 1'b1 : CMD_SR[7];
-	assign READY = SD_STATE == `SD_READY;
+	
+	assign EARLY = 0;
+	assign READY = 1;//SD_STATE == `SD_READY;
 
 /****************************************************************************************/
 
