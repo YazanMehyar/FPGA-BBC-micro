@@ -137,7 +137,6 @@ module Display_Control (
 	reg H_END;
 
 	wire INTERLACE_SYNC = interlace_mode == 2'b01;
-	wire INTERLACE_SYVD = interlace_mode == 2'b11;
 	wire DISEN = VID_DISEN & ~H_END & |VERT_DISPLAY_COUNT;
 	wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
 
@@ -153,7 +152,7 @@ module Display_Control (
 				HORZ_DISPLAY_COUNT <= HORZ_DISPLAY_COUNT - 1;
 
 			if(NEWSCREEN)
-				VERT_DISPLAY_COUNT <= INTERLACE_SYVD? {vert_display,1'b0} : vert_display;
+				VERT_DISPLAY_COUNT <= vert_display;
 			else if(NEWvCHAR & |VERT_DISPLAY_COUNT)
 				VERT_DISPLAY_COUNT <= VERT_DISPLAY_COUNT - 1;
 
@@ -163,7 +162,6 @@ module Display_Control (
 
 // -- RAM addressing
 
-	// The RAM fails to catch up on the first full speed cycle
 	reg [13:0] NEWLINE_ADR;
 	reg FIELD;
 
@@ -279,8 +277,7 @@ module Display_Control (
 				4'hA: PALETTEA <= pDATABUS[3:0];	4'hB: PALETTEB <= pDATABUS[3:0];
 				4'hC: PALETTEC <= pDATABUS[3:0];	4'hD: PALETTED <= pDATABUS[3:0];
 				4'hE: PALETTEE <= pDATABUS[3:0];	4'hF: PALETTEF <= pDATABUS[3:0];
-	 		endcase
-			else	CONTROL <= pDATABUS;
+	 		endcase else CONTROL <= pDATABUS;
 	end
 
 	reg [3:0] PALETTE_COLOUR;

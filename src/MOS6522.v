@@ -78,7 +78,7 @@ module MOS6522 (
 			4'hD: DATA_OUT = {~nIRQ,IFR};
 			4'hE: DATA_OUT = {1'b1,IER};
 			default: DATA_OUT = 8'hxx;
-		endcase
+		endcase else DATA_OUT = 8'hxx;
 	end
 
 /****************************************************************************************/
@@ -309,9 +309,9 @@ module MOS6522 (
 
 /****************************************************************************************/
 `ifdef SIMULATION
-	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
-`else
 	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : 1'bz;
+`else
+	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
 `endif
 
 endmodule // MOS6522

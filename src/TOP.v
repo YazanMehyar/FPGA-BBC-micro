@@ -78,6 +78,7 @@ module TOP(
 	wire [7:0] pDATABUS;
 	wire [7:0] pDATA;
 	wire [7:0] PORTA;
+	wire [7:0] UPORTB;
 	wire SYNC;
 	wire usr_nIRQ;
 	wire sys_nIRQ;
@@ -100,6 +101,7 @@ module TOP(
 
 	assign pDATABUS =  RnW&~SHEILA?		pDATA : 8'hzz;
 	assign pDATA	=  pADDRESSBUS[15]? rom_DATA : ram_DATA;
+	assign UPORTB	= {6'hzz,SCK,MOSI};
 	assign nIRQ		= &{sys_nIRQ,usr_nIRQ};
 
 //	Chip selects
@@ -142,13 +144,12 @@ module TOP(
 
 	always @ ( posedge PIXELCLK )
 		if(RAM_en)
-			if(V_TURN) begin // Respond to CRTC reads and MOS6502 writes
+			if(V_TURN)
 				vDATA <= RAM[vADDRESSBUS];
-				if(~RnW&~pADDRESSBUS[15])
-					RAM[pADDRESSBUS[14:0]] <= pDATABUS;
-			end else begin
+			else if(RnW)
 				ram_DATA <= RAM[pADDRESSBUS[14:0]];
-			end
+			else if(~pADDRESSBUS[15])
+				RAM[pADDRESSBUS[14:0]] <= pDATABUS;
 
 	always @ ( posedge PIXELCLK )
 		if(RAM_en)
@@ -228,7 +229,7 @@ module TOP(
 		.FRAMESTORE_ADR(FRAMESTORE_ADR),
 		.ROW_ADDRESS(ROW_ADDRESS)
 	);
-
+	
 // System VIA
 	MOS6522 sys_via(
 		.clk(PIXELCLK),
@@ -262,7 +263,7 @@ module TOP(
 		.CB1(SCK),
 		.CB2(MISO),
 		.DATA(pDATABUS),
-		.PORTB({VCC_4,VCC,VCC,SCK,MOSI}),
+		.PORTB({UPORTB}),
 		.nIRQ(usr_nIRQ)
 	);
 
