@@ -18,11 +18,7 @@ module TOP(
 	output AUD_SD,
 	output AUD_PWM,
 
-	input  SD_CD,			// Active low SD card detect
-	inout  [3:0] SD_DAT,
-	output SD_RESET,
-	output SD_SCK,
-	output SD_CMD);
+	inout [9:7] JC);
 
 	wire VCC   = 1'b1;
     wire [3:0] VCC_4 = 4'hF;
@@ -308,13 +304,11 @@ module TOP(
 	assign VGA_R = {4{RED}};
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
-	assign LED[0] = ~SD_CD;
-	assign LED[1] = SD_DAT[0];
-	assign SD_RESET = 0;
-	assign SD_SCK = SCK;
-	assign SD_CMD = MOSI;
-	assign MISO = SD_DAT[0];
-	assign SD_DAT[3:1] = 3'b000;
+	assign LED[0] = MOSI;
+	assign LED[1] = MISO;
+	assign JC[7] = SCK;
+	assign JC[8] = MOSI;
+	assign MISO = JC[9];
 
 // TEST_ASSISTANCE
 `ifdef SIMULATION

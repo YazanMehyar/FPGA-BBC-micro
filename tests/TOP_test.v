@@ -33,12 +33,16 @@ module TOP_test();
 	wire [3:0] VGA_B;
 	wire VGA_HS;
 	wire VGA_VS;
-	wire [3:0] SD_DAT = {4'bzzz,SD_MISO};
-	wire SD_SCK;
+	wire [9:7] JC;
 	wire SD_CMD;
-
-	reg SD_MISO = 0;
-	always @ (posedge SD_SCK) begin
+	wire SD_SCK;
+	reg SD_MISO;
+	
+	assign SD_SCK = JC[7];
+	assign SD_CMD = JC[8];
+	assign JC[9] = SD_MISO;
+	
+	always @ (posedge PS2_CLK) begin
 		SD_MISO <= $urandom_range(0,5)/5;
 	end
 
@@ -52,10 +56,7 @@ module TOP_test();
 		.VGA_B(VGA_B),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS),
-		.SD_CD(1'b0),
-		.SD_DAT(SD_DAT),
-		.SD_SCK(SD_SCK),
-		.SD_CMD(SD_CMD)
+		.JC(JC)
 	);
 
 /******************************************************************************/

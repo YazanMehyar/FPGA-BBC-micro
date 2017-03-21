@@ -308,10 +308,7 @@ module MOS6522 (
 	assign nIRQ = ~|(IFR&IER);
 
 /****************************************************************************************/
-`ifdef SIMULATION
-	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : 1'bz;
-`else
+
 	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
-`endif
 
 endmodule // MOS6522
