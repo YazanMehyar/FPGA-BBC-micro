@@ -13,7 +13,6 @@ module MOS6522 (
 	input CS1,
 	input nCS2,
 	input nRESET,
-	input PHI_2,
 	input RnW,
 	input [3:0] RS,
 	input CA1,
@@ -50,7 +49,7 @@ module MOS6522 (
 
 	// DATA OUT
 	reg [7:0] DATA_OUT;
-	assign DATA = (PHI_2&CS&RnW&nRESET)? DATA_OUT : 8'hzz;
+	assign DATA = (CS&RnW&nRESET)? DATA_OUT : 8'hzz;
 
 	always @ (*) begin
 		if(CS) case (RS)
@@ -157,7 +156,7 @@ module MOS6522 (
 	end
 
 	wire CB1_TRIGGER = CB1_TRIGGER_FACTOR & SR_ACTIVE & ~SR_INT;
-	
+
 	reg CB1_TRIGGER_FACTOR;
 	always @ (*) casex(ACR[4:2])
 		3'b001: CB1_TRIGGER_FACTOR = ~|T2COUNTER[7:0];
@@ -171,7 +170,7 @@ module MOS6522 (
 			CB1_out <= 1;
 		else if(CB1_TRIGGER & clk_en)
 			CB1_out <= ~CB1_out;
-				
+
 /****************************************************************************************/
 // SHIFTER
 
@@ -179,7 +178,7 @@ module MOS6522 (
 	Edge_Trigger #(0) CB1_NEGSR(.clk(clk),.IN(CB1),.En(1'b1),.EDGE(NEGSR_CB1));
 	Edge_Trigger #(1) CB1_POSSR(.clk(clk),.IN(CB1),.En(1'b1),.EDGE(POSSR_CB1));
 	wire SR_EDGE   = ACR[4]? NEGSR_CB1 : POSSR_CB1;
-	
+
 	wire SR_ENABLE = |ACR[3:2];
 	wire SR_IN     = ACR[4]? SR[7] : CB2;
 	wire SR_ACCESS = CS && (RS==4'hA);
@@ -209,7 +208,7 @@ module MOS6522 (
 
 	wire T1_INT_TRIGGER = ACR[6]?~|T1COUNTER:~|{PB7,T1COUNTER};
 	wire T1_WRITE = CS && RS == 4'h5 && ~RnW;
-	
+
 	always @ (posedge clk)
 		if(clk_en)
 			if(T1_WRITE)
@@ -227,7 +226,7 @@ module MOS6522 (
 			else if(PB7)	PB7 <= ~T1_WRITE;
 			else			PB7 <= ~|T1COUNTER;
 
-	
+
 /****************************************************************************************/
 // T2COUNTER
 
@@ -307,7 +306,7 @@ module MOS6522 (
 
 
 	assign nIRQ = ~|(IFR&IER);
-	
+
 /****************************************************************************************/
 `ifdef SIMULATION
 	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
@@ -316,4 +315,3 @@ module MOS6522 (
 `endif
 
 endmodule // MOS6522
-

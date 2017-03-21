@@ -13,14 +13,12 @@ module MOS6502 (
 	input nNMI,
 	input nSO,
 	input READY,
-	input PHI_2,
 
 	inout [7:0] Data_bus,
 
 	output [15:0] Address_bus,
 	output RnW,
-	output SYNC
-	);
+	output SYNC);
 
 /**************************************************************************************************/
 
@@ -73,7 +71,7 @@ module MOS6502 (
 /**************************************************************************************************/
 // Data paths
 
-	assign Data_bus = ~RnW & PHI_2? iDB : 8'hzz;
+	assign Data_bus = ~RnW? iDB : 8'hzz;
 
 	always @ (posedge clk) begin
 		if(clk_en) begin

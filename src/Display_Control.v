@@ -8,7 +8,6 @@ module Display_Control (
 	input PROC_en,
 	input CRTCF_en,
 	input CRTCS_en,
-	input PHI_2,
 	input nCS_CRTC,
 	input nCS_VULA,
 	input RnW,
@@ -107,7 +106,7 @@ module Display_Control (
 		default: pDATABUS_out = 8'hxx;
 	endcase
 
-	assign pDATABUS  = ~nCS_CRTC&PHI_2&RnW&nRESET? pDATABUS_out : 8'hzz;
+	assign pDATABUS  = ~nCS_CRTC&RnW&nRESET? pDATABUS_out : 8'hzz;
 
 	wire CRTC_WRITE = ~nCS_CRTC&~RnW&PROC_en;
 
@@ -138,6 +137,7 @@ module Display_Control (
 	reg H_END;
 
 	wire INTERLACE_SYNC = interlace_mode == 2'b01;
+	wire INTERLACE_SYVD = interlace_mode == 2'b11;
 	wire DISEN = VID_DISEN & ~H_END & |VERT_DISPLAY_COUNT;
 	wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
 
@@ -149,13 +149,13 @@ module Display_Control (
 		end else if(CRTC_en) begin
 			if(NEWLINE)
 				HORZ_DISPLAY_COUNT <= horz_display;
-			else
-				HORZ_DISPLAY_COUNT <= |HORZ_DISPLAY_COUNT? HORZ_DISPLAY_COUNT - 1 : 0;
+			else if(|HORZ_DISPLAY_COUNT)
+				HORZ_DISPLAY_COUNT <= HORZ_DISPLAY_COUNT - 1;
 
 			if(NEWSCREEN)
-				VERT_DISPLAY_COUNT <= vert_display;
-			else if(NEWvCHAR)
-				VERT_DISPLAY_COUNT <= |VERT_DISPLAY_COUNT? VERT_DISPLAY_COUNT - 1 : 0;
+				VERT_DISPLAY_COUNT <= INTERLACE_SYVD? {vert_display,1'b0} : vert_display;
+			else if(NEWvCHAR & |VERT_DISPLAY_COUNT)
+				VERT_DISPLAY_COUNT <= VERT_DISPLAY_COUNT - 1;
 
 			H_END <= ~|HORZ_DISPLAY_COUNT;
 		end
@@ -197,7 +197,7 @@ module Display_Control (
 				FIELD <= 0;
 			end else if(NEWLINE) begin
 				FIELD <= ~FIELD;
-				if(interlace_mode == 2'b01)
+				if(INTERLACE_SYNC)
 					ROW_ADDRESS <= FIELD? ROW_ADDRESS + 1 : ROW_ADDRESS;
 				else
 					ROW_ADDRESS <= ROW_ADDRESS + 1;

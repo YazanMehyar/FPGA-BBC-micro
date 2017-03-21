@@ -35,6 +35,7 @@ module TOP_test();
 	wire VGA_VS;
 	wire [3:0] SD_DAT = {4'bzzz,SD_MISO};
 	wire SD_SCK;
+	wire SD_CMD;
 
 	reg SD_MISO = 0;
 	always @ (posedge SD_SCK) begin
@@ -53,7 +54,8 @@ module TOP_test();
 		.VGA_VS(VGA_VS),
 		.SD_CD(1'b0),
 		.SD_DAT(SD_DAT),
-		.SD_SCK(SD_SCK)
+		.SD_SCK(SD_SCK),
+		.SD_CMD(SD_CMD)
 	);
 
 /******************************************************************************/
@@ -92,7 +94,7 @@ module TOP_test();
 			@(posedge PS2_CLK);
 				PS2_SEND(8'hF0);
 				PS2_SEND(KEY);
-				
+
 			repeat (1) @(posedge VGA_VS);
 		end
 	endtask
@@ -141,10 +143,25 @@ module TOP_test();
 		PRESS_KEY(8'h2C);
 		-> START_LOG;
 		PRESS_KEY(8'h5A);
-		repeat (10) @(posedge VGA_VS);
+		repeat (5) @(posedge VGA_VS);
 
 		$stop;
 		$finish;
+	end
+
+/******************************************************************************/
+// SD_card
+
+	reg [47:0] CMD;
+	integer CMD_count = 48;
+	always @ (posedge SD_SCK) begin
+		CMD <= {CMD[46:0], SD_CMD};
+		if(CMD_count != 0)
+			CMD_count <= CMD_count - 1;
+		else if(CMD[47:46] == 2'b01 && CMD[0]) begin
+			$display("COMMAND: %D\nArgument: %H\nCRC: %H",CMD[45:40],CMD[39:8],CMD[7:0]);
+			CMD_count <= 47;
+		end
 	end
 
 	integer SCREEN_COUNT = 0;
@@ -153,7 +170,6 @@ module TOP_test();
 		SCREEN_COUNT <= SCREEN_COUNT + 1;
 	end
 
-/******************************************************************************/
 
 	reg [7:0] colour;
 	always @ ( * ) begin

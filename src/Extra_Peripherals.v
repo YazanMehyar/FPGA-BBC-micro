@@ -1,5 +1,4 @@
 module Extra_Peripherals (
-	input PHI_2,
 	input nRESET,
 	input RnW,
 	input nFDC,
@@ -11,7 +10,7 @@ module Extra_Peripherals (
 	inout  [7:0] DATABUS
 	);
 
-	assign DATABUS = (RnW&nRESET&PHI_2)? (~nACIA)?	ACIA_status
+	assign DATABUS = (RnW&nRESET)? (~nACIA)?	ACIA_status
 											: (~(nADLC&nFDC&nTUBE&nADC))?	8'h00
 											: 8'hzz : 8'hzz;
 

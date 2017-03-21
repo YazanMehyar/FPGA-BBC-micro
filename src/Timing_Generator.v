@@ -3,7 +3,6 @@
 module Timing_Generator(
 	input CLK100MHZ,
 
-	output reg PHI_2,
 	output PIXELCLK,
 	output PROC_en,
 	output hPROC_en,
@@ -19,7 +18,7 @@ module Timing_Generator(
 	reg PIXELCOUNT = 0;
 	always @ (posedge CLK100MHZ) PIXELCOUNT <= ~PIXELCOUNT;
 	assign PIXELCLK = PIXELCOUNT;
-	
+
 	reg [4:0] MASTER_COUNTER = 0;
 	always @(posedge PIXELCLK)	MASTER_COUNTER <= MASTER_COUNTER + 4'h1;
 
@@ -27,18 +26,15 @@ module Timing_Generator(
 	assign RAM_en  = &MASTER_COUNTER[1:0];
 	assign CRTCF_en = &MASTER_COUNTER[2:0];
 	assign CRTCS_en = &MASTER_COUNTER[3:0];
-	
+
 	reg [2:0] PROC_CLK_GEN = 3'b001;
 	always @(posedge PIXELCLK)
 		if(CRTCF_en) PROC_CLK_GEN <= {PROC_CLK_GEN[1:0],PROC_CLK_GEN[2]};
-		
-		
+
+
 	assign PROC_en = PROC_CLK_GEN[2]&CRTCF_en;
 	assign hPROC_en= PROC_CLK_GEN[2]&CRTCS_en;
 
-	always @ (posedge PIXELCLK)
-		if(CRTCF_en) PHI_2 <= ~PROC_en;
-		
 	always @ (posedge PIXELCLK)
 		if(RAM_en)  V_TURN <= ~CRTCF_en;
 

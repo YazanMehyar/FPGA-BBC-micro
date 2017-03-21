@@ -36,7 +36,6 @@ module TOP(
 	wire hPROC_en;	// h as in half processor
 	wire CRTCF_en;
 	wire CRTCS_en;
-	wire PHI_2;		// PHASE 2 of MOS6502
 	wire V_TURN;	// Video circuitry take control of ram reads
 
 	Timing_Generator timer(
@@ -48,8 +47,8 @@ module TOP(
 		.CRTCS_en(CRTCS_en),
 		.hPROC_en(hPROC_en),
 		.CRTCF_en(CRTCF_en),
-		.V_TURN(V_TURN),
-		.PHI_2(PHI_2));
+		.V_TURN(V_TURN)
+	);
 
 
 /*****************************************************************************/
@@ -105,18 +104,35 @@ module TOP(
 
 //	Chip selects
 
-	wire nCRTC = ~(SHEILA & ~|pADDRESSBUS[7:3]);
-	wire nACIA = ~(SHEILA & ~|pADDRESSBUS[7:4] & pADDRESSBUS[3]);
-	wire nVIDPROC = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & ~pADDRESSBUS[4] & ~RnW);
-	wire nROMSEL  = ~(SHEILA & ~|pADDRESSBUS[7:6] & pADDRESSBUS[5] & pADDRESSBUS[4] & ~RnW);
+	reg [9:0] nCSELECTS;
+	always @ ( * ) begin
+		if(SHEILA) casex(pADDRESSBUS[7:0])
+		8'b0000_0xxx: nCSELECTS = 10'h3FE;
+		8'b0000_1xxx: nCSELECTS = 10'h3FD;
+		8'b0010_xxxx: nCSELECTS = 10'h3FB;
+		8'b0011_xxxx: nCSELECTS = 10'h3F7;
+		8'b010x_xxxx: nCSELECTS = 10'h3EF;
+		8'b011x_xxxx: nCSELECTS = 10'h3DF;
+		8'b100x_xxxx: nCSELECTS = 10'h3BF;
+		8'b101x_xxxx: nCSELECTS = 10'h37F;
+		8'b110x_xxxx: nCSELECTS = 10'h2FF;
+		8'b111x_xxxx: nCSELECTS = 10'h1FF;
+		default: nCSELECTS = 10'h3FF;
+		endcase else nCSELECTS = 10'h3FF;
+	end
 
-	wire nVIA = ~(SHEILA & ~pADDRESSBUS[7] & pADDRESSBUS[6] & ~pADDRESSBUS[5]);
-	wire nUVIA= ~(SHEILA & ~pADDRESSBUS[7] & &pADDRESSBUS[6:5]);
-	wire nFDC = ~(SHEILA & pADDRESSBUS[7] & ~|pADDRESSBUS[6:5]);
-	wire nADLC= ~(SHEILA & pADDRESSBUS[7] & ~pADDRESSBUS[6] & pADDRESSBUS[5]);
-	wire nADC = ~(SHEILA & &pADDRESSBUS[7:6] & ~pADDRESSBUS[5]);
-	wire nTUBE= ~(SHEILA & &pADDRESSBUS[7:5]);
-	wire SLOW_PROC = ~&{nVIA,nUVIA,nADC,nACIA};
+	wire nCRTC		= nCSELECTS[0];
+	wire nACIA		= nCSELECTS[1];
+	wire nVIDPROC	= nCSELECTS[2] | RnW;
+	wire nROMSEL 	= nCSELECTS[3] | RnW;
+
+	wire nVIA		= nCSELECTS[4];
+	wire nUVIA		= nCSELECTS[5];
+	wire nFDC		= nCSELECTS[6];
+	wire nADLC		= nCSELECTS[7];
+	wire nADC 		= nCSELECTS[8];
+	wire nTUBE		= nCSELECTS[9];
+	wire SLOW_PROC = ~&{nVIA,nUVIA,nADC,nACIA,nCRTC};
 
 /*****************************************************************************/
 //	RAM & ROMS
@@ -124,19 +140,18 @@ module TOP(
 	always @ ( posedge PIXELCLK )
 		if(PROC_en&~nROMSEL) ROM_BANK <= pDATABUS[3:0];
 
-
 	always @ ( posedge PIXELCLK )
 		if(RAM_en)
 			if(V_TURN) begin // Respond to CRTC reads and MOS6502 writes
 				vDATA <= RAM[vADDRESSBUS];
-				if(~RnW&PHI_2&~pADDRESSBUS[15])
+				if(~RnW&~pADDRESSBUS[15])
 					RAM[pADDRESSBUS[14:0]] <= pDATABUS;
 			end else begin
 				ram_DATA <= RAM[pADDRESSBUS[14:0]];
 			end
 
 	always @ ( posedge PIXELCLK )
-		if(RAM_en&~PHI_2)
+		if(RAM_en)
 			if(OSBANKen)
 				rom_DATA <= BBCOS12[pADDRESSBUS[13:0]];
 			else if(AUXBANKen)
@@ -179,7 +194,6 @@ module TOP(
 	MOS6502 pocessor(
 		.clk(PIXELCLK),
 		.clk_en(SLOW_PROC? hPROC_en : PROC_en),
-		.PHI_2(PHI_2),
 		.nRESET(CPU_RESETN),
 		.SYNC(SYNC),
 		.nIRQ(nIRQ),
@@ -200,7 +214,6 @@ module TOP(
 		.PROC_en(PROC_en),
 		.CRTCF_en(CRTCF_en),
 		.CRTCS_en(CRTCS_en),
-		.PHI_2(PHI_2),
 		.nCS_CRTC(nCRTC),
 		.nCS_VULA(nVIDPROC),
 		.RnW(RnW),
@@ -223,7 +236,6 @@ module TOP(
 		.nRESET(CPU_RESETN),
 		.CS1(VCC),
 		.nCS2(nVIA),
-		.PHI_2(PHI_2),
 		.RnW(RnW),
 		.RS(pADDRESSBUS[3:0]),
 		.CA1(VGA_VS),
@@ -243,7 +255,6 @@ module TOP(
 		.nRESET(CPU_RESETN),
 		.CS1(VCC),
 		.nCS2(nUVIA),
-		.PHI_2(PHI_2),
 		.RnW(RnW),
 		.RS(pADDRESSBUS[3:0]),
 		.CA1(VCC),
@@ -277,10 +288,9 @@ module TOP(
 		.DATA(PORTA),
 		.PWM(SOUND)
 	);
-	
+
 // Extra (MOCK) Peripherals
 	Extra_Peripherals extra(
-		.PHI_2(PHI_2),
 		.RnW(RnW),
 		.nRESET(CPU_RESETN),
 		.nFDC(nFDC),
@@ -298,6 +308,7 @@ module TOP(
 	assign VGA_G = {4{GREEN}};
 	assign VGA_B = {4{BLUE}};
 	assign LED[0] = ~SD_CD;
+	assign LED[1] = SD_DAT[0];
 	assign SD_RESET = 0;
 	assign SD_SCK = SCK;
 	assign SD_CMD = MOSI;
