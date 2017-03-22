@@ -53,17 +53,9 @@ module MOS6522 (
 
 	always @ (*) begin
 		if(CS) case (RS)
-			4'h0: DATA_OUT = nRESET?
-					{DDRB[7]? OUTB[7]:PORTB[7], DDRB[6]? OUTB[6]:PORTB[6],
-					DDRB[5]? OUTB[5]:PORTB[5], DDRB[4]? OUTB[4]:PORTB[4],
-					DDRB[3]? OUTB[3]:PORTB[3], DDRB[2]? OUTB[2]:PORTB[2],
-					DDRB[1]? OUTB[1]:PORTB[1], DDRB[0]? OUTB[0]:PORTB[0]} : 8'hzz;
+			4'h0: DATA_OUT = PORTB;
 			4'h1,
-			4'hF: DATA_OUT = nRESET?
-					{DDRA[7]? OUTA[7]:PORTA[7], DDRA[6]? OUTA[6]:PORTA[6],
-					DDRA[5]? OUTA[5]:PORTA[5], DDRA[4]? OUTA[4]:PORTA[4],
-					DDRA[3]? OUTA[3]:PORTA[3], DDRA[2]? OUTA[2]:PORTA[2],
-					DDRA[1]? OUTA[1]:PORTA[1], DDRA[0]? OUTA[0]:PORTA[0]} : 8'hzz;
+			4'hF: DATA_OUT = PORTA;
 			4'h2: DATA_OUT = DDRB;
 			4'h3: DATA_OUT = DDRA;
 			4'h4: DATA_OUT = T1COUNTER[7:0];

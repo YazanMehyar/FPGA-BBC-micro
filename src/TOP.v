@@ -225,7 +225,7 @@ module TOP(
 		.FRAMESTORE_ADR(FRAMESTORE_ADR),
 		.ROW_ADDRESS(ROW_ADDRESS)
 	);
-	
+
 // System VIA
 	MOS6522 sys_via(
 		.clk(PIXELCLK),
@@ -256,10 +256,17 @@ module TOP(
 		.RS(pADDRESSBUS[3:0]),
 		.CA1(VCC),
 		.CA2(VCC),
+
+		`ifdef SIMULATION
+		// Iverilog issue
+		.CB1(UPORTB[1]),
+		`else
 		.CB1(SCK),
+		`endif
+
 		.CB2(MISO),
 		.DATA(pDATABUS),
-		.PORTB({UPORTB}),
+		.PORTB(UPORTB),
 		.nIRQ(usr_nIRQ)
 	);
 
@@ -306,8 +313,13 @@ module TOP(
 	assign VGA_B = {4{BLUE}};
 	assign LED[0] = MOSI;
 	assign LED[1] = MISO;
-	assign JC[7] = SCK;
-	assign JC[8] = MOSI;
+	`ifdef SIMULATION
+		assign JC[7] = UPORTB[1];
+		assign JC[8] = UPORTB[0];
+	`else
+		assign JC[7] = SCK;
+		assign JC[8] = MOSI;
+	`endif
 	assign MISO = JC[9];
 
 // TEST_ASSISTANCE
