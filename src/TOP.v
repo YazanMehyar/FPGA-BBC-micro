@@ -14,8 +14,14 @@ module TOP(
 	output VGA_VS,
 
 	output [1:0] LED,
-	input  [1:0] SW,
+	input  [3:0] SW,
 
+	input BTNU,
+	input BTND,
+	input BTNR,
+	input BTNL,
+	input BTNC,
+	
 	output AUD_SD,
 	output AUD_PWM,
 
@@ -196,7 +202,50 @@ module TOP(
 	wire [15:0] DISP_val;
 	wire [23:0] DISP_tag;
 	wire [3:0]  DISP_sel;
+	wire [3:0]  SVIA_sel;
+	wire [15:0] SVIA_val;
+	wire [23:0] SVIA_tag;
+	wire [3:0]  UVIA_sel;
+	wire [15:0] UVIA_val;
+	wire [23:0] UVIA_tag;
 	wire DEBUG_PIXEL;
+	
+	wire BTN_UP;
+	wire BTN_DN;
+	wire BTN_LT;
+	wire BTN_RT;
+	wire BTN_CR;
+	wire BTN_STEP;
+	
+	Edge_Trigger #(1) POS_BUTTON0(.clk(PIXELCLK),.IN(BTNR),.En(1'b1),.EDGE(BTN_RT));
+	Edge_Trigger #(1) POS_BUTTON1(.clk(PIXELCLK),.IN(BTNL),.En(1'b1),.EDGE(BTN_LT));
+	Edge_Trigger #(1) POS_BUTTON2(.clk(PIXELCLK),.IN(BTND),.En(1'b1),.EDGE(BTN_DN));
+	Edge_Trigger #(1) POS_BUTTON3(.clk(PIXELCLK),.IN(BTNU),.En(1'b1),.EDGE(BTN_UP));
+	Edge_Trigger #(1) POS_BUTTON4(.clk(PIXELCLK),.IN(BTNC),.En(1'b1),.EDGE(BTN_CR));
+	Edge_Trigger #(1) POS_BUTTON5(.clk(PIXELCLK),.IN(BTNC),.En(PROC_en),.EDGE(BTN_STEP));	
+		
+	reg [15:0] BREAKPOINT;
+	reg [15:0] BRK_STEP;
+	reg POST_BREAK;
+	wire [23:0] BREAK_tag = POST_BREAK?  {`dlB,`dlR,`dlK,`dlP} : {`dlB,`dlR,`dlK,`dlSP};
+	
+	always @ (posedge PIXELCLK)
+		if(SW[3])
+			if(BTN_UP)		BREAKPOINT <= BREAKPOINT + BRK_STEP;
+			else if(BTN_DN)	BREAKPOINT <= BREAKPOINT - BRK_STEP;
+
+	always @ (posedge PIXELCLK)
+		if(~|BRK_STEP) 			BRK_STEP <= 1;
+		else if(SW[3])
+			if(BTN_LT) 			BRK_STEP <= BRK_STEP << 4;
+			else if(BTN_RT)		BRK_STEP <= BRK_STEP >> 4;
+			
+	always @ (posedge PIXELCLK)
+		if(~RnW|BTN_CR) POST_BREAK <= BREAK;
+			
+	wire BREAK = SW[1] & ~SW[2] & (BREAKPOINT == pADDRESSBUS);
+	wire SINGLESTEP = SW[2] & SYNC & ~BTN_STEP;
+	
 /******************************************************************************/
 
 // Processor
@@ -205,10 +254,10 @@ module TOP(
 		.clk_en(SLOW_PROC? hPROC_en : PROC_en),
 		.nRESET(CPU_RESETN),
 		.SYNC(SYNC),
-		.nIRQ(nIRQ),
+		.nIRQ(nIRQ|SW[2]),
 		.nNMI(VCC),
 		.nSO(VCC),
-		.READY(VCC),
+		.READY(~POST_BREAK & ~BREAK & ~SINGLESTEP),
 		.Data_bus(pDATABUS),
 		.Address_bus(pADDRESSBUS),
 		.RnW(RnW),
@@ -243,7 +292,7 @@ module TOP(
 	);
 
 // System VIA
-	MOS6522 sys_via(
+	MOS6522 #(`SYSVIA) sys_via(
 		.clk(PIXELCLK),
 		.clk_en(hPROC_en),
 		.nRESET(CPU_RESETN),
@@ -258,11 +307,14 @@ module TOP(
 		.DATA(pDATABUS),
 		.PORTA(PORTA),
 		.PORTB({VCC_4,LS259_D,LS259_A}),
-		.nIRQ(sys_nIRQ)
+		.nIRQ(sys_nIRQ),
+		.DEBUG_SEL(SVIA_sel),
+		.DEBUG_VAL(SVIA_val),
+		.DEBUG_TAG(SVIA_tag)
 	);
 
 // User VIA
-	MOS6522 usr_via(
+	MOS6522 #(`USRVIA) usr_via(
 		.clk(PIXELCLK),
 		.clk_en(hPROC_en),
 		.nRESET(CPU_RESETN),
@@ -283,7 +335,10 @@ module TOP(
 		.CB2(MISO),
 		.DATA(pDATABUS),
 		.PORTB(UPORTB),
-		.nIRQ(usr_nIRQ)
+		.nIRQ(usr_nIRQ),
+		.DEBUG_SEL(UVIA_sel),
+		.DEBUG_VAL(UVIA_val),
+		.DEBUG_TAG(UVIA_tag)
 	);
 
 // Keyboard
@@ -324,10 +379,10 @@ module TOP(
 /**************************************************************************************************/
 	assign AUD_SD  = 1'b1;				 // audio enable
 	assign AUD_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
-	assign VGA_R = {4{DEBUG_PIXEL ^ RGB[0]}};
-	assign VGA_G = {4{DEBUG_PIXEL ^ RGB[1]}};
-	assign VGA_B = {4{DEBUG_PIXEL ^ RGB[2]}};
-	assign LED[0] = MOSI;
+	assign VGA_R = {4{(DEBUG_PIXEL&SW[0]) ^ RGB[0]}};
+	assign VGA_G = {4{(DEBUG_PIXEL&SW[0]) ^ RGB[1]}};
+	assign VGA_B = {4{(DEBUG_PIXEL&SW[0]) ^ RGB[2]}};
+	assign LED[0] = 0;
 	assign LED[1] = MISO;
 	`ifdef SIMULATION
 		// Iverilog Issue
@@ -351,6 +406,16 @@ module TOP(
 		.TAG2(DISP_tag),
 		.VAL2(DISP_val),
 		.SEL2(DISP_sel),
+		.TAG3(SVIA_tag),
+		.VAL3(SVIA_val),
+		.SEL3(SVIA_sel),
+		.TAG4(UVIA_tag),
+		.VAL4(UVIA_val),
+		.SEL4(UVIA_sel),
+		.VALB(BREAKPOINT),
+		.TAGB(BREAK_tag),
+		.TOOL_B({BTN_LT,BTN_RT}),
+		.PROBE_B({BTN_UP,BTN_DN}),
 		.PIXEL_OUT(DEBUG_PIXEL)
 	);
 

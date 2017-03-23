@@ -7,10 +7,12 @@ module Debug_Tool(
 	input [23:0] TAG2,
 	input [23:0] TAG3,
 	input [23:0] TAG4,
+	input [23:0] TAGB,
 	input [15:0] VAL1,
 	input [15:0] VAL2,
 	input [15:0] VAL3,
 	input [15:0] VAL4,
+	input [15:0] VALB,
 	input [1:0]  PROBE_B,
 	input [1:0]  TOOL_B,
 
@@ -26,7 +28,7 @@ module Debug_Tool(
 	`ifdef SIMULATION
 		`define DEBUG_LINE  400
 	`else
-		`define DEBUG_LINE  500
+		`define DEBUG_LINE  530
 	`endif
 	`define DEBUG_HLINE 63
 
@@ -37,8 +39,8 @@ module Debug_Tool(
 	reg [3:0] ROW_ADDRESS;
 	reg [1:0] LINE;
 	reg [3:0] Dsel;
-	reg [4:0] Den;
-	reg [3:0] PROBEen;
+	reg [5:0] Den;
+	reg [4:0] PROBEen;
 	reg HIGHLIGHT;
 
 	wire NEXT_CHAR;
@@ -52,6 +54,7 @@ module Debug_Tool(
 	wire [5:0] CHARADR2;
 	wire [5:0] CHARADR3;
 	wire [5:0] CHARADR4;
+	wire [5:0] CHARADRB;
 
 	`ifdef SIMULATION
 		initial begin
@@ -63,8 +66,8 @@ module Debug_Tool(
 	`endif
 
 	Edge_Trigger #(0) HSYNC_NEG(.clk(PIXELCLK),.IN(HSYNC),.En(1'b1),.EDGE(NEG_HSYNC));
-	Edge_Trigger #(1) POS_BUTTON0(.clk(PIXELCLK),.IN(TOOL_B[0]),.En(1'b1),.EDGE(BUTTON_NEXT));
-	Edge_Trigger #(1) POS_BUTTON1(.clk(PIXELCLK),.IN(TOOL_B[1]),.En(1'b1),.EDGE(BUTTON_PREV));
+	assign BUTTON_NEXT = TOOL_B[0];
+	assign BUTTON_PREV = TOOL_B[1];
 
 	always @ ( posedge PIXELCLK )
 		if(VSYNC)
@@ -118,11 +121,12 @@ module Debug_Tool(
 		if(NEXT_CHAR) HIGHLIGHT <= |(Dsel&PROBEen);
 
 	always @ ( * )
-		if(~Den[2]) case (Den[4:3])
-			2'b00: begin CHAR_ADDR = CHARADR1; PROBEen = 4'h1;end
-			2'b01: begin CHAR_ADDR = CHARADR2; PROBEen = 4'h2;end
-			2'b10: begin CHAR_ADDR = CHARADR3; PROBEen = 4'h4;end
-			2'b11: begin CHAR_ADDR = CHARADR4; PROBEen = 4'h8;end
+		if(~Den[2]) case (Den[5:3])
+			3'b000: begin CHAR_ADDR = CHARADR1; PROBEen = 5'h01; end
+			3'b001: begin CHAR_ADDR = CHARADR2; PROBEen = 5'h02; end
+			3'b010: begin CHAR_ADDR = CHARADR3; PROBEen = 5'h04; end
+			3'b011: begin CHAR_ADDR = CHARADR4; PROBEen = 5'h08; end
+			3'b100: begin CHAR_ADDR = CHARADRB; PROBEen = 5'h10; end
 			default: begin CHAR_ADDR = 6'h38; PROBEen = 4'h0; end
 		endcase else begin CHAR_ADDR = 6'h38; PROBEen = 4'h0; end
 
@@ -188,6 +192,19 @@ module Debug_Tool(
 		.SEL(SEL4),
 		.CHAR_ADDR(CHARADR4)
 	);
+	
+	Debug_Probe dp_break(
+		.PIXELCLK(PIXELCLK),
+		.DEBUGen(PROBEen[4]),
+		.SELen(0),
+		.UPDATE(UPDATE),
+		.VALUE(VALB),
+		.TAG(TAGB),
+		.LINE(LINE[0]),
+		.NEXT_CHAR(NEXT_CHAR),
+		.BUTTON(0),
+		.CHAR_ADDR(CHARADRB)
+	);
 
 /****************************************************************************************/
 
@@ -225,13 +242,13 @@ module Debug_Tool(
 			default: CHAR_ROM = 8'hxx; endcase
 		3'b010: case (ROW_ADDRESS)
 			4'h0,`CHAR_HEIGHT: CHAR_ROM = 8'hFF;
-			4'h1: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b11100001; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b10000001; 3'h3: CHAR_ROM = 8'b10000001; 3'h4: CHAR_ROM = 8'b10111101; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10111001; default: CHAR_ROM = 8'hxx; endcase
-			4'h2: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b11011101; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10111011; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10011001; 3'h7: CHAR_ROM = 8'b10011101; default: CHAR_ROM = 8'hxx; endcase
-			4'h3: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111111; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10110111; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10100101; 3'h7: CHAR_ROM = 8'b10101101; default: CHAR_ROM = 8'hxx; endcase
-			4'h4: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111111; 3'h1: CHAR_ROM = 8'b10000001; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10101111; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10100101; 3'h7: CHAR_ROM = 8'b10101101; default: CHAR_ROM = 8'hxx; endcase
-			4'h5: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10110001; 3'h1: CHAR_ROM = 8'b10000001; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10011111; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10110101; default: CHAR_ROM = 8'hxx; endcase
-			4'h6: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111101; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b10111011; 3'h4: CHAR_ROM = 8'b10101111; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10110101; default: CHAR_ROM = 8'hxx; endcase
-			4'h7: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111101; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b10111011; 3'h4: CHAR_ROM = 8'b10110111; 3'h5: CHAR_ROM = 8'b11111101; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10111001; default: CHAR_ROM = 8'hxx; endcase
+			4'h1: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b11100001; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b10000001; 3'h3: CHAR_ROM = 8'b10000001; 3'h4: CHAR_ROM = 8'b10111101; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10111001; default: CHAR_ROM = 8'hxx; endcase
+			4'h2: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b11011101; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10111011; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10011001; 3'h7: CHAR_ROM = 8'b10011101; default: CHAR_ROM = 8'hxx; endcase
+			4'h3: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111111; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10110111; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10100101; 3'h7: CHAR_ROM = 8'b10101101; default: CHAR_ROM = 8'hxx; endcase
+			4'h4: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111111; 3'h1: CHAR_ROM = 8'b10000001; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10101111; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10100101; 3'h7: CHAR_ROM = 8'b10101101; default: CHAR_ROM = 8'hxx; endcase
+			4'h5: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10110001; 3'h1: CHAR_ROM = 8'b10000001; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b11111011; 3'h4: CHAR_ROM = 8'b10011111; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10110101; default: CHAR_ROM = 8'hxx; endcase
+			4'h6: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111101; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b10111011; 3'h4: CHAR_ROM = 8'b10101111; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10110101; default: CHAR_ROM = 8'hxx; endcase
+			4'h7: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b10111101; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b11100111; 3'h3: CHAR_ROM = 8'b10111011; 3'h4: CHAR_ROM = 8'b10110111; 3'h5: CHAR_ROM = 8'b10111111; 3'h6: CHAR_ROM = 8'b10111101; 3'h7: CHAR_ROM = 8'b10111001; default: CHAR_ROM = 8'hxx; endcase
 			4'h8: case (CHAR_ADDR[2:0]) 3'h0: CHAR_ROM = 8'b11000011; 3'h1: CHAR_ROM = 8'b10111101; 3'h2: CHAR_ROM = 8'b10000001; 3'h3: CHAR_ROM = 8'b10000111; 3'h4: CHAR_ROM = 8'b10111001; 3'h5: CHAR_ROM = 8'b10000001; 3'h6: CHAR_ROM = 8'b10011001; 3'h7: CHAR_ROM = 8'b10011101; default: CHAR_ROM = 8'hxx; endcase
 			default: CHAR_ROM = 8'hxx; endcase
 		3'b011: case (ROW_ADDRESS)

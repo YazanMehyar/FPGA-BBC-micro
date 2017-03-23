@@ -8,6 +8,10 @@
 `include "TOP.vh"
 
 module MOS6522 (
+	input [3:0] DEBUG_SEL,
+	output reg [23:0] DEBUG_TAG,
+	output reg [15:0] DEBUG_VAL,
+	
 	input clk,
 	input clk_en,
 	input CS1,
@@ -25,6 +29,8 @@ module MOS6522 (
 	inout [7:0] PORTB,
 
 	output nIRQ);
+	
+	parameter TYPE = 1;
 
 	reg [7:0] OUTA, DDRA;
 	reg [7:0] OUTB, DDRB;
@@ -53,7 +59,7 @@ module MOS6522 (
 
 	always @ (*) begin
 		if(CS) case (RS)
-			4'h0: DATA_OUT = PORTB;
+			4'h0: DATA_OUT = (TYPE == `USRVIA)? {PB7,PORTB[6:0]} : PORTB;
 			4'h1,
 			4'hF: DATA_OUT = PORTA;
 			4'h2: DATA_OUT = DDRB;
@@ -299,8 +305,45 @@ module MOS6522 (
 
 	assign nIRQ = ~|(IFR&IER);
 
+	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
+	
 /****************************************************************************************/
 
-	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
+	always @ ( * ) begin
+		case (DEBUG_SEL[2:0])
+		3'h0: DEBUG_VAL = DDRA;
+		3'h1: DEBUG_VAL = PORTA;
+		3'h2: DEBUG_VAL = DDRB;
+		3'h3: DEBUG_VAL = PORTB;
+		3'h4: DEBUG_VAL = PCR;
+		3'h5: DEBUG_VAL = ACR;
+		3'h6: DEBUG_VAL = IER;
+		3'h7: DEBUG_VAL = IFR;
+		default:DEBUG_VAL = 0;
+		endcase
+
+		if(TYPE == `SYSVIA) case (DEBUG_SEL[2:0])
+		4'h0: DEBUG_TAG = {`dlS,`dlD,`dlR,`dlA};
+		4'h1: DEBUG_TAG = {`dlS,`dlP,`dlR,`dlA};
+		4'h2: DEBUG_TAG = {`dlS,`dlD,`dlR,`dlB};
+		4'h3: DEBUG_TAG = {`dlS,`dlP,`dlR,`dlB};
+		4'h4: DEBUG_TAG = {`dlS,`dlP,`dlC,`dlR};
+		4'h5: DEBUG_TAG = {`dlS,`dlA,`dlC,`dlR};
+		4'h6: DEBUG_TAG = {`dlS,`dlI,`dlE,`dlR};
+		4'h7: DEBUG_TAG = {`dlS,`dlI,`dlF,`dlR};
+		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
+		endcase else case (DEBUG_SEL)
+		4'h0: DEBUG_TAG = {`dlU,`dlD,`dlR,`dlA};
+		4'h1: DEBUG_TAG = {`dlU,`dlP,`dlR,`dlA};
+		4'h2: DEBUG_TAG = {`dlU,`dlD,`dlR,`dlB};
+		4'h3: DEBUG_TAG = {`dlU,`dlP,`dlR,`dlB};
+		4'h4: DEBUG_TAG = {`dlU,`dlP,`dlC,`dlR};
+		4'h5: DEBUG_TAG = {`dlU,`dlA,`dlC,`dlR};
+		4'h6: DEBUG_TAG = {`dlU,`dlI,`dlE,`dlR};
+		4'h7: DEBUG_TAG = {`dlU,`dlI,`dlF,`dlR};
+		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
+		endcase
+	end
+
 
 endmodule // MOS6522

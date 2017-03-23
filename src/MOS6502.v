@@ -32,6 +32,7 @@ module MOS6502 (
 	wire PC_inc, decimal_mode;
 
 	wire [7:0] PSR;
+	wire [7:0] IR;
 	reg  [7:0] PCL;
 	reg  [7:0] PCH;
 	reg  [7:0] Acc;
@@ -54,24 +55,26 @@ module MOS6502 (
 // TEST HELPER
 
 	always @ ( * ) begin
-		casex(DEBUG_SEL)
-		4'bx000: DEBUG_VAL = {8'h00,Acc};
-		4'bx001: DEBUG_VAL = {8'h00,iX};
-		4'bx010: DEBUG_VAL = {8'h00,iY};
-		4'bx011: DEBUG_VAL = {8'h00,SP};
-		4'bx100: DEBUG_VAL = {8'h00,PSR};
-		4'bx101: DEBUG_VAL = {PCH,PCL};
-		default:DEBUG_VAL = 8'hxx;
+		casex(DEBUG_SEL[2:0])
+		3'b000: DEBUG_VAL = Acc;
+		3'b001: DEBUG_VAL = iX;
+		3'b010: DEBUG_VAL = iY;
+		3'b011: DEBUG_VAL = SP;
+		3'b100: DEBUG_VAL = PSR;
+		3'b101: DEBUG_VAL = {PCH,PCL};
+		3'b110: DEBUG_VAL = IR;
+		default:DEBUG_VAL = 0;
 		endcase
 
-		casex (DEBUG_SEL)
-		4'bx000: DEBUG_TAG = {`dlA,`dlC,`dlC,`dlSP};
-		4'bx001: DEBUG_TAG = {`dlI,`dlN,`dlX,`dlSP};
-		4'bx010: DEBUG_TAG = {`dlI,`dlN,`dlY,`dlSP};
-		4'bx011: DEBUG_TAG = {`dlS,`dlP,`dlSP,`dlSP};
-		4'bx100: DEBUG_TAG = {`dlP,`dlS,`dlR,`dlSP};
-		4'bx101: DEBUG_TAG = {`dlP,`dlC,`dlSP,`dlSP};
-		default: DEBUG_TAG = 24'hxxx_xxx;
+		casex (DEBUG_SEL[2:0])
+		3'b000: DEBUG_TAG = {`dlA,`dlC,`dlC,`dlSP};
+		3'b001: DEBUG_TAG = {`dlI,`dlN,`dlX,`dlSP};
+		3'b010: DEBUG_TAG = {`dlI,`dlN,`dlY,`dlSP};
+		3'b011: DEBUG_TAG = {`dlS,`dlP,`dlSP,`dlSP};
+		3'b100: DEBUG_TAG = {`dlP,`dlS,`dlR,`dlSP};
+		3'b101: DEBUG_TAG = {`dlP,`dlC,`dlSP,`dlSP};
+		3'b110: DEBUG_TAG = {`dlI,`dlR,`dlSP,`dlSP};
+		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
     end
 
@@ -230,6 +233,7 @@ MOS6502_Control control(
 	.BUFF_en(BUFF_en),
 	.PC_inc(PC_inc),
 	.PSR_out(PSR),
+	.IR_out(IR),
 	.decimal_mode(decimal_mode));
 
 MOS6502_ALU alu(

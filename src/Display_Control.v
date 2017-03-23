@@ -117,7 +117,7 @@ module Display_Control (
 			if(A0) case (reg_sel)
 				4'h1: horz_display   <= pDATABUS;
 				4'h6: vert_display   <= pDATABUS[6:0];
-				4'h8: interlace_mode <= pDATABUS[1:0];
+				4'h8: interlace_mode <= {pDATABUS[1],1'b1};
 				4'h9: max_scanline   <= pDATABUS[4:0];
 				4'hA: begin
 						cursor_blink_mode <= pDATABUS[6:5];
@@ -316,7 +316,7 @@ module Display_Control (
 	end
 
 // -- Pixel colour
-	wire VULA_DISEN = DISEN & ~ROW_ADDRESS[3];
+	wire VULA_DISEN = DISEN & (~ROW_ADDRESS[3]|CONTROL[1]);
 
 	wire FLASH = ~(PALETTE_COLOUR[3]&CONTROL[0]);
 	wire [2:0] PIXEL_COLOR = VULA_DISEN? FLASH? ~PALETTE_COLOUR[2:0] : PALETTE_COLOUR[2:0] : 3'b000;
@@ -341,7 +341,7 @@ module Display_Control (
 		4'hD: DEBUG_VAL = PALETTE9;
 		4'hE: DEBUG_VAL = PALETTEA;
 		4'hF: DEBUG_VAL = PALETTEB;
-		default:DEBUG_VAL = 8'hxx;
+		default:DEBUG_VAL = 8'h00;
 		endcase
 
 		case (DEBUG_SEL)
@@ -360,7 +360,7 @@ module Display_Control (
 		4'hD: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl9};
 		4'hE: DEBUG_TAG = {`dlP,`dlA,`dlL,`dlA};
 		4'hF: DEBUG_TAG = {`dlP,`dlA,`dlL,`dlB};
-		default: DEBUG_TAG = 24'hxxx_xxx;
+		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
 	end
 

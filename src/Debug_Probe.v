@@ -21,10 +21,8 @@ module Debug_Probe (
 	`endif
 
 
-	wire BUTTON_NEXT;
-	wire BUTTON_PREV;
-	Edge_Trigger #(1) POS_BUTTON0(.clk(PIXELCLK),.IN(BUTTON[0]),.En(1'b1),.EDGE(BUTTON_NEXT));
-	Edge_Trigger #(1) POS_BUTTON1(.clk(PIXELCLK),.IN(BUTTON[1]),.En(1'b1),.EDGE(BUTTON_PREV));
+	wire BUTTON_NEXT = BUTTON[0];
+	wire BUTTON_PREV = BUTTON[1];
 
 	always @ (posedge PIXELCLK)
 		if(SELen)

@@ -36,7 +36,9 @@ module MOS6502_Control (
 	output BUFF_en,
 	output PC_inc,
 	output [7:0] PSR_out,
-	output decimal_mode);
+	output [7:0] IR_out,
+	output decimal_mode
+	);
 
 	reg BX, BCC;
 	reg SD1, SD2;
@@ -60,6 +62,7 @@ module MOS6502_Control (
 	assign SYNC_pin = T_state[0] & ~NEXT_T;
 	assign BUFF_en = READY;
 	assign PSR_out = {PSR[7:6],1'b1,nIRQ_req&nNMI_req,PSR[3:0]};
+	assign IR_out = IR;
 
 /**************************************************************************************************/
 
