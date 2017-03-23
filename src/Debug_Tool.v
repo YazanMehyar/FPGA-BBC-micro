@@ -93,16 +93,20 @@ module Debug_Tool(
 			Dsel <= {Dsel[0],Dsel[3:1]};
 
 	always @ (posedge PIXELCLK)
-		if(VSYNC) begin
+		if(VSYNC)
 			ROW_ADDRESS <= 0;
-			LINE <= 2'h2;
-		end else if(HSYNC & DEBUG_DISEN)
+		else if(HSYNC & DEBUG_DISEN)
 			if(ROW_ADDRESS != `CHAR_HEIGHT)
 				ROW_ADDRESS <= ROW_ADDRESS + 1;
-			else begin
+			else
 				ROW_ADDRESS <= 0;
-				LINE <= LINE - 1;
-			end
+
+	always @ (posedge PIXELCLK) begin
+		if(VSYNC)
+			LINE <= 2'h2;
+		else if(HSYNC & DEBUG_DISEN & (ROW_ADDRESS == `CHAR_HEIGHT))
+			LINE <= LINE - 1;
+	end
 
 	always @ (posedge PIXELCLK)
 		if(HSYNC)
