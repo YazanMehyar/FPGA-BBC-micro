@@ -37,11 +37,11 @@ module TOP_test();
 	wire SD_CMD;
 	wire SD_SCK;
 	reg SD_MISO;
-	
+
 	assign SD_SCK = JC[7];
 	assign SD_CMD = JC[8];
 	assign JC[9] = SD_MISO;
-	
+
 	always @ (posedge PS2_CLK) begin
 		SD_MISO <= $urandom_range(0,5)/5;
 	end
@@ -130,7 +130,11 @@ module TOP_test();
 		PS2_DATA <= 1;
 		repeat (100) @(posedge CLK100MHZ);
 		CPU_RESETN <= 1;
-		repeat (8) @(posedge VGA_VS);
+		repeat (2) @(posedge VGA_VS);
+		-> START_LOG;
+		repeat (1) @(posedge VGA_VS);
+		$stop;
+		repeat (7) @(posedge VGA_VS);
 		@(posedge PS2_CLK);
 			PS2_SEND(8'h12);
 			PRESS_KEY(8'h55);
@@ -142,7 +146,6 @@ module TOP_test();
 		PRESS_KEY(8'h21);
 		PRESS_KEY(8'h1C);
 		PRESS_KEY(8'h2C);
-		-> START_LOG;
 		PRESS_KEY(8'h5A);
 		repeat (5) @(posedge VGA_VS);
 

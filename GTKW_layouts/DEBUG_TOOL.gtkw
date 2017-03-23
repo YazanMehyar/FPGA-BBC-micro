@@ -1,0 +1,64 @@
+[*]
+[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
+[*] Thu Mar 23 03:25:50 2017
+[*]
+[dumpfile] "/home/zen/FinalYearProject/The BEEB/sim_dump/TOP_test.lxt"
+[dumpfile_mtime] "Thu Mar 23 03:20:43 2017"
+[dumpfile_size] 17084580
+[savefile] "/home/zen/FinalYearProject/The BEEB/GTKW_layouts/DEBUG_TOOL.gtkw"
+[timestart] 22672771
+[size] 1916 1037
+[pos] -1 -1
+*-9.000000 22673787 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP_test.
+[treeopen] TOP_test.top.
+[treeopen] TOP_test.top.keyboard.
+[treeopen] TOP_test.top.sys_via.
+[sst_width] 223
+[signals_width] 257
+[sst_expanded] 1
+[sst_vpaned_height] 295
+@28
+TOP_test.CPU_RESETN[0]
+TOP_test.PIXELCLK[0]
+@200
+-
+-Processor
+@28
+TOP_test.top.pocessor.SYNC[0]
+@22
+TOP_test.top.pocessor.Acc[7:0]
+TOP_test.top.pocessor.iX[7:0]
+TOP_test.top.pocessor.iY[7:0]
+TOP_test.top.pocessor.SP[7:0]
+@28
+TOP_test.top.pocessor.PSR[7:0]
+@200
+-
+-Video
+@28
+TOP_test.top.dc.NEWLINE[0]
+TOP_test.top.dc.NEWSCREEN[0]
+@200
+-
+-Debug Tools
+@22
+TOP_test.top.dtool.Den[4:0]
+TOP_test.top.dtool.CHARADR1[5:0]
+TOP_test.top.dtool.PROBEen[3:0]
+TOP_test.top.dtool.LINE_COUNT[9:0]
+TOP_test.top.dtool.ROW_ADDRESS[3:0]
+TOP_test.top.dtool.CHAR_ADDR[5:0]
+TOP_test.top.dtool.CHAR_SR[7:0]
+TOP_test.top.dtool.CHAR_ROM[7:0]
+@28
+TOP_test.top.dtool.NEXT_CHAR[0]
+TOP_test.top.dtool.LINE[1:0]
+TOP_test.top.dtool.DEBUG_DISEN[0]
+TOP_test.top.dtool.HIGHLIGHT[0]
+TOP_test.top.dtool.PIXEL_OUT[0]
+TOP_test.top.RGB[2:0]
+@22
+TOP_test.top.VGA_R[3:0]
+[pattern_trace] 1
+[pattern_trace] 0

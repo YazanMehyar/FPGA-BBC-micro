@@ -2,10 +2,10 @@
 
 module MOS6502 (
 	// Test pins
-	`ifdef SIMULATION_6502
-		input [2:0] test_reg_select,
-		output reg [7:0] test_value_out,
-	`endif
+	input [3:0] DEBUG_SEL,
+	output reg [23:0] DEBUG_TAG,
+	output reg [15:0] DEBUG_VAL,
+
 	input clk,
 	input clk_en,
 	input nRESET,
@@ -52,21 +52,28 @@ module MOS6502 (
 
 /**************************************************************************************************/
 // TEST HELPER
-	`ifdef SIMULATION_6502
-	    always @ ( * ) begin
-		    case(test_reg_select)
-		    3'b000: test_value_out = Acc;
-		    3'b001: test_value_out = iX;
-		    3'b010: test_value_out = iY;
-		    3'b011: test_value_out = SP;
 
-		    3'b100: test_value_out = PSR;
-		    3'b101: test_value_out = PCL;
-		    3'b110: test_value_out = PCH;
-		    default:test_value_out = 8'hxx;
-		    endcase
-	    end
-	`endif
+	always @ ( * ) begin
+		casex(DEBUG_SEL)
+		4'bx000: DEBUG_VAL = {8'h00,Acc};
+		4'bx001: DEBUG_VAL = {8'h00,iX};
+		4'bx010: DEBUG_VAL = {8'h00,iY};
+		4'bx011: DEBUG_VAL = {8'h00,SP};
+		4'bx100: DEBUG_VAL = {8'h00,PSR};
+		4'bx101: DEBUG_VAL = {PCH,PCL};
+		default:DEBUG_VAL = 8'hxx;
+		endcase
+
+		casex (DEBUG_SEL)
+		4'bx000: DEBUG_TAG = {`dlA,`dlC,`dlC,`dlSP};
+		4'bx001: DEBUG_TAG = {`dlI,`dlN,`dlX,`dlSP};
+		4'bx010: DEBUG_TAG = {`dlI,`dlN,`dlY,`dlSP};
+		4'bx011: DEBUG_TAG = {`dlS,`dlP,`dlSP,`dlSP};
+		4'bx100: DEBUG_TAG = {`dlP,`dlS,`dlR,`dlSP};
+		4'bx101: DEBUG_TAG = {`dlP,`dlC,`dlSP,`dlSP};
+		default: DEBUG_TAG = 24'hxxx_xxx;
+		endcase
+    end
 
 /**************************************************************************************************/
 // Data paths

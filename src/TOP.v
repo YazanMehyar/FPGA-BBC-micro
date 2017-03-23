@@ -14,6 +14,7 @@ module TOP(
 	output VGA_VS,
 
 	output [1:0] LED,
+	input  [1:0] SW,
 
 	output AUD_SD,
 	output AUD_PWM,
@@ -84,7 +85,8 @@ module TOP(
 	wire COLUMN_MATCH;
 	wire MOSI, MISO, SCK;
 	wire SOUND;
-	wire BLUE, RED, GREEN;
+	wire DISEN;
+	wire [2:0] RGB;
 
 	wire SHEILA		= &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 	wire OSBANKen	= &pADDRESSBUS[15:14] & ~SHEILA;
@@ -186,6 +188,16 @@ module TOP(
 	assign vADDRESSBUS = {caa,FRAMESTORE_ADR[7:0],ROW_ADDRESS[2:0]};
 
 /******************************************************************************/
+// Test Helpers
+
+	wire [15:0] PROC_val;
+	wire [23:0] PROC_tag;
+	wire [3:0]  PROC_sel;
+	wire [15:0] DISP_val;
+	wire [23:0] DISP_tag;
+	wire [3:0]  DISP_sel;
+	wire DEBUG_PIXEL;
+/******************************************************************************/
 
 // Processor
 	MOS6502 pocessor(
@@ -199,7 +211,10 @@ module TOP(
 		.READY(VCC),
 		.Data_bus(pDATABUS),
 		.Address_bus(pADDRESSBUS),
-		.RnW(RnW)
+		.RnW(RnW),
+		.DEBUG_SEL(PROC_sel),
+		.DEBUG_VAL(PROC_val),
+		.DEBUG_TAG(PROC_tag)
 	);
 
 // Video control
@@ -219,11 +234,12 @@ module TOP(
 		.pDATABUS(pDATABUS),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS),
-		.RED(RED),
-		.GREEN(GREEN),
-		.BLUE(BLUE),
+		.RGB(RGB),
 		.FRAMESTORE_ADR(FRAMESTORE_ADR),
-		.ROW_ADDRESS(ROW_ADDRESS)
+		.ROW_ADDRESS(ROW_ADDRESS),
+		.DEBUG_SEL(DISP_sel),
+		.DEBUG_VAL(DISP_val),
+		.DEBUG_TAG(DISP_tag)
 	);
 
 // System VIA
@@ -308,12 +324,13 @@ module TOP(
 /**************************************************************************************************/
 	assign AUD_SD  = 1'b1;				 // audio enable
 	assign AUD_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
-	assign VGA_R = {4{RED}};
-	assign VGA_G = {4{GREEN}};
-	assign VGA_B = {4{BLUE}};
+	assign VGA_R = {4{DEBUG_PIXEL ^ RGB[0]}};
+	assign VGA_G = {4{DEBUG_PIXEL ^ RGB[1]}};
+	assign VGA_B = {4{DEBUG_PIXEL ^ RGB[2]}};
 	assign LED[0] = MOSI;
 	assign LED[1] = MISO;
 	`ifdef SIMULATION
+		// Iverilog Issue
 		assign JC[7] = UPORTB[1];
 		assign JC[8] = UPORTB[0];
 	`else
@@ -323,6 +340,21 @@ module TOP(
 	assign MISO = JC[9];
 
 // TEST_ASSISTANCE
+
+	Debug_Tool dtool(
+		.PIXELCLK(PIXELCLK),
+		.VSYNC(VGA_VS),
+		.HSYNC(VGA_HS),
+		.TAG1(PROC_tag),
+		.VAL1(PROC_val),
+		.SEL1(PROC_sel),
+		.TAG2(DISP_tag),
+		.VAL2(DISP_val),
+		.SEL2(DISP_sel),
+		.PIXEL_OUT(DEBUG_PIXEL)
+	);
+
+
 `ifdef SIMULATION
 
 `endif

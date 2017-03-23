@@ -1,6 +1,10 @@
 `include "VIDEO.vh"
 
 module Display_Control (
+	input [3:0] DEBUG_SEL,
+	output reg [23:0] DEBUG_TAG,
+	output reg [15:0] DEBUG_VAL,
+
 	input PIXELCLK,
 	input nRESET,
 	input dRAM_en,
@@ -18,9 +22,7 @@ module Display_Control (
 
 	output VGA_HS,
 	output VGA_VS,
-	output RED,
-	output GREEN,
-	output BLUE,
+	output [2:0] RGB,
 	output reg [13:0] FRAMESTORE_ADR,
 	output reg [4:0]  ROW_ADDRESS
 	);
@@ -318,6 +320,50 @@ module Display_Control (
 
 	wire FLASH = ~(PALETTE_COLOUR[3]&CONTROL[0]);
 	wire [2:0] PIXEL_COLOR = VULA_DISEN? FLASH? ~PALETTE_COLOUR[2:0] : PALETTE_COLOUR[2:0] : 3'b000;
-	assign {BLUE,GREEN,RED} = CURSOR_DRAW? ~PIXEL_COLOR : PIXEL_COLOR;
+	assign RGB = CURSOR_DRAW? ~PIXEL_COLOR : PIXEL_COLOR;
+
+/****************************************************************************************/
+
+	always @ ( * ) begin
+		case (DEBUG_SEL)
+		4'h0: DEBUG_VAL = start_adr;
+		4'h1: DEBUG_VAL = horz_display;
+		4'h2: DEBUG_VAL = vert_display;
+		4'h3: DEBUG_VAL = max_scanline;
+		4'h4: DEBUG_VAL = interlace_mode;
+		4'h5: DEBUG_VAL = cursor_adr;
+		4'h6: DEBUG_VAL = CONTROL;
+		4'h8: DEBUG_VAL = PALETTE4;
+		4'h9: DEBUG_VAL = PALETTE5;
+		4'hA: DEBUG_VAL = PALETTE6;
+		4'hB: DEBUG_VAL = PALETTE7;
+		4'hC: DEBUG_VAL = PALETTE8;
+		4'hD: DEBUG_VAL = PALETTE9;
+		4'hE: DEBUG_VAL = PALETTEA;
+		4'hF: DEBUG_VAL = PALETTEB;
+		default:DEBUG_VAL = 8'hxx;
+		endcase
+
+		case (DEBUG_SEL)
+		4'h0: DEBUG_TAG = {`dlS,`dlT,`dlA,`dlD};
+		4'h1: DEBUG_TAG = {`dlH,`dlZ,`dlD,`dlP};
+		4'h2: DEBUG_TAG = {`dlV,`dlT,`dlD,`dlP};
+		4'h3: DEBUG_TAG = {`dlM,`dlX,`dlS,`dlL};
+		4'h4: DEBUG_TAG = {`dlI,`dlN,`dlT,`dlM};
+		4'h5: DEBUG_TAG = {`dlC,`dlS,`dlA,`dlD};
+		4'h6: DEBUG_TAG = {`dlC,`dlT,`dlR,`dlL};
+		4'h8: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl4};
+		4'h9: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl5};
+		4'hA: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl6};
+		4'hB: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl7};
+		4'hC: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl8};
+		4'hD: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl9};
+		4'hE: DEBUG_TAG = {`dlP,`dlA,`dlL,`dlA};
+		4'hF: DEBUG_TAG = {`dlP,`dlA,`dlL,`dlB};
+		default: DEBUG_TAG = 24'hxxx_xxx;
+		endcase
+	end
+
+/****************************************************************************************/
 
 endmodule
