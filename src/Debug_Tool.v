@@ -67,17 +67,16 @@ module Debug_Tool(
 	Edge_Trigger #(1) POS_BUTTON1(.clk(PIXELCLK),.IN(TOOL_B[1]),.En(1'b1),.EDGE(BUTTON_PREV));
 
 	always @ ( posedge PIXELCLK )
-		if(VSYNC) begin
+		if(VSYNC)
 			LINE_COUNT <= `DEBUG_LINE;
-			H_DISPLAY  <= `DEBUG_HLINE;
-		end else if(NEG_HSYNC) begin
-			if(LINE_COUNT != 0)
-				LINE_COUNT <= LINE_COUNT - 1;
+		else if(NEG_HSYNC & |LINE_COUNT)
+			LINE_COUNT <= LINE_COUNT - 1;
+
+	always @ (posedge PIXELCLK)
+		if(HSYNC)
 			H_DISPLAY <= `DEBUG_HLINE;
-		end else begin
-			if(H_DISPLAY != 0)
-				H_DISPLAY <= H_DISPLAY - 1;
-		end
+		else if(|H_DISPLAY)
+			H_DISPLAY <=  H_DISPLAY - 1;
 
 	always @ ( posedge PIXELCLK )
 		if(~|PIXEL_COUNT | HSYNC)
@@ -97,7 +96,7 @@ module Debug_Tool(
 		if(VSYNC) begin
 			ROW_ADDRESS <= 0;
 			LINE <= 2'h2;
-		end else if(NEG_HSYNC&DEBUG_DISEN)
+		end else if(HSYNC & DEBUG_DISEN)
 			if(ROW_ADDRESS != `CHAR_HEIGHT)
 				ROW_ADDRESS <= ROW_ADDRESS + 1;
 			else begin
