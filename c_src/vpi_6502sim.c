@@ -76,7 +76,7 @@ run_step(char *data) {
 int
 get_internal_state(char *date){
 	uint8_t reg_sel;
-	uint8_t reg_val;
+	uint16_t reg_val;
 
 	vpiHandle args_iter;
     struct t_vpi_value argval;
@@ -94,8 +94,7 @@ get_internal_state(char *date){
 		case 2: reg_val = y; break;
 		case 3: reg_val = sp; break;
 		case 4: reg_val = status; break;
-		case 5: reg_val = (uint8_t) pc; break;
-		case 6: reg_val = (uint8_t) (pc >> 8); break;
+		case 5: reg_val = pc; break;
 		default: reg_val = 0xFF;
 	}
 
@@ -111,6 +110,8 @@ int
 print_last_read(char *data){
 	vpi_printf("Last address read is %04hX\n", last_read_addr);
 	vpi_printf("Memory @ addr is %02hX\n", mem[last_read_addr]);
+	vpi_printf("C model registers:\n");	
+	vpi_printf("A:%02hX, X:%02hX, Y:%02hX, SP:%02hX, PSR:%02hX\n", a,x,y,sp,status);
 	return 0;
 }
 

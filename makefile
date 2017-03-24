@@ -4,7 +4,7 @@ BIN=./bin/
 SIMDMP=./sim_dump/
 INC=./inc
 VPI=./vpi
-VPIm=-m vpi_top
+VPIm=-m vpi_top -m vpi_6502sim
 
 VC=iverilog
 VCFLAGS=-Wall -Wno-timescale -Wno-implicit-dimensions -I$(INC) -t vvp -D SIMULATION

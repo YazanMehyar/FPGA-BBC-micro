@@ -1,111 +1,115 @@
-module MOS_6502_test ();
+`include "TOP.vh"
 
-`define CLK_PEROID 2
-`define KiB64 	16'hFFFF
-`define STOP_ADR 16'hFFFC
-`define TEST_FILE "./c_src/test_bin/6502_functional_test.bin"
-`define NULL 0
-`define TIME_LIMIT 100000
+module MOS6502_test ();
 
-initial begin
-	//$dumpvars(0, MOS_6502_test);
-end
+	`define STOP_ADR	16'hFFFC
+	`define TEST_FILE	"./c_src/test_bin/6502_functional_test.bin"
+	`define NULL 0
+	`define TIME_LIMIT	20000000
 
-reg clk = 0;
-always clk = #(`CLK_PEROID/2) ~clk;
+	reg clk;
+	reg nRESET;
+	reg nIRQ;
+	reg nNMI;
+	reg nSO;
+	reg READY;
+	wire clk_en;
+	
+	wire [7:0] Data_bus = RnW? mem_out : 8'hzz;
 
-reg nRES, nIRQ, nNMI;
-reg SO, READY;
+	wire [15:0] Address_bus;
+	wire SYNC;
+	wire RnW;
 
-wire [15:0] Address_bus;
-wire PHI_1, PHI_2;
-wire SYNC, RnW;
+	MOS6502 mos6502(
+		.clk(clk),
+		.clk_en(clk_en),
+		.nRESET(nRESET),
+		.nIRQ(nIRQ),
+		.nNMI(nNMI),
+		.nSO(nSO),
+		.READY(READY),
+		.Data_bus(Data_bus),
+		.Address_bus(Address_bus),
+		.RnW(RnW),
+		.SYNC(SYNC)
+	);
+	
+	initial $dumpvars(0, MOS6502_test);
 
-wire [7:0] Data_bus = PHI_2 & RnW? mem_out : 8'hzz;
-MOS6502 mos6502(
-	.clk(clk),
-	.nRES(nRES),
-	.nIRQ(nIRQ),
-	.nNMI(nNMI),
-	.SO(SO),
-	.READY(READY),
-	.Data_bus(Data_bus),
-	.Address_bus(Address_bus),
-	.RnW(RnW),
-	.SYNC(SYNC)
-);
-
-// memory
-reg [7:0] mem [0:`KiB64];
-reg [7:0] mem_out;
-reg STOP_SIG = 0;
-integer last_adr = 16'hFFFC;
-always @ ( Data_bus, PHI_2, RnW, Address_bus ) begin
-	if(PHI_2) begin
-		if(RnW) mem_out = mem[Address_bus];
+	// Timing
+	
+	initial clk = 0;
+	always clk = #(`CLKPERIOD/2) ~clk;
+	
+	reg [3:0] clk_count = 0;
+	always @ (posedge clk) clk_count <= clk_count + 1;
+	assign clk_en = &clk_count;
+	
+	integer i;
+	initial i = `TIME_LIMIT;
+	always @ (posedge clk)
+		if(i == 0) $finish;
+		else if(clk_en) i <= i - 1;
+	
+	// memory
+	reg [7:0] mem [0:`KiB64];
+	reg [7:0] mem_out;
+	reg STOP_SIG = 0;
+	integer last_adr = 16'hFFFC;
+	always @ (posedge clk)
+		if(RnW)
+			mem_out <= mem[Address_bus];
 		else if(Address_bus == `STOP_ADR)
-			STOP_SIG = 1;
-		else mem[Address_bus] = Data_bus;
-	end
-end
+			STOP_SIG <= 1;
+		else
+			mem[Address_bus] <= Data_bus;
 
 
-always @ (posedge clk) begin
-	if(SYNC) begin
-		if(last_adr == Address_bus) begin
-			$display("ERROR");
-			$finish;
+	always @ (posedge clk)
+		if(clk_en & SYNC) begin
+			if(last_adr == Address_bus) $finish;
+			last_adr <= Address_bus;
 		end
-		last_adr <= Address_bus;
+	
+/**************************************************************************************************/
+
+	integer f;
+	reg [7:0] c;
+	integer adr;
+	task init_mem; begin
+
+		f = $fopen(`TEST_FILE, "r");
+		if (f == `NULL) begin
+		    $display("ERROR: Could not open file");
+		    $finish;
+		end
+		adr = 0;
+		while(!$feof(f) && adr <= `KiB64) begin
+			c = $fgetc(f);
+			if(!$feof(f)) mem[adr] = c;
+			adr = adr + 1;
+		end
+		$fclose(f);
+
+	end endtask
+
+/**************************************************************************************************/
+
+	initial begin
+		nRESET <= 0;
+		nNMI <= 1;
+		nIRQ <= 1;
+		nSO <= 1;
+		READY <= 1;
+		init_mem;
+		repeat (5) @(posedge clk);
+
+		nRESET <= 1;
+		while(!STOP_SIG) @(posedge clk);
+
+		$display("SUCCESS, Congratulations!");
+		$finish;
 	end
-end
-/******************************************************************************/
-
-integer f;
-reg [7:0] c;
-integer adr;
-task init_mem; begin
-
-	f = $fopen(`TEST_FILE, "r");
-	if (f == `NULL) begin
-        $display("ERROR: Could not open file");
-        $finish;
-    end
-	adr = 0;
-	while(!$feof(f) && adr <= `KiB64) begin
-		c = $fgetc(f);
-		if(!$feof(f)) mem[adr] = c;
-		adr = adr + 1;
-	end
-	$fclose(f);
-
-end endtask
-
-integer j;
-task print_results;
-begin
-	$display("SUCCESS, Congratulations!");
-end
-endtask
-
-/******************************************************************************/
-
-integer i;
-initial begin
-	nRES <= 0;
-	nNMI <= 1;
-	nIRQ <= 1;
-	SO <= 1;
-	READY <= 1;
-	init_mem;
-	repeat (5) @(posedge clk);
-
-	nRES <= 1;
-	while(!STOP_SIG) @(posedge clk);
-
-	print_results;
-	$finish;
-
-end
 
 endmodule // MOS_6502_test
