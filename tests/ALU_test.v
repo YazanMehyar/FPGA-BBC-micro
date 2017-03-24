@@ -28,25 +28,12 @@ module ALU_test ();
 
 /******************************************************************************/
 
-reg [255:0] error_prefix;
-
-task error;
-input [255:0] msg;
-begin
-	$display("\n***************************************");
-	$display("ERROR @ %d: %s ", $stime, error_prefix);
-	$display("MESSAGE: %s", msg);
-	$display("***************************************\n");
-	#1 $stop;
-end
-endtask
-
 task display_arithm;
 begin
 if(ALU_FUNC == `ALU_ADD)
-	$display("%h + %h + %b = %h __ Cout is %b", SB, ALU_B, CARRY_IN, ALU_out, ALU_COUT);
+	$display("%h + %h + %b = %h __ Cout is %b, DFlag is %b", SB, ALU_B, CARRY_IN, ALU_out, ALU_COUT, D_flag);
 else
-	$display("%h - %h - %b = %h __ Cout is %b", SB, ALU_B, ~CARRY_IN, ALU_out, ALU_COUT);
+	$display("%h - %h - %b = %h __ Cout is %b, DFlag is %b", SB, ALU_B, ~CARRY_IN, ALU_out, ALU_COUT, D_flag);
 end
 endtask
 
