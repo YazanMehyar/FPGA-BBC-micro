@@ -1,4 +1,4 @@
-`include "Decode_6502.vh"
+`include "MOS6502.vh"
 
 module ALU_test ();
 	reg [7:0] SB;
@@ -13,7 +13,7 @@ module ALU_test ();
 	wire ALU_NOUT;
 	wire ALU_ZOUT;
 
-	ALU_6502 a(
+	MOS6502_ALU a(
 	.SB(SB),
 	.ALU_B(ALU_B),
 	.D_flag(D_flag),

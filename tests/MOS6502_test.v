@@ -1,7 +1,7 @@
 module MOS_6502_test ();
 
 `define CLK_PEROID 2
-`define KiB64 65535
+`define KiB64 	16'hFFFF
 `define STOP_ADR 16'hFFFC
 `define TEST_FILE "./c_src/test_bin/6502_functional_test.bin"
 `define NULL 0
@@ -24,15 +24,16 @@ wire SYNC, RnW;
 wire [7:0] Data_bus = PHI_2 & RnW? mem_out : 8'hzz;
 MOS6502 mos6502(
 	.clk(clk),
-	.nRES(nRES), .nIRQ(nIRQ), .nNMI(nNMI),
-	.SO(SO), .READY(READY),
+	.nRES(nRES),
+	.nIRQ(nIRQ),
+	.nNMI(nNMI),
+	.SO(SO),
+	.READY(READY),
 	.Data_bus(Data_bus),
 	.Address_bus(Address_bus),
-	.PHI_1(PHI_1),
-	.PHI_2(PHI_2),
 	.RnW(RnW),
 	.SYNC(SYNC)
-	);
+);
 
 // memory
 reg [7:0] mem [0:`KiB64];

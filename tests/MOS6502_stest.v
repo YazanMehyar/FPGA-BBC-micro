@@ -21,7 +21,6 @@ reg [2:0] test_reg_select;
 
 wire [15:0] Address_bus;
 wire [7:0] test_value_out;
-wire PHI_1, PHI_2;
 wire SYNC, RnW;
 
 wire [7:0] Data_bus = PHI_2 & RnW? mem_out : 8'hzz;

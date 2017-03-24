@@ -13,7 +13,7 @@ VI=vvp
 VIFLAGS=-s -M $(VPI) $(VPIm)
 
 R_OBJ=$(addprefix $(BIN), $(shell ls $(BIN) | grep '.*\.vvp$$'))
-R_DMP=$(addprefix $(SIMDMP), $(shell ls $(SIMDMP) | grep '.*\.lxt$$'))
+R_DMP=$(addprefix $(SIMDMP), $(shell ls $(SIMDMP) | grep '.*\.lx2$$'))
 SRCF=$(addprefix $(SRC), $(shell ls $(SRC) | grep '.*\.v$$'))
 
 bn=$(addsuffix $(2),$(basename $(1)))
@@ -29,7 +29,7 @@ bn=$(addsuffix $(2),$(basename $(1)))
 %.sim: $(BIN)%.vvp
 	IVERILOG_DUMPER=lxt2 \
 	$(VI) $(VIFLAGS) $< \
-	test -e dump.lxt && mv dump.lxt $(SIMDMP)$(call bn,$@,.lxt)
+	test -e dump.lx2 && mv dump.lx2 $(SIMDMP)$(call bn,$@,.lx2)
 
 $(BIN)%.vvp: $(TEST)%.v $(SRCF)
 	$(VC) $(VCFLAGS) -s $(call bn,$(notdir $@),) -o $@ \

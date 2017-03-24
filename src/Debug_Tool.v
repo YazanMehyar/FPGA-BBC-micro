@@ -192,17 +192,17 @@ module Debug_Tool(
 		.SEL(SEL4),
 		.CHAR_ADDR(CHARADR4)
 	);
-	
+
 	Debug_Probe dp_break(
 		.PIXELCLK(PIXELCLK),
 		.DEBUGen(PROBEen[4]),
-		.SELen(0),
+		.SELen(1'b0),
 		.UPDATE(UPDATE),
 		.VALUE(VALB),
 		.TAG(TAGB),
 		.LINE(LINE[0]),
 		.NEXT_CHAR(NEXT_CHAR),
-		.BUTTON(0),
+		.BUTTON(2'b00),
 		.CHAR_ADDR(CHARADRB)
 	);
 

@@ -5,7 +5,6 @@ module TOP_test();
 	event START_LOG;
 	initial begin
 		@(START_LOG);
-		$dumpfile("dump.lxt");
 		$dumpvars(3, TOP_test);
 	end
 
@@ -56,7 +55,13 @@ module TOP_test();
 		.VGA_B(VGA_B),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS),
-		.JC(JC)
+		.JC(JC),
+		.SW(4'h1),
+		.BTNU(1'b0),
+		.BTND(1'b0),
+		.BTNL(1'b0),
+		.BTNR(1'b0),
+		.BTNC(1'b0)
 	);
 
 /******************************************************************************/
