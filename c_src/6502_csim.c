@@ -1,3 +1,13 @@
+/*
+	NOTE: As can be seen the following 6502 simulator
+		  is written by Mike Chambers. It was used to
+		  test the 6502 written in verilog.
+
+		  I edited a few lines:
+			- Lines in ADC & SBC decimal mode
+			- PSR state register
+*/
+
 /* Fake6502 CPU emulator core v1.1 *******************
  * (c)2011 Mike Chambers (miker00lz@gmail.com)       *
  *****************************************************
