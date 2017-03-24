@@ -1,0 +1,47 @@
+[*]
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Fri Mar 24 20:18:19 2017
+[*]
+[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/PS2Driver_test.lx2"
+[dumpfile_mtime] "Fri Mar 24 20:15:24 2017"
+[dumpfile_size] 22287
+[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/PS2_Driver.gtkw"
+[timestart] 0
+[size] 1916 1157
+[pos] -1 -1
+*-12.000000 16555 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] PS2Driver_test.
+[sst_width] 214
+[signals_width] 166
+[sst_expanded] 1
+[sst_vpaned_height] 335
+@28
+PS2Driver_test.clk[0]
+PS2Driver_test.clk_en[0]
+PS2Driver_test.nRESET[0]
+@200
+-
+@28
+PS2Driver_test.PS2_CLK[0]
+PS2Driver_test.PS2_DATA[0]
+@200
+-
+@28
+PS2Driver_test.DONE[0]
+@22
+PS2Driver_test.DATA[7:0]
+@200
+-
+@22
+PS2Driver_test.ps2.clk_filter[3:0]
+@28
+PS2Driver_test.ps2.NEGEDGE_PS2CLK[0]
+PS2Driver_test.ps2.POSEDGE_PS2CLK[0]
+@200
+-
+@28
+PS2Driver_test.ps2.CAPTURE[0]
+PS2Driver_test.ps2.RELEASE[0]
+PS2Driver_test.ps2.MESSAGE[10:0]
+[pattern_trace] 1
+[pattern_trace] 0
