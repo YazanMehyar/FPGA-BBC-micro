@@ -59,7 +59,7 @@ module MOS6522 (
 
 	always @ (*) begin
 		if(CS) case (RS)
-			4'h0: DATA_OUT = (TYPE == `USRVIA)? {PB7,PORTB[6:0]} : PORTB;
+			4'h0: DATA_OUT = PORTB;
 			4'h1,
 			4'hF: DATA_OUT = PORTA;
 			4'h2: DATA_OUT = DDRB;
@@ -297,7 +297,7 @@ module MOS6522 (
 					DDRA[1]? OUTA[1]: 1'bz, DDRA[0]? OUTA[0]: 1'bz} : 8'hzz;
 
 	assign PORTB = nRESET?
-					{DDRB[7]? ACR[7]? PB7:OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
+					{ACR[7]? PB7: DDRB[7]? OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
 					DDRB[5]? OUTB[5]:1'bz, DDRB[4]? OUTB[4]:1'bz,
 					DDRB[3]? OUTB[3]:1'bz, DDRB[2]? OUTB[2]:1'bz,
 					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;
