@@ -18,10 +18,10 @@ reg nNMI;
 reg nSO;
 reg READY;
 reg clk;
-reg clk_en;
+wire clk_en;
 
 // inout
-wire [7:0] Data_bus = PHI_2 & RnW? mem_out : 8'hzz;
+wire [7:0] Data_bus = RnW? mem_out : 8'hzz;
 
 // output
 wire [15:0] Address_bus;
@@ -45,6 +45,10 @@ MOS6502 mos6502(
 initial clk = 0;
 always #(`CLK_PEROID/2) clk = ~clk;
 
+reg [3:0] clk_count;
+initial clk_count = 0;
+always @ (posedge clk) clk_count <= clk_count + 1;
+assign clk_en = &clk_count;
 
 // memory
 reg [7:0] mem [0:`KiB64];
@@ -52,15 +56,15 @@ reg [7:0] mem_out;
 
 `include "demo_mem.vh"
 
-always @ ( Data_bus, RnW, Address_bus )
-	if(RnW) mem_out = mem[Address_bus];
-	else	mem[Address_bus] = Data_bus;
+always @ (posedge clk)
+	if(RnW) mem_out <= mem[Address_bus];
+	else	mem[Address_bus] <= Data_bus;
 
 
 // Termination
 reg STOP = 0;
-always @ (Address_bus, RnW)
-	STOP = #5 STOP || Address_bus == `RESET_VEC && ~RnW;
+always @ (posedge clk)
+	if(clk_en)	STOP <= STOP || Address_bus == `RESET_VEC && ~RnW;
 
 /**************************************************************************************************/
 

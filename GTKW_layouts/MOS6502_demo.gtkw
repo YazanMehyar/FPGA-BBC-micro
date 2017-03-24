@@ -1,15 +1,15 @@
 [*]
 [*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Fri Mar 10 20:34:42 2017
+[*] Fri Mar 24 12:47:01 2017
 [*]
-[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/MOS6502_demo.vcd"
-[dumpfile_mtime] "Fri Mar 10 20:32:27 2017"
-[dumpfile_size] 110281
+[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/MOS6502_demo.lx2"
+[dumpfile_mtime] "Fri Mar 24 12:46:46 2017"
+[dumpfile_size] 32277
 [savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/MOS6502_demo.gtkw"
 [timestart] 0
 [size] 1916 1157
 [pos] -1 -1
-*-8.000000 2425 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-12.000000 5575 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] MOS6502_demo.
 [treeopen] MOS6502_demo.mos6502.
 [sst_width] 214
@@ -17,26 +17,27 @@
 [sst_expanded] 1
 [sst_vpaned_height] 345
 @28
-MOS6502_demo.clk
-MOS6502_demo.clk_en
-MOS6502_demo.nRES
+MOS6502_demo.clk[0]
+MOS6502_demo.clk_en[0]
+MOS6502_demo.nRES[0]
 @200
 -
 @22
 MOS6502_demo.Address_bus[15:0]
 MOS6502_demo.Data_bus[7:0]
 @28
-MOS6502_demo.PHI_2
-MOS6502_demo.SYNC
-MOS6502_demo.RnW
+MOS6502_demo.SYNC[0]
+MOS6502_demo.RnW[0]
 @200
 -
 -Registers
 @22
 MOS6502_demo.mos6502.control.IR[7:0]
+@25
 MOS6502_demo.mos6502.Acc[7:0]
 MOS6502_demo.mos6502.iX[7:0]
 MOS6502_demo.mos6502.iY[7:0]
+@22
 MOS6502_demo.mos6502.SP[7:0]
 @28
 MOS6502_demo.mos6502.PSR[7:0]
@@ -47,12 +48,11 @@ MOS6502_demo.mos6502.PSR[7:0]
 MOS6502_demo.mos6502.alu.ALU_B[7:0]
 MOS6502_demo.mos6502.alu.ALU_FUNC[3:0]
 MOS6502_demo.mos6502.alu.SB[7:0]
-@23
 MOS6502_demo.mos6502.ALU_out[7:0]
 @200
 -
 @28
 [color] 3
-MOS6502_demo.STOP
+MOS6502_demo.STOP[0]
 [pattern_trace] 1
 [pattern_trace] 0
