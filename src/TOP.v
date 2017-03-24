@@ -241,7 +241,10 @@ module TOP(
 			else if(BTN_RT)		BRK_STEP <= BRK_STEP >> 4;
 			
 	always @ (posedge PIXELCLK)
-		if(~RnW|BTN_CR) POST_BREAK <= BREAK;
+		if(~CPU_RESETN)
+			POST_BREAK <= 0;
+		else if(~RnW|BTN_CR)
+			POST_BREAK <= BREAK;
 			
 	wire BREAK = SW[1] & ~SW[2] & (BREAKPOINT == pADDRESSBUS);
 	wire SINGLESTEP = SW[2] & SYNC & ~BTN_STEP;
