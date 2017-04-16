@@ -56,7 +56,7 @@ module MOS6502_Control (
 
 /**************************************************************************************************/
 
-	assign PC_inc = nNMI_req&nIRQ_req || (T_state != `T0 && T_state != `T1);
+	assign PC_inc = nNMI_req&nIRQ_req || (|T_state[3:2] && T_state != `T1);
 	assign SYNC_pin = ~|T_state[3:2] & ~NEXT_T;
 	assign PSR_out = {PSR[7:6],1'b1,nIRQ_req&nNMI_req,PSR[3:0]};
 	assign IR_out = IR;
