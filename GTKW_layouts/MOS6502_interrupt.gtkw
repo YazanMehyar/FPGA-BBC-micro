@@ -1,18 +1,18 @@
 [*]
-[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Fri Mar 24 12:35:48 2017
+[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
+[*] Sat Apr 15 02:10:14 2017
 [*]
-[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/Interrupt_test.lx2"
-[dumpfile_mtime] "Fri Mar 24 12:14:59 2017"
-[dumpfile_size] 8505
-[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/MOS6502Interrupt.gtkw"
-[timestart] 8034
-[size] 1916 1157
+[dumpfile] "/home/zen/FinalYearProject/The BEEB/sim_dump/Interrupt_test.lx2"
+[dumpfile_mtime] "Sat Apr 15 02:05:08 2017"
+[dumpfile_size] 8484
+[savefile] "/home/zen/FinalYearProject/The BEEB/GTKW_layouts/MOS6502_interrupt.gtkw"
+[timestart] 6643
+[size] 1916 1037
 [pos] -1 -1
-*-9.000000 6875 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-9.000000 7025 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] Interrupt_test.
 [treeopen] Interrupt_test.i.
-[sst_width] 214
+[sst_width] 223
 [signals_width] 167
 [sst_expanded] 1
 [sst_vpaned_height] 335
@@ -23,12 +23,12 @@ Interrupt_test.clk_en[0]
 -
 -T_STATE
 @28
-Interrupt_test.T0[0]
 Interrupt_test.NEXT_T[0]
-Interrupt_test.i.NEXT_T1[0]
 @200
 -
 -RESET
+@29
+Interrupt_test.T0[0]
 @28
 Interrupt_test.nRESET_req[0]
 Interrupt_test.nRESET[0]
@@ -43,7 +43,6 @@ Interrupt_test.SO_req[0]
 -IRQ
 @28
 Interrupt_test.nIRQ[0]
-Interrupt_test.nIRQ_T0[0]
 Interrupt_test.nIRQ_req[0]
 Interrupt_test.I_mask[0]
 @200
@@ -51,8 +50,6 @@ Interrupt_test.I_mask[0]
 -NMI
 @28
 Interrupt_test.nNMI[0]
-Interrupt_test.nNMI_T0[0]
-@29
 Interrupt_test.nNMI_req[0]
 [pattern_trace] 1
 [pattern_trace] 0

@@ -1,60 +1,74 @@
 [*]
-[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Fri Mar 24 15:56:45 2017
+[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
+[*] Sun Apr 16 00:04:54 2017
 [*]
-[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/MOS6502_test.lx2"
-[dumpfile_mtime] "Fri Mar 24 13:51:58 2017"
-[dumpfile_size] 252201535
-[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/MOS6502_test.gtkw"
-[timestart] 319289719
-[size] 1916 1157
+[dumpfile] "/home/zen/FinalYearProject/The BEEB/sim_dump/MOS6502_stest.lx2"
+[dumpfile_mtime] "Sat Apr 15 21:24:12 2017"
+[dumpfile_size] 9741247
+[savefile] "/home/zen/FinalYearProject/The BEEB/GTKW_layouts/MOS6502_test.gtkw"
+[timestart] 13299493
+[size] 1916 720
 [pos] -1 -1
-*-9.000000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
-[treeopen] MOS6502_test.
-[sst_width] 214
-[signals_width] 166
+*-8.000000 5 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] MOS6502_stest.
+[treeopen] MOS6502_stest.mos6502.
+[treeopen] MOS6502_stest.mos6502.control.interrupt.
+[sst_width] 223
+[signals_width] 247
 [sst_expanded] 1
-[sst_vpaned_height] 335
+[sst_vpaned_height] 204
 @28
-MOS6502_test.clk[0]
-MOS6502_test.clk_en[0]
+MOS6502_stest.mos6502.clk[0]
+MOS6502_stest.mos6502.clk_en[0]
 @200
 -
 @28
-MOS6502_test.nRESET[0]
-MOS6502_test.nIRQ[0]
-MOS6502_test.nNMI[0]
-MOS6502_test.nSO[0]
+MOS6502_stest.mos6502.nRESET[0]
+MOS6502_stest.mos6502.nIRQ[0]
+MOS6502_stest.mos6502.nNMI[0]
 @200
 -
--Buses
+@29
+MOS6502_stest.mos6502.control.NEXT_S[0]
+@28
+MOS6502_stest.mos6502.control.NEXT_T[0]
 @22
-MOS6502_test.Address_bus[15:0]
-MOS6502_test.Data_bus[7:0]
+MOS6502_stest.mos6502.control.T_state[3:0]
+@200
+-Buses
 @28
-MOS6502_test.SYNC[0]
-MOS6502_test.mos6502.RnW[0]
+MOS6502_stest.mos6502.control.RnW[0]
+@22
+MOS6502_stest.mos6502.Address_bus[15:0]
+MOS6502_stest.mos6502.Data_bus[7:0]
+@28
+MOS6502_stest.mos6502.SYNC[0]
 @200
 -
 -Registers
+@800022
+MOS6502_stest.mos6502.IR[7:0]
+@1001200
+-group_end
 @22
-MOS6502_test.mos6502.IR[7:0]
-MOS6502_test.mos6502.PCH[7:0]
-MOS6502_test.mos6502.PCL[7:0]
-MOS6502_test.mos6502.iX[7:0]
-MOS6502_test.mos6502.iY[7:0]
-MOS6502_test.mos6502.AOR[7:0]
-MOS6502_test.mos6502.DIR[7:0]
-MOS6502_test.mos6502.PSR[7:0]
+MOS6502_stest.mos6502.Acc[7:0]
+MOS6502_stest.mos6502.iX[7:0]
+MOS6502_stest.mos6502.iY[7:0]
+MOS6502_stest.mos6502.SP[7:0]
+MOS6502_stest.mos6502.PCH[7:0]
+MOS6502_stest.mos6502.PCL[7:0]
+@28
+MOS6502_stest.mos6502.PSR[7:0]
 @200
 -
 -Datapath Select
-@22
-MOS6502_test.mos6502.ADBL_SEL[3:0]
-MOS6502_test.mos6502.ADBH_SEL[3:0]
 @28
-MOS6502_test.mos6502.ALU_B_SEL[0]
-MOS6502_test.mos6502.iDB_SEL[2:0]
-MOS6502_test.mos6502.SB_SEL[2:0]
+MOS6502_stest.mos6502.ADBL_SEL[2:0]
+MOS6502_stest.mos6502.ADBH_SEL[2:0]
+MOS6502_stest.mos6502.SB_SEL[2:0]
+MOS6502_stest.mos6502.iDB_SEL[2:0]
+MOS6502_stest.mos6502.ALU_B_SEL[0]
+@22
+MOS6502_stest.mos6502.ALU_FUNC[3:0]
 [pattern_trace] 1
 [pattern_trace] 0

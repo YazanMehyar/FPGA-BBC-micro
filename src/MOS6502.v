@@ -24,11 +24,11 @@ module MOS6502 (
 
 	wire ALU_COUT, ALU_VOUT, ALU_ZOUT, ALU_NOUT;
 	wire [2:0] iDB_SEL, SB_SEL;
-	wire [3:0] ADBL_SEL,ADBH_SEL;
+	wire [2:0] ADBL_SEL,ADBH_SEL;
 	wire [3:0] ALU_FUNC;
 	wire ALU_B_SEL,CARRY_IN;
 	wire ACC_en, iX_en, iY_en;
-	wire SP_en, PC_en, AOR_en, DIR_en, BUFF_en;
+	wire SP_en, PC_en, AOR_en, DIR_en;
 	wire PC_inc, decimal_mode;
 
 	wire [7:0] PSR;
@@ -159,11 +159,11 @@ module MOS6502 (
 
 	reg [7:0] buff_lo, buff_hi;
 
-	assign Address_bus = {ADBH_SEL[3]? buff_hi:ADBH, ADBL_SEL[3]? buff_lo:ADBL};
+	assign Address_bus = {ADBH, ADBL};
 
 	always @ (posedge clk) begin
 		if(clk_en)
-			if(BUFF_en) begin
+			if(READY|~RnW) begin
 				buff_hi <= ADBH;
 				buff_lo <= ADBL;
 			end
@@ -171,7 +171,7 @@ module MOS6502 (
 
 	// ADBL
 	always @ ( * ) begin
-		case (ADBL_SEL[2:0])
+		case (ADBL_SEL)
 			`ADBL_PCL:   ADBL = PCL;
 			`ADBL_AOR:   ADBL = AOR;
 			`ADBL_STACK: ADBL = SP;
@@ -186,7 +186,7 @@ module MOS6502 (
 
 	// ADBH
 	always @ ( * ) begin
-		case (ADBH_SEL[2:0])
+		case (ADBH_SEL)
 			`ADBH_PCH:   ADBH = PCH;
 			`ADBH_AOR:   ADBH = AOR;
 			`ADBH_DIR:   ADBH = DIR;
@@ -230,7 +230,6 @@ MOS6502_Control control(
 	.PC_en(PC_en),
 	.AOR_en(AOR_en),
 	.DIR_en(DIR_en),
-	.BUFF_en(BUFF_en),
 	.PC_inc(PC_inc),
 	.PSR_out(PSR),
 	.IR_out(IR),

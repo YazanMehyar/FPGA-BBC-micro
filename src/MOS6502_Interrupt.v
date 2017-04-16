@@ -7,52 +7,44 @@ module MOS6502_Interrupt (
 	input nIRQ,
 	input nSO,
 	input nRESET,
-	input T0,
 	input NEXT_T,
 	input I_mask,
 
 	output reg nNMI_req,
-	output reg nNMI_T0,
 	output reg nIRQ_req,
-	output reg nIRQ_T0,
 	output reg SO_req);
 
 /************************************************************************************/
 
 	always @ (posedge clk)
-		if(~nRESET) 	nIRQ_T0  <= `IRQ_INACTIVE;
+		if(~nRESET) 	nIRQ_req <= 1'b1;
 		else if(clk_en)
-			if(~T0)		nIRQ_T0  <= nIRQ | I_mask;
-
-	always @ (posedge clk)
-		if(~nRESET)		nIRQ_req <= `IRQ_INACTIVE;
-		else if(clk_en)
-			if(T0)		nIRQ_req <= nIRQ_T0;
+			if(NEXT_T)	nIRQ_req <= nIRQ | I_mask;
 
 /************************************************************************************/
 
-	wire NEXT_T1 = T0 & ~NEXT_T;
+	reg T0SINGLE;
+	always @ (posedge clk)
+		if(clk_en) T0SINGLE <= NEXT_T;
+
+	wire NEXT_T0 = ~T0SINGLE & NEXT_T;
+	wire EDGE_en = clk_en&NEXT_T0|~nRESET;
 
 	wire NMI_edge;
-	Edge_Trigger #(0) NMI_TRIGGER (.clk(clk),.IN(nNMI),.En(clk_en&NEXT_T1),.EDGE(NMI_edge));
-	
-	always @ (posedge clk)
-		if(~nRESET)		nNMI_T0   <= `NMI_INACTIVE;
-		else if(clk_en)
-			if(NEXT_T1)	nNMI_T0   <= ~NMI_edge;
+	Edge_Trigger #(0) NMI_TRIGGER (.clk(clk),.IN(nNMI),.En(EDGE_en),.EDGE(NMI_edge));
 
 	always @ (posedge clk)
-		if(~nRESET)		nNMI_req  <= `NMI_INACTIVE;
+		if(~nRESET) 	nNMI_req  <= 1'b1;
 		else if(clk_en)
-			if(T0)		nNMI_req  <= nNMI_T0;
+			if(NEXT_T0)	nNMI_req  <= ~NMI_edge;
 
 
 	wire SO_edge;
-	Edge_Trigger #(0) SO_TRIGGER (.clk(clk),.IN(nSO),.En(clk_en&NEXT_T1),.EDGE(SO_edge));
-	
+	Edge_Trigger #(0) SO_TRIGGER (.clk(clk),.IN(nSO),.En(EDGE_en),.EDGE(SO_edge));
+
 	always @ (posedge clk)
-		if(~nRESET)		SO_req <= `SO_INACTIVE;
+		if(~nRESET) 	SO_req <= 1'b0;
 		else if(clk_en)
-			if(NEXT_T1)	SO_req <= SO_edge;
+			if(NEXT_T0)	SO_req <= SO_edge;
 
 endmodule

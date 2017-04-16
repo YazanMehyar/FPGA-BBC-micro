@@ -4,8 +4,7 @@ module MOS6502_stest ();
 
 	`define NULL 0
 	`define RESET_VEC	16'hFFFC
-	`define TEST_FILE	"./c_src/test_bin/bubble_sort.bin"
-
+	`define TEST_FILE	"./c_src/test_bin/6502_functional_test.bin"
 
 	reg clk;
 	reg nRESET;
@@ -17,7 +16,7 @@ module MOS6502_stest ();
 	wire clk_en;
 
 	wire [7:0] Data_bus = RnW? mem_out : 8'hzz;
-	
+
 	wire [15:0] Address_bus;
 	wire [15:0] DEBUG_VAL;
 	wire SYNC;
@@ -40,15 +39,15 @@ module MOS6502_stest ();
 		.DEBUG_VAL(DEBUG_VAL)
 	);
 
-	initial $dumpvars(0, MOS6502_stest);
+	//initial $dumpvars(0, MOS6502_stest);
 
 	reg STOP_SIG = 0;
 	initial clk = 0;
 	always clk = #(`CLKPERIOD/2) ~clk;
-	
+
 	reg [3:0] clk_count = 0;
 	always @ (posedge clk)	clk_count <= clk_count + 1;
-	assign clk_en = &clk_count;	
+	assign clk_en = &clk_count;
 
 /**************************************************************************************************/
 	// memory
@@ -99,22 +98,6 @@ module MOS6502_stest ();
 	end
 
 	integer state, model_v, actual_v, i;
-	task error;
-	input [127:0] error_type;
-	begin
-		$display("\n***************************************");
-		$display("ERROR - %s @ %d ", error_type, $stime);
-		$display("Address: %04H",i[15:0]);
-		$display("Model Value:  %02H", model_v[7:0]);
-		$display("Actual Value: %02H\n", actual_v[7:0]);
-		$display("Internal state IND: %s", reg_names[i[2:0]]);
-		$display("MODEL: %02H\tACTUAL:%02H", state[7:0], DEBUG_VAL);
-		$print_last_read();
-		$display("***************************************\n");
-		#1 $stop;
-	end
-	endtask
-	
 	reg written = 0;
 	reg [15:0] waddr;
 	task check_mem; begin
@@ -122,12 +105,30 @@ module MOS6502_stest ();
 		if(written) begin
 			$read_mem(waddr, model_v);
 			actual_v = mem[waddr];
-			if(actual_v !== model_v) error("MEMORY MISMATCH");
+			if(actual_v !== model_v) begin
+				$display("\n***************************************");
+				$display("ERROR - MEMORY MISMATCH @ %d ", $time);
+				$display("Address: %04H",waddr[15:0]);
+				$display("Model Value:  %02H", model_v[7:0]);
+				$display("Actual Value: %02H\n", actual_v[7:0]);
+				$print_last_read();
+				$display("***************************************\n");
+				#1 $stop;
+			end
 			// check stack
 			for(i = 16'h0100; i <= 16'h01ff; i = i + 1) begin
 				$read_mem(i, model_v);
 				actual_v = mem[i];
-				if(actual_v !== model_v) error("MEMORY MISMATCH");
+				if(actual_v !== model_v) begin
+					$display("\n***************************************");
+					$display("ERROR - STACK MISMATCH @ %d ", $time);
+					$display("Address: %04H",i[15:0]);
+					$display("Model Value:  %02H", model_v[7:0]);
+					$display("Actual Value: %02H\n", actual_v[7:0]);
+					$print_last_read();
+					$display("***************************************\n");
+					#1 $stop;
+				end
 			end
 		end
 
@@ -136,7 +137,15 @@ module MOS6502_stest ();
 		for(i = 0; i < 5; i = i + 1) begin
 			DEBUG_SEL = i;
 			$get_internal_state(i, state);
-			#1 if(DEBUG_VAL !== state) error("STATE MISMATCH");
+			#1 if(DEBUG_VAL !== state) begin
+				$display("\n***************************************");
+				$display("ERROR - REGISTER MISMATCH @ %d ", $time);
+				$display("Internal state IND: %s", reg_names[i[2:0]]);
+				$display("MODEL: %02H\nACTUAL:%02H", state[7:0], DEBUG_VAL);
+				$print_last_read();
+				$display("***************************************\n");
+				#1 $stop;
+			end
 		end
 
 	end
@@ -156,9 +165,9 @@ module MOS6502_stest ();
 		nRESET <= 1;
 
 		while(!(SYNC&clk_en)) @(posedge clk);
-		
+
 		$reset_6502();
-		
+
 		while(!STOP_SIG) @(posedge clk)
 			if(SYNC&clk_en) begin
 				@(posedge clk);
@@ -166,7 +175,7 @@ module MOS6502_stest ();
 				$run_step();
 				check_mem;
 			end
-			
+
 		$finish;
 
 	end

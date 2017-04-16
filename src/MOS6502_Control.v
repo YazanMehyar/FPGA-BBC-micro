@@ -20,8 +20,8 @@ module MOS6502_Control (
 	output SYNC_pin,
 	output [2:0] iDB_SEL,
 	output [2:0] SB_SEL,
-	output [3:0] ADBL_SEL,
-	output [3:0] ADBH_SEL,
+	output [2:0] ADBL_SEL,
+	output [2:0] ADBH_SEL,
 	output [3:0] ALU_FUNC,
 	output ALU_B_SEL,
 	output CARRY_IN,
@@ -33,7 +33,6 @@ module MOS6502_Control (
 	output PC_en,
 	output AOR_en,
 	output DIR_en,
-	output BUFF_en,
 	output PC_inc,
 	output [7:0] PSR_out,
 	output [7:0] IR_out,
@@ -47,20 +46,18 @@ module MOS6502_Control (
 	reg iDB7;
 
 	wire nNMI_req, nIRQ_req, SO_req;
-	wire nNMI_T0, nIRQ_T0;
-	wire NEXT_T, CLEAR_T;
+	wire NEXT_T, NEXT_S;
 	wire N_en, Z_en, C_en, V_en;
 	wire FLAGS;
-	wire PLP, RTI, BIT, BRK;
+	wire PLP, PLA, RTI, BIT, BRK;
 
 	reg [7:0] PSR, IR;
-	reg [5:0] T_state;
+	reg [3:0] T_state;
 
 /**************************************************************************************************/
 
-	assign PC_inc = T_state[0]&nNMI_T0&nIRQ_T0 | T_state[1]&nNMI_req&nIRQ_req | ~|T_state[1:0];
-	assign SYNC_pin = T_state[0] & ~NEXT_T;
-	assign BUFF_en = READY;
+	assign PC_inc = nNMI_req&nIRQ_req || (T_state != `T0 && T_state != `T1);
+	assign SYNC_pin = ~|T_state[3:2] & ~NEXT_T;
 	assign PSR_out = {PSR[7:6],1'b1,nIRQ_req&nNMI_req,PSR[3:0]};
 	assign IR_out = IR;
 
@@ -73,14 +70,11 @@ MOS6502_Interrupt interrupt(
 	.nNMI(nNMI),
 	.nIRQ(nIRQ),
 	.nSO(nSO),
-	.T0(T_state[0]),
 	.NEXT_T(NEXT_T),
 	.I_mask(PSR[2]),
 
 	.nNMI_req(nNMI_req),
-	.nNMI_T0(nNMI_T0),
 	.nIRQ_req(nIRQ_req),
-	.nIRQ_T0(nIRQ_T0),
 	.SO_req(SO_req));
 
 
@@ -90,10 +84,7 @@ MOS6502_Decode decoder(
 	.PSR(PSR),
 	.DIR(DIR),
 	.iDB7(iDB7),
-	.SD2(SD2),
 	.COUT(COUT),
-	.BX(BX),
-	.BCC(BCC),
 	.nIRQ_req(nIRQ_req),
 	.nNMI_req(nNMI_req),
 	.nRESET_req(nRESET_req),
@@ -108,13 +99,14 @@ MOS6502_Decode decoder(
 	.CARRY_IN(CARRY_IN),
 	.RnW(RnW),
 	.NEXT_T(NEXT_T),
-	.CLEAR_T(CLEAR_T),
+	.NEXT_S(NEXT_S),
 	.N_en(N_en),
 	.Z_en(Z_en),
 	.C_en(C_en),
 	.V_en(V_en),
 	.FLAGS(FLAGS),
 	.PLP(PLP),
+	.PLA(PLA),
 	.RTI(RTI),
 	.BIT(BIT),
 	.BRK(BRK),
@@ -130,64 +122,77 @@ MOS6502_Decode decoder(
 /**************************************************************************************************/
 always @ (posedge clk) begin
 	READY <= READY_pin | ~RnW;
-	
-	if(~nRESET)		nRESET_req	<= 1'b0;
-	else if(clk_en) nRESET_req	<= (nRESET_req | T_state[0]);
+
+	if(~nRESET) 	nRESET_req	<= 1'b0;
+	else if(clk_en) nRESET_req	<= (nRESET_req || T_state == `T0);
 end
 
 always @ (posedge clk) begin
-	if(~nRESET) 	 T_state <= 6'b000_010;
+	if(~nRESET) 	 T_state <= `T1;
 	else if(clk_en)
 		if(READY) begin
-			if(CLEAR_T)		T_state <= 6'b000_000;
-			else if(NEXT_T) T_state <= 6'b000_001;
-			else 			T_state <= T_state << 1;
+			if(NEXT_S)
+				T_state <= `TSD1;
+			else if(NEXT_T) case (T_state)
+				`T0:    T_state <= `T0BCC;
+				`T0BCC: T_state <= `T0BX;
+				default:T_state <= `T0;
+			endcase else case(T_state)
+			`T0BCC:	T_state <= `T1;
+			`T0BX:	T_state <= `T1;
+			`T0:	T_state <= `T1;
+			`T1:	T_state <= `T2;
+			`T2:	T_state <= `T3;
+			`T3:	T_state <= `T4;
+			`T4:	T_state <= `T5;
+			`T5:	T_state <= `TVEC;
+			`TSD1:	T_state <= `TSD2;
+			default:T_state <= `T0;
+			endcase
 		end
 end
 
 always @ (posedge clk) begin
 	if(~nRESET)	IR <= 8'h00;
-	else if(clk_en&T_state[1]&READY)
+	else if(clk_en && READY && T_state == `T1)
 		IR <= nIRQ_req&nNMI_req&nRESET_req? DIR[7:0] : 8'h00;
 end
 
-always @ (posedge clk) begin
-	if (~nRESET) PSR <= 8'h00;
+always @ (posedge clk)
+	if (~nRESET)
+		PSR <= 8'h00;
 	else if(clk_en)
-		if (READY) begin
-			if(T_state[0]&FLAGS)
-				case (IR[7:6])
-				2'b00: PSR[0] <= IR[5];
-				2'b01: PSR[2] <= IR[5];
-				2'b10: PSR[6] <= SO_req;
-				2'b11: PSR[3] <= IR[5];
-				endcase
-			else if(T_state[0] & PLP) PSR <= {iDB[7],SO_req|iDB[6],iDB[5:0]};
-			else if(T_state[0] & BIT) PSR[7:6] <= {iDB[7],SO_req|iDB[6]};
-			else if(T_state[4] & RTI) PSR <= iDB;
-			else if(T_state[4] & BRK) PSR[2] <= 1'b1;
-			else if(T_state[1] | SD2) begin
-				PSR[7] <= N_en? NOUT : PSR[7];
-				PSR[6] <= V_en? VOUT : PSR[6];
-				PSR[1] <= Z_en? ZOUT : PSR[1];
-				PSR[0] <= C_en? COUT : PSR[0];
-			end else PSR[6] <= PSR[6]|SO_req;
-		end else PSR[6] <= PSR[6]|SO_req;
-end
+		if (READY) case (T_state)
+			`T0:	case(1'b1)
+					PLP: PSR <= iDB[7:0];
+					PLA: begin PSR[7] <= iDB[7]; PSR[1] = ~|iDB; end
+					BIT: PSR[7:6] <= iDB[7:6];
+					FLAGS: case (IR[7:6])
+						2'b00: PSR[0] <= IR[5];
+						2'b01: PSR[2] <= IR[5];
+						2'b10: PSR[6] <= 1'b0;
+						2'b11: PSR[3] <= IR[5];
+						endcase
+					endcase
+			`T1,`TSD2: begin
+					PSR[7] <= N_en? NOUT : PSR[7];
+					PSR[6] <= V_en? VOUT : PSR[6] | (SO_req && T_state == `T1);
+					PSR[1] <= Z_en? ZOUT : PSR[1];
+					PSR[0] <= C_en? COUT : PSR[0];
+					end
+			`T4:	case (1'b1)
+					RTI: PSR <= iDB;
+					BRK: PSR[2] <= 1'b1;
+					endcase
+			endcase else PSR[6] <= PSR[6]|SO_req;
 
-always @ (posedge clk) begin
-	if(~nRESET) begin
-		SD1  <= 1'b0;
-		SD2  <= 1'b0;
-		BCC  <= 1'b0;
-	end else if(clk_en)
-		if(READY) begin
-			VOUT <= ALU_VOUT; COUT <= ALU_COUT; ZOUT <= ALU_ZOUT; NOUT <= ALU_NOUT;
-			SD1  <= CLEAR_T;  SD2  <= SD1;
-			BCC  <= T_state[0] & NEXT_T & ~BCC;
-			BX   <= T_state[0] & NEXT_T & BCC;
-			iDB7 <= iDB[7];
-		end
-end
+always @ (posedge clk)
+	if(clk_en&READY) begin
+		VOUT <= ALU_VOUT;
+		COUT <= ALU_COUT;
+		ZOUT <= ALU_ZOUT;
+		NOUT <= ALU_NOUT;
+		iDB7 <= iDB[7];
+	end
 
 endmodule

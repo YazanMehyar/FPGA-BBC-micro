@@ -1,5 +1,17 @@
 `include "TOP.vh"
 
+`define T0		4'h0
+`define T0BCC	4'h1
+`define T0BX	4'h2
+`define T1		4'h4
+`define T2		4'h5
+`define T3		4'h6
+`define T4		4'h7
+`define T5		4'h8
+`define TVEC	4'h9
+`define TSD1	4'hA
+`define TSD2	4'hB
+
 `define ADR_ABSx 3'b111
 `define ADR_ABSy 3'b110
 `define ADR_ZPGi 3'b101
@@ -69,12 +81,3 @@
 `define NMI_LOW_VEC 8'hFA
 `define RES_LOW_VEC 8'hFC
 `define IRQ_LOW_VEC 8'hFE
-
-`define IRQ_ACTIVE		1'b0
-`define IRQ_INACTIVE	1'b1
-
-`define NMI_ACTIVE		1'b0
-`define NMI_INACTIVE	1'b1
-
-`define SO_ACTIVE		1'b1
-`define SO_INACTIVE		1'b0
