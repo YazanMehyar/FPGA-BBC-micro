@@ -147,7 +147,7 @@ always @ (posedge clk) begin
 			`T4:	T_state <= `T5;
 			`T5:	T_state <= `TVEC;
 			`TSD1:	T_state <= `TSD2;
-			default:T_state <= `T0;
+			default:T_state <=  4'hx;
 			endcase
 		end
 end

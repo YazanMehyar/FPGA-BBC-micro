@@ -267,6 +267,8 @@ always @ ( * ) begin
 						  8'bxxx1_0xxx: NEXT_T = ~COUT;
 						  endcase
 		`T5:	NEXT_T = ~BRK;
+		`TVEC,
+		`TSD2:	NEXT_T = 1;
 	endcase
 end
 
