@@ -10,6 +10,7 @@ module Keyboard (
 	input PS2_DATA,
 
 	output column_match,
+	output nBREAK,
 	inout  row_match);
 
 	wire [7:0] DATA;
@@ -34,6 +35,7 @@ module Keyboard (
 	always @ ( * ) begin
 		case (DATA)
 			8'h76: BBC_CODE = 7'h70; //ESC
+			8'h0E: BBC_CODE = 7'h47; // ` / ¬  to @
 			8'h16: BBC_CODE = 7'h30; // 1
 			8'h1E: BBC_CODE = 7'h31; // 2
 			8'h26: BBC_CODE = 7'h11; // 3
@@ -45,6 +47,7 @@ module Keyboard (
 			8'h46: BBC_CODE = 7'h26; // 9
 			8'h45: BBC_CODE = 7'h27; // 0
 			8'h4E: BBC_CODE = 7'h17; // - / _ to - / =
+			8'h55: BBC_CODE = 7'h18; // = / + to ^ / ~
 
 			8'h66: BBC_CODE = 7'h59; // Backspace to DEL
 			8'h0D: BBC_CODE = 7'h60; // tab
@@ -73,8 +76,8 @@ module Keyboard (
 			8'h42: BBC_CODE = 7'h46; // k
 			8'h4B: BBC_CODE = 7'h56; // l
 			8'h4C: BBC_CODE = 7'h57; // ; / : to ; / +
-			8'h52: BBC_CODE = 7'h28; // ' / " to _ / <pound>
-			8'h0E: BBC_CODE = 7'h18; // ` / ~ to ^ / ~
+			8'h52: BBC_CODE = 7'h48; // ' / @ to : / *
+			8'h5D: BBC_CODE = 7'h28; // # / ~ to _ / £
 			8'h12: BBC_CODE = 7'h00; // LEFT SHIFT
 			8'h61: BBC_CODE = 7'h78; // \ / | UK keyboard
 
@@ -108,8 +111,7 @@ module Keyboard (
 			8'h6B: BBC_CODE = 7'h19; // LEFT ARROW
 			8'h74: BBC_CODE = 7'h79; // RIGHT ARROW
 			8'h72: BBC_CODE = 7'h29; // DOWN ARROW
-			8'h55: BBC_CODE = 7'h48; // = / + to : / *
-			8'h78: BBC_CODE = 7'h47; // F11 to @
+			8'h78: BBC_CODE = 7'h7E; // F11 to BREAK
 			8'h07: BBC_CODE = 7'h69; // F12 to COPY
 			default: BBC_CODE = 7'hxF;
 		endcase
@@ -178,6 +180,8 @@ module Keyboard (
 
 	assign column_match = |kROW[7:1];
 	assign row_match    = autoscan? 1'bz : kKEY;
+	wire [7:0] BREAK_ROW = KEY_MAP[4'hE];
+	assign     nBREAK    = ~BREAK_ROW[7];
 
 /**************************************************************************************************/
 // TEST HELPERS

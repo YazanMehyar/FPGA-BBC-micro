@@ -14,8 +14,8 @@ module TOP(
 	output VGA_VS,
 
 	output [1:0] LED,
-	input  [3:0] SW,
-
+	input  [3:0] SW, // [3] control break point, [2] disable interrupts
+					 // [1] set break point, [0] display debugger
 	input BTNU,
 	input BTND,
 	input BTNR,
@@ -39,6 +39,7 @@ module TOP(
 	wire hPROC_en;	// h as in half processor
 	wire CRTCF_en;
 	wire CRTCS_en;
+	wire TTX_en;
 	wire V_TURN;	// Video circuitry take control of ram reads
 
 	Timing_Generator timer(
@@ -50,6 +51,7 @@ module TOP(
 		.CRTCS_en(CRTCS_en),
 		.hPROC_en(hPROC_en),
 		.CRTCF_en(CRTCF_en),
+		.TTX_en(TTX_en),
 		.V_TURN(V_TURN)
 	);
 
@@ -85,10 +87,12 @@ module TOP(
 	wire SYNC;
 	wire usr_nIRQ;
 	wire sys_nIRQ;
+	wire TXT_MODE;
 
 	wire RnW;
 	wire nIRQ;
 	wire COLUMN_MATCH;
+	wire nBREAK_KEY;
 	wire MOSI, MISO, SCK;
 	wire SOUND;
 	wire DISEN;
@@ -191,63 +195,54 @@ module TOP(
 	wire B4 = ~&{B3,FRAMESTORE_ADR[12]};
 
 	wire [3:0] caa = FRAMESTORE_ADR[11:8] + {B4,B3,B2,B1} + 1'b1;
-	assign vADDRESSBUS = {caa,FRAMESTORE_ADR[7:0],ROW_ADDRESS[2:0]};
+	assign vADDRESSBUS = TXT_MODE? {5'h1F,FRAMESTORE_ADR[9:0]}
+						: {caa,FRAMESTORE_ADR[7:0],ROW_ADDRESS[2:0]};
 
 /******************************************************************************/
 // Test Helpers
 
-	wire [15:0] PROC_val;
-	wire [23:0] PROC_tag;
-	wire [3:0]  PROC_sel;
-	wire [15:0] DISP_val;
-	wire [23:0] DISP_tag;
-	wire [3:0]  DISP_sel;
-	wire [3:0]  SVIA_sel;
-	wire [15:0] SVIA_val;
-	wire [23:0] SVIA_tag;
-	wire [3:0]  UVIA_sel;
-	wire [15:0] UVIA_val;
-	wire [23:0] UVIA_tag;
+	wire [15:0] PROC_val, DISP_val, SVIA_val, UVIA_val;
+	wire [23:0] PROC_tag, DISP_tag, SVIA_tag, UVIA_tag;
+	wire [3:0]  PROC_sel, DISP_sel, SVIA_sel, UVIA_sel;
 	wire DEBUG_PIXEL;
 	
 	wire BTN_UP;
 	wire BTN_DN;
 	wire BTN_LT;
 	wire BTN_RT;
-	wire BTN_CR;
 	wire BTN_STEP;
+	wire BTN_CONT;
 	
 	Edge_Trigger #(1) POS_BUTTON0(.clk(PIXELCLK),.IN(BTNR),.En(1'b1),.EDGE(BTN_RT));
 	Edge_Trigger #(1) POS_BUTTON1(.clk(PIXELCLK),.IN(BTNL),.En(1'b1),.EDGE(BTN_LT));
 	Edge_Trigger #(1) POS_BUTTON2(.clk(PIXELCLK),.IN(BTND),.En(1'b1),.EDGE(BTN_DN));
 	Edge_Trigger #(1) POS_BUTTON3(.clk(PIXELCLK),.IN(BTNU),.En(1'b1),.EDGE(BTN_UP));
-	Edge_Trigger #(1) POS_BUTTON4(.clk(PIXELCLK),.IN(BTNC),.En(1'b1),.EDGE(BTN_CR));
-	Edge_Trigger #(1) POS_BUTTON5(.clk(PIXELCLK),.IN(BTNC),.En(PROC_en),.EDGE(BTN_STEP));	
-		
-	reg [15:0] BREAKPOINT;
-	reg [15:0] BRK_STEP;
-	reg POST_BREAK;
-	wire [23:0] BREAK_tag = POST_BREAK?  {`dlB,`dlR,`dlK,`dlP} : {`dlB,`dlR,`dlK,`dlSP};
+	Edge_Trigger #(1) BRKS_TRIG(.clk(PIXELCLK),.IN(BTNC&~SW[3]),.En(PROC_en),.EDGE(BTN_STEP));	
+	Edge_Trigger #(1) BRKC_TRIG(.clk(PIXELCLK),.IN(BTNC&SW[3]), .En(PROC_en),.EDGE(BTN_CONT));
+	
+	reg  [15:0] BREAKPOINT;
+	reg  [1:0]  BRK_STEP;
+	reg         BRK_STOP;
+	wire [23:0] BREAK_tag = {`dlB,`dlR,`dlK,`dlSP};
+	wire [3:0]  BRK_INC = BTN_UP? 4'h1 : {4{BTN_DN}};
 	
 	always @ (posedge PIXELCLK)
-		if(SW[3])
-			if(BTN_UP)		BREAKPOINT <= BREAKPOINT + BRK_STEP;
-			else if(BTN_DN)	BREAKPOINT <= BREAKPOINT - BRK_STEP;
+		if(SW[3]) case(BRK_STEP)
+			0: BREAKPOINT[3:0]   <= BREAKPOINT[3:0]   + BRK_INC;
+			1: BREAKPOINT[7:4]   <= BREAKPOINT[7:4]   + BRK_INC;
+			2: BREAKPOINT[11:8]  <= BREAKPOINT[11:8]  + BRK_INC;
+			3: BREAKPOINT[15:12] <= BREAKPOINT[15:12] + BRK_INC;
+		endcase
 
 	always @ (posedge PIXELCLK)
-		if(~|BRK_STEP) 			BRK_STEP <= 1;
-		else if(SW[3])
-			if(BTN_LT) 			BRK_STEP <= BRK_STEP << 4;
-			else if(BTN_RT)		BRK_STEP <= BRK_STEP >> 4;
-			
+		if(SW[3]) BRK_STEP <= BRK_STEP + (BTN_LT? 2'h1 : {2{BTN_RT}});
+		
 	always @ (posedge PIXELCLK)
-		if(~CPU_RESETN)
-			POST_BREAK <= 0;
-		else if(~RnW|BTN_CR)
-			POST_BREAK <= BREAK;
+		if(PROC_en)
+			if(BRK_STOP) BRK_STOP <= ~BTN_CONT;
+			else		 BRK_STOP <= SW[1]&(BREAKPOINT == pADDRESSBUS);
 			
-	wire BREAK = SW[1] & ~SW[2] & (BREAKPOINT == pADDRESSBUS);
-	wire SINGLESTEP = SW[2] & SYNC & ~BTN_STEP;
+	wire BREAK = BRK_STOP & SYNC & ~BTN_STEP;
 	
 /******************************************************************************/
 
@@ -255,12 +250,12 @@ module TOP(
 	MOS6502 pocessor(
 		.clk(PIXELCLK),
 		.clk_en(SLOW_PROC? hPROC_en : PROC_en),
-		.nRESET(CPU_RESETN),
+		.nRESET(CPU_RESETN&nBREAK_KEY),
 		.SYNC(SYNC),
 		.nIRQ(nIRQ|SW[2]),
 		.nNMI(VCC),
 		.nSO(VCC),
-		.READY(~POST_BREAK & ~BREAK & ~SINGLESTEP),
+		.READY(~BREAK),
 		.Data_bus(pDATABUS),
 		.Address_bus(pADDRESSBUS),
 		.RnW(RnW),
@@ -278,6 +273,7 @@ module TOP(
 		.PROC_en(PROC_en),
 		.CRTCF_en(CRTCF_en),
 		.CRTCS_en(CRTCS_en),
+		.TTX_en(TTX_en),
 		.nCS_CRTC(nCRTC),
 		.nCS_VULA(nVIDPROC),
 		.RnW(RnW),
@@ -286,6 +282,7 @@ module TOP(
 		.pDATABUS(pDATABUS),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS),
+		.TXT_MODE(TXT_MODE),
 		.RGB(RGB),
 		.FRAMESTORE_ADR(FRAMESTORE_ADR),
 		.ROW_ADDRESS(ROW_ADDRESS),
@@ -355,7 +352,8 @@ module TOP(
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
 		.column_match(COLUMN_MATCH),
-		.row_match(PORTA[7])
+		.row_match(PORTA[7]),
+		.nBREAK(nBREAK_KEY)
 	);
 
 // Sound
@@ -417,8 +415,8 @@ module TOP(
 		.SEL4(UVIA_sel),
 		.VALB(BREAKPOINT),
 		.TAGB(BREAK_tag),
-		.TOOL_B({BTN_LT,BTN_RT}),
-		.PROBE_B({BTN_UP,BTN_DN}),
+		.TOOL_B({2{~SW[3]}}&{BTN_LT,BTN_RT}),
+		.PROBE_B({2{~SW[3]}}&{BTN_UP,BTN_DN}),
 		.PIXEL_OUT(DEBUG_PIXEL)
 	);
 

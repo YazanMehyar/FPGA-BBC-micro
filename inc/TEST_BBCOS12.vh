@@ -7,14 +7,15 @@
 	4 -- D98C
 	5 -- D9C3
 	6 -- D9A6
+	7 -- 028F (Original)
 	OSROM[14'h19E8] <= 8'h80; // Mark as 32KiB model
 
 	OSROM[14'h19E9] <= 8'hD0; // Branch over code
 	OSROM[14'h19EA] <= 8'h12;
 */
 initial begin
-BBCOS12[16'h1B28] = 8'hA6;
-BBCOS12[16'h1B29] = 8'hD9;
+BBCOS12[16'h1B28] = 8'h8F;
+BBCOS12[16'h1B29] = 8'h02;
 BBCOS12[16'h0000] = 8'h00;
 BBCOS12[16'h0001] = 8'h00;
 BBCOS12[16'h0002] = 8'h00;

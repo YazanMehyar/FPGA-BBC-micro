@@ -105,8 +105,8 @@ module MOS6522 (
 	end
 
 /****************************************************************************************/
-//	for CB1 look see end of file
 
+	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]?   CB1_out : 1'bz;
 	assign CB2 = nRESET&PCR[7]|ACR[4]?			CB2_out : 1'bz;
 
 	wire INT_ACK = clk_en & ~CS;
@@ -304,8 +304,6 @@ module MOS6522 (
 
 
 	assign nIRQ = ~|(IFR&IER);
-
-	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : DDRB[1]? 1'bz : 1;
 	
 /****************************************************************************************/
 

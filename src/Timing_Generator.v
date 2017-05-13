@@ -10,6 +10,7 @@ module Timing_Generator(
 	output dRAM_en,
 	output CRTCF_en,
 	output CRTCS_en,
+	output reg TTX_en,
 	output reg V_TURN);
 
 	//NB Both counters are initialised to aid with simulation
@@ -26,11 +27,27 @@ module Timing_Generator(
 	assign RAM_en  = &MASTER_COUNTER[1:0];
 	assign CRTCF_en = &MASTER_COUNTER[2:0];
 	assign CRTCS_en = &MASTER_COUNTER[3:0];
+	
+	reg [3:0] TTX_COUNT;
+	always @ (posedge PIXELCLK)
+		if(CRTCS_en) TTX_COUNT <= 0;
+		else 		 TTX_COUNT <= TTX_COUNT + 1;
+		
+	always @ (*) case(TTX_COUNT)
+		4'h3: TTX_en = 1;
+		4'h5: TTX_en = 1;
+		4'h7: TTX_en = 1;
+		4'h9: TTX_en = 1;
+		4'hB: TTX_en = 1;
+		4'hD: TTX_en = 1;
+		default: TTX_en = 0;
+	endcase
 
 	reg [2:0] PROC_CLK_GEN = 3'b001;
 	always @(posedge PIXELCLK)
 		if(CRTCF_en) PROC_CLK_GEN <= {PROC_CLK_GEN[1:0],PROC_CLK_GEN[2]};
 
+	
 
 	assign PROC_en = PROC_CLK_GEN[2]&CRTCF_en;
 	assign hPROC_en= PROC_CLK_GEN[2]&CRTCS_en;

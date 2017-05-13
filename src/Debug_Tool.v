@@ -26,9 +26,9 @@ module Debug_Tool(
 	`define CHAR_HEIGHT 9
 	`define CHAR_WIDTH  7
 	`ifdef SIMULATION
-		`define DEBUG_LINE  400
+		`define DEBUG_LINE  440
 	`else
-		`define DEBUG_LINE  530
+		`define DEBUG_LINE  535
 	`endif
 	`define DEBUG_HLINE 63
 

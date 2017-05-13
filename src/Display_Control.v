@@ -12,6 +12,7 @@ module Display_Control (
 	input PROC_en,
 	input CRTCF_en,
 	input CRTCS_en,
+	input TTX_en,
 	input nCS_CRTC,
 	input nCS_VULA,
 	input RnW,
@@ -22,6 +23,7 @@ module Display_Control (
 
 	output VGA_HS,
 	output VGA_VS,
+	output TXT_MODE,
 	output [2:0] RGB,
 	output reg [13:0] FRAMESTORE_ADR,
 	output reg [4:0]  ROW_ADDRESS
@@ -117,7 +119,7 @@ module Display_Control (
 			if(A0) case (reg_sel)
 				4'h1: horz_display   <= pDATABUS;
 				4'h6: vert_display   <= pDATABUS[6:0];
-				4'h8: interlace_mode <= {pDATABUS[1],1'b1};
+				4'h8: interlace_mode <= pDATABUS[1:0];
 				4'h9: max_scanline   <= pDATABUS[4:0];
 				4'hA: begin
 						cursor_blink_mode <= pDATABUS[6:5];
@@ -138,7 +140,7 @@ module Display_Control (
 	reg [6:0] VERT_DISPLAY_COUNT;
 	reg H_END;
 
-	wire INTERLACE_SYNC = interlace_mode == 2'b01;
+	wire INTERLACE_SYNC = ~&interlace_mode;
 	wire DISEN = VID_DISEN & ~H_END & |VERT_DISPLAY_COUNT;
 	wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
 
@@ -188,17 +190,14 @@ module Display_Control (
 
 	// Simulate interlace mode but progressively
 	always @ (posedge PIXELCLK) begin
-		if(~nRESET)	begin
-			ROW_ADDRESS <= 0;
-			FIELD <= 0;
-		end else if(CRTC_en)
+		if(CRTC_en)
 			if(NEWvCHAR | NEWSCREEN) begin
 				ROW_ADDRESS <= 0;
 				FIELD <= 0;
 			end else if(NEWLINE) begin
 				FIELD <= ~FIELD;
 				if(INTERLACE_SYNC)
-					ROW_ADDRESS <= FIELD? ROW_ADDRESS + 1 : ROW_ADDRESS;
+					ROW_ADDRESS <= ROW_ADDRESS + FIELD;
 				else
 					ROW_ADDRESS <= ROW_ADDRESS + 1;
 			end
@@ -229,6 +228,38 @@ module Display_Control (
 			endcase
 		end
 	end
+	
+/****************************************************************************************/
+// SA5050 Teletext
+	wire SA_F1 = CRTC_en;
+	wire SA_T6 = TTX_en;
+	wire [5:0] SA_dots;
+	reg  [6:0] SA_code;
+	reg  [3:0] SA_row;
+	reg  [5:0] SA_shifter;
+	reg  SA_DISEN;
+	
+	SA_ROM char_rom(.code(SA_code),.line(SA_row),.pattern(SA_dots));
+
+	always @ (posedge PIXELCLK) begin
+		if(SA_F1) begin
+			SA_code <= vDATABUS[6:0];
+			SA_shifter <= SA_dots;
+			SA_DISEN <= DISEN;
+		end else if(SA_T6) begin
+			SA_shifter <= SA_shifter << 1;
+		end
+	end
+	
+	always @ (posedge PIXELCLK) 
+		if(SA_F1) begin
+			if(NEWSCREEN)	SA_row <= 0;
+			else if(NEWLINE)SA_row <= (SA_row == 9)? 0 : SA_row + FIELD;
+		end
+	
+	wire[2:0] SA_BGR = SA_DISEN? {3{SA_shifter[5]}} : 3'b000;
+	assign TXT_MODE = CONTROL[1];
+
 
 /****************************************************************************************/
 // Video ULA
@@ -314,13 +345,13 @@ module Display_Control (
 							| CURSOR_seg[2]&CONTROL[5];
 		end
 	end
-
+    wire [2:0] VDU_COLOUR = PALETTE_COLOUR[2:0];
 // -- Pixel colour
 	wire VULA_DISEN = DISEN & (~ROW_ADDRESS[3]|CONTROL[1]);
-
 	wire FLASH = ~(PALETTE_COLOUR[3]&CONTROL[0]);
-	wire [2:0] PIXEL_COLOR = VULA_DISEN? FLASH? ~PALETTE_COLOUR[2:0] : PALETTE_COLOUR[2:0] : 3'b000;
-	assign RGB = CURSOR_DRAW? ~PIXEL_COLOR : PIXEL_COLOR;
+	wire [2:0] PIXEL_COLOR = VULA_DISEN? FLASH? ~VDU_COLOUR : VDU_COLOUR : 3'b000;
+    wire [2:0] BGR = CONTROL[1]? SA_BGR : PIXEL_COLOR;
+	assign RGB = CURSOR_DRAW? ~BGR : BGR;
 
 /****************************************************************************************/
 
