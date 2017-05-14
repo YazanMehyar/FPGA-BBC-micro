@@ -95,13 +95,13 @@ module TOP_test();
 				PS2_SEND(KEY);
 				$display("PRINTING %H", KEY);
 
-			repeat (3) @(posedge VGA_VS);
+			repeat (4) @(posedge VGA_VS);
 
 			@(posedge PS2_CLK);
 				PS2_SEND(8'hF0);
 				PS2_SEND(KEY);
 
-			repeat (1) @(posedge VGA_VS);
+			repeat (2) @(posedge VGA_VS);
 		end
 	endtask
 
@@ -112,7 +112,6 @@ module TOP_test();
 			PRESS_KEY(8'h44);
 			PRESS_KEY(8'h23);
 			PRESS_KEY(8'h24);
-			PRESS_KEY(8'h29);
 			case (MODE_No)
 				0: PRESS_KEY(8'h45);
 				1: PRESS_KEY(8'h16);
@@ -136,23 +135,7 @@ module TOP_test();
 		PS2_DATA <= 1;
 		repeat (100) @(posedge CLK100MHZ);
 		CPU_RESETN <= 1;
-		repeat (5) @(posedge VGA_VS);
-		// -> START_LOG
-		PRESS_KEY(8'h78);
-		@(posedge PS2_CLK);
-			PS2_SEND(8'h12);
-			PRESS_KEY(8'h55);
-		@(posedge PS2_CLK);
-			PS2_SEND(8'hF0);
-			PS2_SEND(8'h12);
-		@(posedge VGA_VS);
-		PRESS_KEY(8'h23);
-		PRESS_KEY(8'h21);
-		PRESS_KEY(8'h1C);
-		PRESS_KEY(8'h2C);
-		PRESS_KEY(8'h5A);
-		repeat (5) @(posedge VGA_VS);
-
+		repeat (12) @(posedge VGA_VS);
 		$stop;
 		$finish;
 	end

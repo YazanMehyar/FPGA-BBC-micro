@@ -43,5 +43,5 @@
 
 	`define dlSP 6'h38
 	`define SYSVIA 1
-	`define USRVIA 0
+	`define USRVIA 2
 `endif

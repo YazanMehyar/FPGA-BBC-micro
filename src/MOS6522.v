@@ -20,7 +20,7 @@ module MOS6522 (
 	input RnW,
 	input [3:0] RS,
 	input CA1,
-	input CA2,
+	inout CA2,
 	inout CB1,
 	inout CB2,
 
@@ -30,7 +30,7 @@ module MOS6522 (
 
 	output nIRQ);
 	
-	parameter TYPE = 1;
+	parameter TYPE = 0;
 
 	reg [7:0] OUTA, DDRA;
 	reg [7:0] OUTB, DDRB;
@@ -59,9 +59,9 @@ module MOS6522 (
 
 	always @ (*) begin
 		if(CS) case (RS)
-			4'h0: DATA_OUT = PORTB;
+			4'h0: DATA_OUT = ACR[1]? IRB:PORTB;
 			4'h1,
-			4'hF: DATA_OUT = PORTA;
+			4'hF: DATA_OUT = ACR[0]? IRA:PORTA;
 			4'h2: DATA_OUT = DDRB;
 			4'h3: DATA_OUT = DDRA;
 			4'h4: DATA_OUT = T1COUNTER[7:0];
@@ -108,6 +108,8 @@ module MOS6522 (
 
 	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]?   CB1_out : 1'bz;
 	assign CB2 = nRESET&PCR[7]|ACR[4]?			CB2_out : 1'bz;
+	// Implementation struggles to assign a driven wire to CA2
+	assign CA2 = (TYPE==`SYSVIA)? 1'bz : nRESET&PCR[3]?	CA2_out : 1'bz;
 
 	wire INT_ACK = clk_en & ~CS;
 
@@ -133,12 +135,20 @@ module MOS6522 (
 	wire CA2INT = PCR[2]? POSEDGE_CA2 : NEGEDGE_CA2;
 	wire CB1INT = PCR[4]? POSEDGE_CB1 : NEGEDGE_CB1;
 	wire CB2INT = PCR[6]? POSEDGE_CB2 : NEGEDGE_CB2;
+	
+	reg [7:0] IRA,IRB;
+	always @ (posedge clk)
+		if(clk_en) begin
+			IRA <= CA1INT? PORTA : IRA;
+			IRB <= CB1INT? PORTB : IRB;
+		end
 
 /****************************************************************************************/
 // HANDSHAKE & PULSE MODES
 
 	reg CB1_out;
 	reg CB2_out;
+	reg CA2_out;
 
 	wire ORB_WRITE = ~|RS & ~RnW & CS;
 
@@ -151,6 +161,17 @@ module MOS6522 (
 			CB2_out <= ~ORB_WRITE;
 		else
 			CB2_out <= PCR[5]? clk_en : CB1INT;
+	end
+	
+	wire ORA_RW = ~|RS[3:1]&RS[0]&CS;
+	
+	always @ (posedge clk) begin
+		if(PCR[2])
+			CA2_out <= PCR[1];
+		else if (CA2_out)
+			CA2_out <= ~ORA_RW;
+		else
+			CA2_out <= PCR[1]? clk_en : CA1INT;
 	end
 
 	wire CB1_TRIGGER = CB1_TRIGGER_FACTOR & SR_ACTIVE & ~SR_INT;

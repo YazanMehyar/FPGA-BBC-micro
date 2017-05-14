@@ -31,35 +31,40 @@ module Display_Control (
 
 // Video Signal generator
 	wire CRTC_en;
-	wire HALF_SPEED;
 
 // -- Horizontal Timing
 	reg [1:0] H_STATE;
 	reg [7:0] H_COUNTER;
-
-	always @ ( posedge PIXELCLK ) begin
-		if(~nRESET) begin
+	
+	`ifdef SIMULATION
+		initial begin
 			H_STATE   <= `H_DISPLAY;
 			H_COUNTER <= 0;
-		end else if(CRTC_en) begin
-			H_COUNTER <= ~|H_COUNTER? HALF_SPEED? `H_COUNTER_INIT : {`H_COUNTER_INIT,1'b1}
-									: H_COUNTER - 1;
+			V_STATE   <= `V_DISPLAY;
+			V_COUNTER <= `V_COUNTER_INIT;
+			NEWLINE   <= 0;
+		end
+	`endif
+
+	always @ ( posedge PIXELCLK ) begin
+		if(CRTCS_en) begin
+			H_COUNTER <= ~|H_COUNTER? `H_COUNTER_INIT : H_COUNTER - 1;
 
 			case (H_STATE)
-				`H_BACK:   H_STATE <= ~|H_COUNTER?
-								`H_DISPLAY :`H_BACK;
-				`H_PULSE:  H_STATE <= H_COUNTER == (HALF_SPEED? `H_BACK_COUNT : {`H_BACK_COUNT,1'b0})?
-								`H_BACK : `H_PULSE;
-				`H_FRONT:  H_STATE <= H_COUNTER == (HALF_SPEED? `H_PULSE_COUNT: {`H_PULSE_COUNT,1'b0})?
-								`H_PULSE : `H_FRONT;
-				`H_DISPLAY:H_STATE <= H_COUNTER == (HALF_SPEED? `H_FRONT_COUNT: {`H_FRONT_COUNT,1'b0})?
-								`H_FRONT : `H_DISPLAY;
-				default: H_STATE <= 2'bxx;
+				`H_BACK:   H_STATE <= ~|H_COUNTER? `H_DISPLAY :`H_BACK;
+				`H_PULSE:  H_STATE <= H_COUNTER == `H_BACK_COUNT?  `H_BACK  : `H_PULSE;
+				`H_FRONT:  H_STATE <= H_COUNTER == `H_PULSE_COUNT? `H_PULSE : `H_FRONT;
+				`H_DISPLAY:H_STATE <= H_COUNTER == `H_FRONT_COUNT? `H_FRONT : `H_DISPLAY;
 			endcase
 		end
 	end
 
-	wire NEWLINE  = H_COUNTER == 1;
+	reg NEWLINE;
+	always @(posedge PIXELCLK)
+		if(CRTC_en) 
+			if(NEWLINE) NEWLINE <= 0;
+			else 		NEWLINE <= H_COUNTER == 1;
+		
 	assign VGA_HS = H_STATE == `H_PULSE;
 
 // -- Vertical Timing
@@ -67,18 +72,14 @@ module Display_Control (
 	reg [9:0] V_COUNTER;
 
 	always @ ( posedge PIXELCLK ) begin
-		if(~nRESET) begin
-			V_STATE   <= `V_DISPLAY;
-			V_COUNTER <= `V_COUNTER_INIT;
-		end else if(CRTC_en&NEWLINE) begin
+		if(CRTC_en&NEWLINE) begin
 			V_COUNTER <= ~|V_COUNTER? `V_COUNTER_INIT : V_COUNTER - 1;
 
 			case (V_STATE)
 				`V_BACK:   V_STATE <= ~|V_COUNTER? `V_DISPLAY :`V_BACK;
-				`V_PULSE:  V_STATE <= V_COUNTER == `V_BACK_COUNT? `V_BACK : `V_PULSE;
+				`V_PULSE:  V_STATE <= V_COUNTER == `V_BACK_COUNT?  `V_BACK  : `V_PULSE;
 				`V_FRONT:  V_STATE <= V_COUNTER == `V_PULSE_COUNT? `V_PULSE : `V_FRONT;
 				`V_DISPLAY:V_STATE <= V_COUNTER == `V_FRONT_COUNT? `V_FRONT : `V_DISPLAY;
-				default: V_STATE <= 2'bxx;
 			endcase
 		end
 	end
@@ -145,11 +146,7 @@ module Display_Control (
 	wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
 
 	always @ (posedge PIXELCLK) begin
-		if(~nRESET) begin
-			HORZ_DISPLAY_COUNT <= horz_display;
-			VERT_DISPLAY_COUNT <= vert_display;
-			H_END <= 0;
-		end else if(CRTC_en) begin
+		if(CRTC_en) begin
 			if(NEWLINE)
 				HORZ_DISPLAY_COUNT <= horz_display;
 			else if(|HORZ_DISPLAY_COUNT)
@@ -170,10 +167,7 @@ module Display_Control (
 	reg FIELD;
 
 	always @ (posedge PIXELCLK) begin
-		if(~nRESET) begin
-			FRAMESTORE_ADR <= 0;
-			NEWLINE_ADR    <= 0;
-		end else if(CRTC_en) begin
+		if(CRTC_en) begin
 			if(NEWSCREEN) begin
 				FRAMESTORE_ADR <= start_adr;
 				NEWLINE_ADR    <= start_adr;
@@ -190,7 +184,7 @@ module Display_Control (
 
 	// Simulate interlace mode but progressively
 	always @ (posedge PIXELCLK) begin
-		if(CRTC_en)
+		if(CRTC_en) begin
 			if(NEWvCHAR | NEWSCREEN) begin
 				ROW_ADDRESS <= 0;
 				FIELD <= 0;
@@ -201,6 +195,7 @@ module Display_Control (
 				else
 					ROW_ADDRESS <= ROW_ADDRESS + 1;
 			end
+		end
 	end
 
 // -- Cursor position
@@ -214,10 +209,7 @@ module Display_Control (
 				&& cursor_display;
 
 	always @ (posedge PIXELCLK) begin
-		if(~nRESET) begin
-			cursor_blink_count <= 0;
-			cursor_display <= 0;
-		end else if(NEWSCREEN&CRTC_en) begin
+		if(NEWSCREEN&CRTC_en) begin
 			cursor_blink_count <= cursor_blink_count + 1;
 			case (cursor_blink_mode)
 				2'b00: cursor_display <= 1;
@@ -274,9 +266,7 @@ module Display_Control (
 	reg [3:0] PALETTE8,PALETTE9,PALETTEA,PALETTEB;
 	reg [3:0] PALETTEC,PALETTED,PALETTEE,PALETTEF;
 
-	assign CRTC_en    = CONTROL[4]? RAM_en&~CRTCF_en : CRTCS_en;
-	assign HALF_SPEED = ~CONTROL[4];
-
+	assign CRTC_en    = CONTROL[4]? CRTCF_en : CRTCS_en;
 
 // -- Shift speed
 

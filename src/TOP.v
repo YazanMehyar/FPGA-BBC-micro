@@ -27,9 +27,6 @@ module TOP(
 
 	inout [9:7] JC);
 
-	wire VCC   = 1'b1;
-    wire [3:0] VCC_4 = 4'hF;
-
 /*****************************************************************************/
 
 	wire PIXELCLK;
@@ -246,6 +243,7 @@ module TOP(
 	
 /******************************************************************************/
 
+wire [1:0] PROC_VCC = 2'b11;
 // Processor
 	MOS6502 pocessor(
 		.clk(PIXELCLK),
@@ -253,8 +251,8 @@ module TOP(
 		.nRESET(CPU_RESETN&nBREAK_KEY),
 		.SYNC(SYNC),
 		.nIRQ(nIRQ|SW[2]),
-		.nNMI(VCC),
-		.nSO(VCC),
+		.nNMI(PROC_VCC[0]),
+		.nSO(PROC_VCC[1]),
 		.READY(~BREAK),
 		.Data_bus(pDATABUS),
 		.Address_bus(pADDRESSBUS),
@@ -291,19 +289,21 @@ module TOP(
 		.DEBUG_TAG(DISP_tag)
 	);
 
+wire [2:0] SYS_VCC = 3'b111;
+wire [3:0] VCC_4   = 4'hF;
 // System VIA
 	MOS6522 #(`SYSVIA) sys_via(
 		.clk(PIXELCLK),
 		.clk_en(hPROC_en),
 		.nRESET(CPU_RESETN),
-		.CS1(VCC),
+		.CS1(SYS_VCC[0]),
 		.nCS2(nVIA),
 		.RnW(RnW),
 		.RS(pADDRESSBUS[3:0]),
 		.CA1(VGA_VS),
 		.CA2(COLUMN_MATCH),
-		.CB1(VCC),
-		.CB2(VCC),
+		.CB1(SYS_VCC[1]),
+		.CB2(SYS_VCC[2]),
 		.DATA(pDATABUS),
 		.PORTA(PORTA),
 		.PORTB({VCC_4,LS259_D,LS259_A}),
@@ -313,17 +313,18 @@ module TOP(
 		.DEBUG_TAG(SVIA_tag)
 	);
 
+wire [2:0] USR_VCC = 3'b111;
 // User VIA
 	MOS6522 #(`USRVIA) usr_via(
 		.clk(PIXELCLK),
 		.clk_en(hPROC_en),
 		.nRESET(CPU_RESETN),
-		.CS1(VCC),
+		.CS1(USR_VCC[0]),
 		.nCS2(nUVIA),
 		.RnW(RnW),
 		.RS(pADDRESSBUS[3:0]),
-		.CA1(VCC),
-		.CA2(VCC),
+		.CA1(USR_VCC[1]),
+		.CA2(USR_VCC[2]),
 
 		`ifdef SIMULATION
 		// Iverilog issue
