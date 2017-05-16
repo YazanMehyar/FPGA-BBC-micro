@@ -47,12 +47,10 @@ module Timing_Generator(
 	always @(posedge PIXELCLK)
 		if(CRTCF_en) PROC_CLK_GEN <= {PROC_CLK_GEN[1:0],PROC_CLK_GEN[2]};
 
-	
-
 	assign PROC_en = PROC_CLK_GEN[2]&CRTCF_en;
 	assign hPROC_en= PROC_CLK_GEN[2]&CRTCS_en;
 
 	always @ (posedge PIXELCLK)
-		if(RAM_en)  V_TURN <= ~CRTCF_en;
+		if(RAM_en)  V_TURN <= CRTCF_en;
 
 endmodule

@@ -1,0 +1,61 @@
+[*]
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Mon May 15 21:35:28 2017
+[*]
+[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/TOP_test.lx2"
+[dumpfile_mtime] "Mon May 15 07:55:54 2017"
+[dumpfile_size] 39790858
+[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/TOP_VID.gtkw"
+[timestart] 16782842
+[size] 1916 1157
+[pos] -1 -1
+*-9.000000 16783745 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP_test.
+[treeopen] TOP_test.top.
+[treeopen] TOP_test.top.keyboard.
+[treeopen] TOP_test.top.sys_via.
+[sst_width] 223
+[signals_width] 257
+[sst_expanded] 1
+[sst_vpaned_height] 295
+@28
+TOP_test.CLK100MHZ[0]
+TOP_test.CPU_RESETN[0]
+TOP_test.PIXELCLK[0]
+TOP_test.top.RAM_en[0]
+TOP_test.top.PROC_en[0]
+TOP_test.top.hPROC_en[0]
+@200
+-
+-Processor
+@28
+TOP_test.top.pocessor.nIRQ[0]
+@22
+TOP_test.top.pocessor.Address_bus[15:0]
+@200
+-
+-Video
+@28
+TOP_test.top.dc.CRTCS_en[0]
+TOP_test.top.dc.CRTC_en[0]
+@22
+TOP_test.top.dc.CONTROL[7:0]
+TOP_test.top.dc.H_COUNTER[6:0]
+@28
+TOP_test.top.dc.NEWLINE[0]
+TOP_test.top.dc.NEWvCHAR[0]
+TOP_test.top.dc.NEWSCREEN[0]
+@22
+TOP_test.top.dc.FRAMESTORE_ADR[13:0]
+TOP_test.top.dc.ROW_ADDRESS[4:0]
+TOP_test.top.dc.vDATABUS[7:0]
+@28
+TOP_test.top.V_TURN[0]
+@22
+TOP_test.top.dc.SHIFTER[7:0]
+@28
+TOP_test.top.dc.DISEN[0]
+@200
+-
+[pattern_trace] 1
+[pattern_trace] 0

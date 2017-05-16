@@ -25,8 +25,8 @@ module Display_Control (
 	output VGA_VS,
 	output TXT_MODE,
 	output [2:0] RGB,
-	output reg [13:0] FRAMESTORE_ADR,
-	output reg [4:0]  ROW_ADDRESS
+	output [13:0] FRAMESTORE_ADR,
+	output [4:0]  ROW_ADDRESS
 	);
 
 // Video Signal generator
@@ -34,15 +34,16 @@ module Display_Control (
 
 // -- Horizontal Timing
 	reg [1:0] H_STATE;
-	reg [7:0] H_COUNTER;
+	reg [6:0] H_COUNTER;
 	
 	`ifdef SIMULATION
 		initial begin
-			H_STATE   <= `H_DISPLAY;
+			H_STATE   <= 0;
 			H_COUNTER <= 0;
-			V_STATE   <= `V_DISPLAY;
-			V_COUNTER <= `V_COUNTER_INIT;
+			V_STATE   <= 0;
+			V_COUNTER <= 0;
 			NEWLINE   <= 0;
+			cursor_blink_count <= 7'h3F;
 		end
 	`endif
 
@@ -61,9 +62,9 @@ module Display_Control (
 
 	reg NEWLINE;
 	always @(posedge PIXELCLK)
-		if(CRTC_en) 
-			if(NEWLINE) NEWLINE <= 0;
-			else 		NEWLINE <= H_COUNTER == 1;
+		if(CRTCF_en) // Back edge
+			if(NEWLINE) 		NEWLINE <= 0;
+			else if(~CRTCS_en)	NEWLINE <= ~|H_COUNTER;
 		
 	assign VGA_HS = H_STATE == `H_PULSE;
 
@@ -72,7 +73,7 @@ module Display_Control (
 	reg [9:0] V_COUNTER;
 
 	always @ ( posedge PIXELCLK ) begin
-		if(CRTC_en&NEWLINE) begin
+		if(CRTCS_en&NEWLINE) begin
 			V_COUNTER <= ~|V_COUNTER? `V_COUNTER_INIT : V_COUNTER - 1;
 
 			case (V_STATE)
@@ -139,13 +140,12 @@ module Display_Control (
 
 	reg [7:0] HORZ_DISPLAY_COUNT;
 	reg [6:0] VERT_DISPLAY_COUNT;
-	reg H_END;
 
 	wire INTERLACE_SYNC = ~&interlace_mode;
-	wire DISEN = VID_DISEN & ~H_END & |VERT_DISPLAY_COUNT;
-	wire NEWvCHAR = ROW_ADDRESS == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
+	wire DISEN = VID_DISEN & |HORZ_DISPLAY_COUNT & |VERT_DISPLAY_COUNT;
+	wire NEWvCHAR = rROW_ADR == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
 
-	always @ (posedge PIXELCLK) begin
+	always @ (posedge PIXELCLK)
 		if(CRTC_en) begin
 			if(NEWLINE)
 				HORZ_DISPLAY_COUNT <= horz_display;
@@ -156,47 +156,44 @@ module Display_Control (
 				VERT_DISPLAY_COUNT <= vert_display;
 			else if(NEWvCHAR & |VERT_DISPLAY_COUNT)
 				VERT_DISPLAY_COUNT <= VERT_DISPLAY_COUNT - 1;
-
-			H_END <= ~|HORZ_DISPLAY_COUNT;
 		end
-	end
 
 // -- RAM addressing
 
 	reg [13:0] NEWLINE_ADR;
+	reg [13:0] rFRAMESTORE_ADR;
+	reg [13:0] NEWCHAR_ADR;
+	reg [4:0]  rROW_ADR;
 	reg FIELD;
+	wire [4:0] NEXT_ROW = rROW_ADR + (INTERLACE_SYNC? FIELD:1);
 
-	always @ (posedge PIXELCLK) begin
+	always @ (posedge PIXELCLK)
 		if(CRTC_en) begin
-			if(NEWSCREEN) begin
-				FRAMESTORE_ADR <= start_adr;
-				NEWLINE_ADR    <= start_adr;
-			end else if(NEWvCHAR) begin
-				FRAMESTORE_ADR <= NEWLINE_ADR + horz_display;
-				NEWLINE_ADR    <= NEWLINE_ADR + horz_display;
-			end else if(NEWLINE) begin
-				FRAMESTORE_ADR <= NEWLINE_ADR;
-			end else begin
-				FRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
+	
+			rFRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
+			
+			if(NEWSCREEN|NEWvCHAR) begin
+				NEWLINE_ADR     <= FRAMESTORE_ADR;
+				NEWCHAR_ADR     <= FRAMESTORE_ADR + horz_display;
 			end
 		end
-	end
 
 	// Simulate interlace mode but progressively
-	always @ (posedge PIXELCLK) begin
+	always @ (posedge PIXELCLK)
 		if(CRTC_en) begin
-			if(NEWvCHAR | NEWSCREEN) begin
-				ROW_ADDRESS <= 0;
-				FIELD <= 0;
-			end else if(NEWLINE) begin
-				FIELD <= ~FIELD;
-				if(INTERLACE_SYNC)
-					ROW_ADDRESS <= ROW_ADDRESS + FIELD;
-				else
-					ROW_ADDRESS <= ROW_ADDRESS + 1;
+			if(NEWSCREEN|NEWvCHAR|NEWLINE) begin
+				FIELD    <= NEWSCREEN|NEWvCHAR? 0 : ~FIELD;
+				rROW_ADR <= NEWSCREEN|NEWvCHAR? 0 : NEXT_ROW;
 			end
 		end
-	end
+	
+	assign FRAMESTORE_ADR = NEWSCREEN? start_adr   : 
+							NEWvCHAR?  NEWCHAR_ADR :  
+							NEWLINE?   NEWLINE_ADR : rFRAMESTORE_ADR;
+							
+	assign ROW_ADDRESS = NEWvCHAR|NEWSCREEN? 0 :
+						 NEWLINE?     NEXT_ROW : rROW_ADR;
+
 
 // -- Cursor position
 
@@ -218,6 +215,22 @@ module Display_Control (
 				2'b11: cursor_display <= cursor_blink_count[6];
 				default: cursor_display <= 1'bx;
 			endcase
+		end
+	end
+
+	reg [2:0] CURSOR_seg;
+	reg CURSOR_DRAW;
+
+	always @ ( posedge PIXELCLK ) begin
+		if(~nRESET) CURSOR_seg <= 3'b000;
+		else if(CRTC_en) begin
+			if(AT_CURSOR)	CURSOR_seg <= 3'b001;
+			else			CURSOR_seg <= CURSOR_seg << 1;
+
+			CURSOR_DRAW <= AT_CURSOR&CONTROL[7]
+							| CURSOR_seg[0]&CONTROL[6]
+							| CURSOR_seg[1]&CONTROL[5]
+							| CURSOR_seg[2]&CONTROL[5];
 		end
 	end
 	
@@ -266,7 +279,7 @@ module Display_Control (
 	reg [3:0] PALETTE8,PALETTE9,PALETTEA,PALETTEB;
 	reg [3:0] PALETTEC,PALETTED,PALETTEE,PALETTEF;
 
-	assign CRTC_en    = CONTROL[4]? CRTCF_en : CRTCS_en;
+	assign CRTC_en = CONTROL[4]? CRTCF_en : CRTCS_en;
 
 // -- Shift speed
 
@@ -318,23 +331,6 @@ module Display_Control (
 		endcase
 	end
 
-// -- Cursor drawing
-
-	reg [2:0] CURSOR_seg;
-	reg CURSOR_DRAW;
-
-	always @ ( posedge PIXELCLK ) begin
-		if(~nRESET) CURSOR_seg <= 3'b000;
-		else if(CRTC_en) begin
-			if(AT_CURSOR)	CURSOR_seg <= 3'b001;
-			else			CURSOR_seg <= CURSOR_seg << 1;
-
-			CURSOR_DRAW <= AT_CURSOR&CONTROL[7]
-							| CURSOR_seg[0]&CONTROL[6]
-							| CURSOR_seg[1]&CONTROL[5]
-							| CURSOR_seg[2]&CONTROL[5];
-		end
-	end
     wire [2:0] VDU_COLOUR = PALETTE_COLOUR[2:0];
 // -- Pixel colour
 	wire VULA_DISEN = DISEN & (~ROW_ADDRESS[3]|CONTROL[1]);

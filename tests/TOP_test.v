@@ -135,7 +135,7 @@ module TOP_test();
 		PS2_DATA <= 1;
 		repeat (100) @(posedge CLK100MHZ);
 		CPU_RESETN <= 1;
-		repeat (12) @(posedge VGA_VS);
+		repeat (20) @(posedge VGA_VS);
 		$stop;
 		$finish;
 	end
