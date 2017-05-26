@@ -1,8 +1,6 @@
 /*
 	The following features were left out:
-	- A2 Output mode
 	- Shift register free run mode
-	- Data latching mode
 */
 
 `include "TOP.vh"
