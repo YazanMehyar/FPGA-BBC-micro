@@ -105,7 +105,7 @@ module CRTC_test();
 		nRESET <= 1;
 		repeat (30) @(posedge VSYNC);
 		-> START_LOG;
-		repeat (5) @(posedge VSYNC);
+        repeat (5) @(posedge VSYNC);
 		// Test mode 3
 		RnW <= 0;
 		Set_Register(4,8'h1E);

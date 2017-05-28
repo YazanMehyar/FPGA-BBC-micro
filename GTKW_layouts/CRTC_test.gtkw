@@ -1,0 +1,92 @@
+[*]
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Sun May 28 12:01:47 2017
+[*]
+[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/CRTC_test.lx2"
+[dumpfile_mtime] "Sun May 28 11:38:55 2017"
+[dumpfile_size] 57710449
+[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/CRTC_test.gtkw"
+[timestart] 280820000
+[size] 1916 1157
+[pos] -1 -1
+*-21.000000 292766805 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] CRTC_test.
+[sst_width] 214
+[signals_width] 256
+[sst_expanded] 1
+[sst_vpaned_height] 345
+@200
+-Parameters
+@22
+CRTC_test.crtc.horz_total[7:0]
+CRTC_test.crtc.horz_display[7:0]
+CRTC_test.crtc.horz_syncpos[7:0]
+CRTC_test.crtc.hv_sync[7:0]
+CRTC_test.crtc.vert_total[6:0]
+CRTC_test.crtc.vert_total_adj[4:0]
+CRTC_test.crtc.vert_display[6:0]
+CRTC_test.crtc.vert_syncpos[6:0]
+CRTC_test.crtc.display_mode[7:0]
+CRTC_test.crtc.max_scanline[4:0]
+@28
+CRTC_test.crtc.cursor_blink_mode[1:0]
+@22
+CRTC_test.crtc.cursor_start_row[4:0]
+CRTC_test.crtc.cursor_end_row[4:0]
+CRTC_test.crtc.start_adr[13:0]
+CRTC_test.crtc.cursor_adr[13:0]
+@200
+-
+-Horizontal Timing
+@28
+CRTC_test.crtc.NEWLINE[0]
+CRTC_test.crtc.H_STATE[1:0]
+@22
+CRTC_test.crtc.HORZ_COUNT[7:0]
+CRTC_test.crtc.HPULSE_COUNT[3:0]
+@28
+CRTC_test.crtc.HSYNC[0]
+CRTC_test.crtc.H_DISEN[0]
+@200
+-
+-Vertical Timing
+@28
+CRTC_test.crtc.NEWvCHAR[0]
+CRTC_test.crtc.NEWSCREEN[0]
+CRTC_test.crtc.V_STATE[1:0]
+@22
+CRTC_test.crtc.VERT_COUNT[6:0]
+CRTC_test.crtc.VERT_ADJ_COUNT[4:0]
+@23
+CRTC_test.crtc.VPULSE_COUNT[4:0]
+@28
+CRTC_test.crtc.VSYNC[0]
+CRTC_test.crtc.V_DISEN[0]
+@200
+-
+-Display Enable
+@28
+CRTC_test.crtc.DISEN[0]
+CRTC_test.crtc.DISEN_SKEW[1:0]
+@200
+-
+-Ram Addressing
+@28
+CRTC_test.crtc.FIELD[0]
+CRTC_test.crtc.ODD_ROW[0]
+@22
+CRTC_test.crtc.FRAMESTORE_ADR[13:0]
+CRTC_test.crtc.ROW_ADDRESS[4:0]
+@200
+-
+-Cursor
+@28
+CRTC_test.crtc.AT_CURSOR[0]
+@22
+CRTC_test.crtc.CURSOR_BLINK_COUNT[5:0]
+@28
+CRTC_test.crtc.CURSOR_DISPLAY[0]
+CRTC_test.crtc.CURSOR_SKEW[1:0]
+CRTC_test.crtc.CURSOR[0]
+[pattern_trace] 1
+[pattern_trace] 0

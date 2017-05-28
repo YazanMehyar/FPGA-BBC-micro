@@ -1,14 +1,14 @@
 `include "TOP.vh"
 
-`define H_DISPLAY 2'b00
-`define H_FRONT   2'b01
-`define H_PULSE   2'b10
-`define H_BACK    2'b11
+`define H_DISP   2'b00
+`define H_FRONT  2'b01
+`define H_PULSE  2'b10
+`define H_BACK   2'b11
 
-`define V_DISPLAY 2'b00
-`define V_FRONT   2'b01
-`define V_PULSE   2'b10
-`define V_BACK    2'b11
+`define V_DISP   2'b00
+`define V_FRONT  2'b01
+`define V_PULSE  2'b10
+`define V_BACK   2'b11
 
 `ifdef SIMULATION
 

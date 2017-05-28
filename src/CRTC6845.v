@@ -15,8 +15,8 @@ module CRTC6845 (
 	
 	inout [7:0] pDATABUS,
 
-	output reg HSYNC,
-	output reg VSYNC,
+	output HSYNC,
+	output VSYNC,
 	output reg DISEN,
 	output reg CURSOR,
 	output [13:0] FRAMESTORE_ADR,
@@ -27,20 +27,20 @@ module CRTC6845 (
 	// The registers will converge when implemented
 	// This is used to aid with simulation (avoid 'x')
 		initial begin
-		FIELD = 0;
-		HORZ_COUNT = 0;
+		FIELD        = 0;
+		HORZ_COUNT   = 0;
 		HPULSE_COUNT = 0;
-		HSYNC = 0;
-		VERT_COUNT = 0;
+		VERT_COUNT   = 0;
 		VPULSE_COUNT = 0;
-		VSYNC = 0;
-		rROW_ADR = 0;
+		rROW_ADR     = 0;
+        H_STATE      = 0;
+        V_STATE      = 0;
 		CURSOR_BLINK_COUNT = 0;
 		end
 	`endif
 
 
-/**************************************************************************************************/
+/*********************************************************************************************/
 
 	reg [4:0]  reg_sel;
 	reg [13:0] start_adr;
@@ -94,101 +94,134 @@ module CRTC6845 (
 			endcase else reg_sel <= pDATABUS[4:0];
 		end
 
-/**************************************************************************************************/
-	reg [7:0] HORZ_COUNT;
-	reg [6:0] VERT_COUNT;
-    reg [4:0] VERT_ADJ;
-	reg [4:0] rROW_ADR;
-    reg [3:0] HPULSE_COUNT;
-    reg [4:0] VPULSE_COUNT;
-	reg [1:0] DISEN_SKEW;
-	reg [1:0] CURSOR_SKEW;
-	reg hDISEN;
-	reg vDISEN;
-	reg FIELD;
-    reg ADJ_STATE;
-	
-	wire [4:0] NEXT_ROW;
-    wire ODD_ROW = ~INTERLACE_SYNC&FIELD;
-    wire HEND    = HORZ_COUNT==horz_total;
-    wire VEND    = VERT_COUNT==vert_total;
-    wire REND    = ODD_ROW?rROW_ADR[4:1]==max_scanline[4:1]:rROW_ADR==max_scanline;
+/*********************************************************************************************/
+//  Display enable
+    reg [1:0] DISEN_SKEW;
 
-	wire INTERLACE_SYNC = ~&display_mode[1:0];
-	wire NEWLINE   = HEND&CRTC_en;
-	wire NEWvCHAR  = REND&NEWLINE;
-	wire NEWSCREEN = VEND&(|vert_total_adj? ~|VERT_ADJ&NEWLINE:NEWvCHAR);
-	
+    always @ (posedge CLK) 
+        if(CRTC_en) DISEN_SKEW <= {DISEN_SKEW[0],H_DISEN&V_DISEN};
+
 	always @ (*) casex(display_mode[5:4])
-		2'b00: DISEN = vDISEN & hDISEN;
+		2'b00: DISEN = H_DISEN & V_DISEN;
 		2'b01: DISEN = DISEN_SKEW[0];
 		2'b1x: DISEN = DISEN_SKEW[1];
 	endcase
-	
-    always @ (posedge CLK) `ifdef SIMULATION if(nRESET) `endif begin
-        if(HORZ_COUNT==horz_syncpos) HSYNC <= |HPULSE_COUNT;
-        else if(HSYNC)               HSYNC <= |HPULSE_COUNT;
 
-        if(VERT_COUNT==vert_syncpos) VSYNC <= |VPULSE_COUNT;
-        else if(VSYNC)               VSYNC <= |VPULSE_COUNT;
+/*********************************************************************************************/
+// Horizontal Sync
 
-        if(NEWLINE)       HPULSE_COUNT <= hv_sync[3:0];
-        else if(CRTC_en)  HPULSE_COUNT <= HPULSE_COUNT - HSYNC;
+    wire       H_DISEN = H_STATE == `H_DISP;
+    wire       NEWLINE = HEND&CRTC_en;
+    assign     HSYNC   = H_STATE == `H_PULSE;
 
-        if(NEWSCREEN)     VPULSE_COUNT <= ~|hv_sync[7:4]? 5'h10:hv_sync;
-        else if(NEWLINE)  VPULSE_COUNT <= VPULSE_COUNT - VSYNC;
+    // Local wires / registers
+    reg  [1:0] H_STATE;
+    reg  [7:0] HORZ_COUNT;
+    reg  [3:0] HPULSE_COUNT;
+    wire [7:0] nHORZ_COUNT = NEWLINE? 0 : HORZ_COUNT + (HEND? 0:1);
+    wire       HEND        = HORZ_COUNT  == horz_total;
 
-		if(NEWLINE)		  HORZ_COUNT <= 0;
-		else if(CRTC_en)  HORZ_COUNT <= HORZ_COUNT + (HEND? 0:1);
-		
-		if(NEWSCREEN)	  VERT_COUNT <= 0;
-		else if(NEWvCHAR) VERT_COUNT <= VERT_COUNT + (VEND? 0:1);
+    always @ (posedge CLK) if(CRTC_en`ifdef SIMULATION &nRESET `endif) begin
 
-		// Vertical total adjust (additional scanlines in vertical backporch)
-        if(NEWSCREEN)     VERT_ADJ <= vert_total_adj;
-        else if(NEWLINE)  VERT_ADJ <= VERT_ADJ - (VEND&NEWvCHAR|ADJ_STATE);
-
-        if(NEWSCREEN)     ADJ_STATE <= 0;
-        else if(NEWvCHAR) ADJ_STATE <= VEND;
-		
-		// Display enable character skew
-		if(CRTC_en) DISEN_SKEW <= {DISEN_SKEW[0],vDISEN&hDISEN};
-				
-		// Horizontal display enable and vertical display enable
-		if(NEWSCREEN|NEWLINE)
-			hDISEN <= 1;
-		else if(HORZ_COUNT==horz_display)
-			hDISEN <= 0;
-	
-		if(NEWSCREEN)
-			vDISEN <= 1;
-		else if(VERT_COUNT==vert_display)
-			vDISEN <= 0;
-
-        if(NEWSCREEN) FIELD <= ~FIELD;
+        HORZ_COUNT <= nHORZ_COUNT;
+        case(H_STATE)
+            `H_BACK:    if(NEWLINE) begin 
+            				H_STATE 	 <= `H_DISP;
+            				HPULSE_COUNT <= 0;
+            			end
+            				
+            `H_PULSE:   if(HPULSE_COUNT==hv_sync[3:0]) begin
+            				H_STATE 	 <= `H_BACK;
+            			end else begin
+            				HPULSE_COUNT <= HPULSE_COUNT + 1;
+            			end
+            				
+            `H_FRONT:   if(nHORZ_COUNT==horz_syncpos) begin
+            				H_STATE 	 <= hv_sync[3:0]!=0? `H_PULSE:`H_BACK;
+            				HPULSE_COUNT <= HPULSE_COUNT + 1;
+            			end
+            			
+            `H_DISP:    if(nHORZ_COUNT==horz_display) begin
+            				H_STATE		 <= `H_FRONT;
+            			end
+        endcase
+        
     end
-			
-/**************************************************************************************************/
-// -- RAM addressing
+/*********************************************************************************************/
+// Vertical Sync
+   
+    reg        FIELD;
+    wire       V_DISEN   = V_STATE == `V_DISP;
+    wire       NEWvCHAR  = REND&NEWLINE;
+    wire       NEWSCREEN = VEND&(NEWvCHAR&~nVADJ|VADJ&nVADJ&NEWLINE);
+    assign     VSYNC     = V_STATE == `V_PULSE;
+
+    // Local wires / registers
+    reg  [1:0] V_STATE;
+   	reg  [6:0] VERT_COUNT;
+    reg  [4:0] VERT_ADJ_COUNT;
+    reg  [4:0] VPULSE_COUNT;
+    reg        VADJ_WAIT;
+    wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + (VEND? 0:NEWvCHAR);
+    wire       nVADJ       = |vert_total_adj;
+    wire       VADJ        = VERT_ADJ_COUNT == vert_total_adj;
+    wire       VEND        = VERT_COUNT     == vert_total;
+    wire       nV_FRONT    = nVERT_COUNT    == vert_display;
+
+    always @ (posedge CLK) if(NEWLINE) begin 
+
+        VERT_COUNT <= nVERT_COUNT;
+        case(V_STATE)
+            `V_BACK:    if(NEWSCREEN) begin
+            				V_STATE 	   <= `V_DISP;
+            				FIELD 		   <= ~FIELD;
+            				VPULSE_COUNT   <=  0;
+            				VERT_ADJ_COUNT <=  0;
+            				VADJ_WAIT	   <=  0;
+            			end else if (VEND) begin
+            				VERT_ADJ_COUNT <= VERT_ADJ_COUNT + (NEWvCHAR|VADJ_WAIT);
+            				VADJ_WAIT	   <= NEWvCHAR;
+            			end
+            			
+            `V_PULSE:   if(VPULSE_COUNT=={~|hv_sync[7:4],hv_sync[7:4]}) begin
+            				V_STATE        <= `V_BACK;
+            			end else begin
+            				VPULSE_COUNT   <= VPULSE_COUNT + 1;
+            			end
+            			
+            `V_FRONT:   if(nVERT_COUNT==vert_syncpos) begin
+            				V_STATE 	   <= `V_PULSE;
+            				VPULSE_COUNT   <= VPULSE_COUNT + 1;
+            			end
+            			
+            `V_DISP:    if(nVERT_COUNT==vert_display) begin
+            				V_STATE <= `V_FRONT;
+            			end
+        endcase
+        
+    end
+/*********************************************************************************************/
+// RAM addressing
 
 	reg [13:0] NEWLINE_ADR;
 	reg [13:0] rFRAMESTORE_ADR;
 	reg [13:0] NEWCHAR_ADR;
-	
-	assign NEXT_ROW = rROW_ADR + (INTERLACE_SYNC? 1 : 2);
-	always @ (posedge CLK) begin
-		if(CRTC_en) begin
-			rFRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
-			if(NEWSCREEN|NEWvCHAR) begin
-				NEWLINE_ADR <= FRAMESTORE_ADR;
-				NEWCHAR_ADR <= FRAMESTORE_ADR + horz_display;
-			end
-		end
+    reg  [4:0] rROW_ADR;	
+	wire [4:0] NEXT_ROW = rROW_ADR + (ISYNC? 1 : 2);
+	wire       ISYNC    = ~&display_mode[1:0];
+    wire       ODD_ROW  = ~ISYNC&FIELD;
+    wire       REND     = rROW_ADR[4:1]==max_scanline[4:1]
+                          &&(~ISYNC|rROW_ADR[0]~^max_scanline[0]);
 
-		if(NEWSCREEN|NEWvCHAR)
-			rROW_ADR <= 0;
-        else if(NEWLINE)
-            rROW_ADR <= NEXT_ROW;
+	always @ (posedge CLK) if(CRTC_en) begin
+		
+        rFRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
+		if(NEWSCREEN|NEWvCHAR) begin
+			NEWLINE_ADR <= FRAMESTORE_ADR;
+	    	NEWCHAR_ADR <= FRAMESTORE_ADR + horz_display;
+			rROW_ADR    <= 0;
+		end else if(NEWLINE)
+            rROW_ADR    <= NEXT_ROW;
     end
 	
 	assign FRAMESTORE_ADR = NEWSCREEN? start_adr   : 
@@ -196,17 +229,21 @@ module CRTC6845 (
 							NEWLINE?   NEWLINE_ADR : rFRAMESTORE_ADR;
 							
 	assign ROW_ADDRESS = NEWvCHAR|NEWSCREEN? ODD_ROW :
-						 NEWLINE?     {NEXT_ROW[4:1],ODD_ROW?1'b1:NEXT_ROW[0]} 
-                                    : {rROW_ADR[4:1],ODD_ROW?1'b1:rROW_ADR[0]};
+						 NEWLINE?     {NEXT_ROW[4:1],ODD_ROW|NEXT_ROW[0]} 
+                                    : {rROW_ADR[4:1],ODD_ROW|rROW_ADR[0]};
 
 
-// -- Cursor position
-	reg [5:0] CURSOR_BLINK_COUNT;
-	reg CURSOR_DISPLAY;
-	wire F_CURSOR  = FRAMESTORE_ADR == cursor_adr;
-	wire RS_CURSOR = ROW_ADDRESS >= cursor_start_row;
-	wire RE_CURSOR = ROW_ADDRESS <= cursor_end_row;
-	wire AT_CURSOR = DISEN&CURSOR_DISPLAY&F_CURSOR&RS_CURSOR&RE_CURSOR;
+/*********************************************************************************************/
+// Cursor position
+
+	reg  [5:0] CURSOR_BLINK_COUNT;
+	reg  [1:0] CURSOR_SKEW;
+	reg        CURSOR_DISPLAY;
+
+	wire       F_CURSOR  = FRAMESTORE_ADR == cursor_adr;
+	wire       RS_CURSOR = ROW_ADDRESS    >= cursor_start_row;
+	wire       RE_CURSOR = ROW_ADDRESS    <= cursor_end_row;
+	wire       AT_CURSOR = DISEN&CURSOR_DISPLAY&F_CURSOR&RS_CURSOR&RE_CURSOR;
 	
 	always @ (*) casex(display_mode[7:6]) 
 		2'b00: CURSOR = AT_CURSOR;
@@ -224,13 +261,12 @@ module CRTC6845 (
 				2'b11: CURSOR_DISPLAY <= CURSOR_BLINK_COUNT[5];
 			endcase
 		end
-		
 		if(CRTC_en) CURSOR_SKEW <= {CURSOR_SKEW[0],AT_CURSOR};
 	end
 
-/**************************************************************************************************/
+/*********************************************************************************************/
 
-	always @ ( * ) begin
+    always @ ( * ) begin
 		case (DEBUG_SEL)
 		4'h0: DEBUG_VAL = start_adr;
 		4'h1: DEBUG_VAL = horz_display;
