@@ -1,5 +1,9 @@
 `include "VIDEO.vh"
 
+/*
+    Features not implemented:
+    - half-scanline delay/eager for interlace VSync.
+ */
 module CRTC6845 (
 	input [3:0] DEBUG_SEL,
 	output reg [23:0] DEBUG_TAG,
@@ -19,6 +23,7 @@ module CRTC6845 (
 	output VSYNC,
 	output reg DISEN,
 	output reg CURSOR,
+	output reg FIELD,
 	output [13:0] FRAMESTORE_ADR,
 	output [4:0]  ROW_ADDRESS
 	);
@@ -35,6 +40,8 @@ module CRTC6845 (
 		rROW_ADR     = 0;
         H_STATE      = 0;
         V_STATE      = 0;
+		VADJ_WAIT    = 0;
+		VERT_ADJ_COUNT = 0;
 		CURSOR_BLINK_COUNT = 0;
 		end
 	`endif
@@ -111,15 +118,14 @@ module CRTC6845 (
 // Horizontal Sync
 
     wire       H_DISEN = H_STATE == `H_DISP;
-    wire       NEWLINE = HEND&CRTC_en;
+    wire       NEWLINE = HORZ_COUNT == horz_total;
     assign     HSYNC   = H_STATE == `H_PULSE;
 
     // Local wires / registers
     reg  [1:0] H_STATE;
     reg  [7:0] HORZ_COUNT;
     reg  [3:0] HPULSE_COUNT;
-    wire [7:0] nHORZ_COUNT = NEWLINE? 0 : HORZ_COUNT + (HEND? 0:1);
-    wire       HEND        = HORZ_COUNT  == horz_total;
+    wire [7:0] nHORZ_COUNT = NEWLINE? 0 : HORZ_COUNT + (NEWLINE? 0:1);
 
     always @ (posedge CLK) if(CRTC_en`ifdef SIMULATION &nRESET `endif) begin
 
@@ -150,7 +156,6 @@ module CRTC6845 (
 /*********************************************************************************************/
 // Vertical Sync
    
-    reg        FIELD;
     wire       V_DISEN   = V_STATE == `V_DISP;
     wire       NEWvCHAR  = REND&NEWLINE;
     wire       NEWSCREEN = VEND&(NEWvCHAR&~nVADJ|VADJ&nVADJ&NEWLINE);
@@ -160,7 +165,7 @@ module CRTC6845 (
     reg  [1:0] V_STATE;
    	reg  [6:0] VERT_COUNT;
     reg  [4:0] VERT_ADJ_COUNT;
-    reg  [4:0] VPULSE_COUNT;
+    reg  [3:0] VPULSE_COUNT;
     reg        VADJ_WAIT;
     wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + (VEND? 0:NEWvCHAR);
     wire       nVADJ       = |vert_total_adj;
@@ -168,13 +173,12 @@ module CRTC6845 (
     wire       VEND        = VERT_COUNT     == vert_total;
     wire       nV_FRONT    = nVERT_COUNT    == vert_display;
 
-    always @ (posedge CLK) if(NEWLINE) begin 
+    always @ (posedge CLK) if(NEWLINE&CRTC_en) begin 
 
         VERT_COUNT <= nVERT_COUNT;
         case(V_STATE)
             `V_BACK:    if(NEWSCREEN) begin
             				V_STATE 	   <= `V_DISP;
-            				FIELD 		   <= ~FIELD;
             				VPULSE_COUNT   <=  0;
             				VERT_ADJ_COUNT <=  0;
             				VADJ_WAIT	   <=  0;
@@ -183,8 +187,9 @@ module CRTC6845 (
             				VADJ_WAIT	   <= NEWvCHAR;
             			end
             			
-            `V_PULSE:   if(VPULSE_COUNT=={~|hv_sync[7:4],hv_sync[7:4]}) begin
+            `V_PULSE:   if(VPULSE_COUNT==hv_sync[7:4]) begin
             				V_STATE        <= `V_BACK;
+            				FIELD 		   <= ~FIELD;
             			end else begin
             				VPULSE_COUNT   <= VPULSE_COUNT + 1;
             			end
@@ -200,6 +205,7 @@ module CRTC6845 (
         endcase
         
     end
+
 /*********************************************************************************************/
 // RAM addressing
 
@@ -213,15 +219,19 @@ module CRTC6845 (
     wire       REND     = rROW_ADR[4:1]==max_scanline[4:1]
                           &&(~ISYNC|rROW_ADR[0]~^max_scanline[0]);
 
-	always @ (posedge CLK) if(CRTC_en) begin
-		
+	always @ (posedge CLK)
+	if(~nRESET) begin
+		rFRAMESTORE_ADR <= 0;
+		rROW_ADR 		<= 0;
+		NEWCHAR_ADR		<= 0;
+		NEWLINE_ADR		<= 0;
+	end else if(CRTC_en) begin
         rFRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
 		if(NEWSCREEN|NEWvCHAR) begin
 			NEWLINE_ADR <= FRAMESTORE_ADR;
 	    	NEWCHAR_ADR <= FRAMESTORE_ADR + horz_display;
 			rROW_ADR    <= 0;
-		end else if(NEWLINE)
-            rROW_ADR    <= NEXT_ROW;
+		end else if(NEWLINE) rROW_ADR    <= NEXT_ROW;
     end
 	
 	assign FRAMESTORE_ADR = NEWSCREEN? start_adr   : 

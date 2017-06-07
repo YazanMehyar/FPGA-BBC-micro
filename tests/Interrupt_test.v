@@ -2,8 +2,8 @@
 module Interrupt_test ();
 
 	// input
-	reg clk;
-	wire clk_en;
+	reg CLK;
+	wire CLK_en;
 	reg nNMI;
 	reg nIRQ;
 	reg nSO;
@@ -18,8 +18,8 @@ module Interrupt_test ();
 	wire SO_req;
 
 	MOS6502_Interrupt i(
-		.clk(clk),
-		.clk_en(clk_en),
+		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.nNMI(nNMI),
 		.nIRQ(nIRQ),
 		.nSO(nSO),
@@ -34,29 +34,29 @@ module Interrupt_test ();
 
 /****************************************************************************************/
 
-	reg [3:0] clk_count;
+	reg [3:0] CLK_count;
 	initial begin
 		$dumpvars(0,Interrupt_test);
-		clk = 0;
-		clk_count = 0;
+		CLK = 0;
+		CLK_count = 0;
 	end
 
-	always @ (posedge clk) clk_count <= clk_count + 1;
+	always @ (posedge CLK) CLK_count <= CLK_count + 1;
 
-	always #(`CLKPERIOD/2) clk = ~clk;
-	assign clk_en = &clk_count;
+	always #(`CLKPERIOD/2) CLK = ~CLK;
+	assign CLK_en = &CLK_count;
 
 /****************************************************************************************/
 
 	reg T0;
-	always @ (posedge clk) begin
-		if(clk_en) begin
+	always @ (posedge CLK) begin
+		if(CLK_en) begin
 			NEXT_T <= $urandom_range(4,0)%5 == 0;
 			T0 <= NEXT_T;
 		end
 
 		if(~nRESET)		nRESET_req	<= 1'b0;
-		else if(clk_en) nRESET_req	<= (nRESET_req | T0);
+		else if(CLK_en) nRESET_req	<= (nRESET_req | T0);
 	end
 
 
@@ -69,37 +69,37 @@ module Interrupt_test ();
 	NEXT_T <= 0;
 	T0 <= 0;
 	nRESET <= 0; // active low reset
-	repeat (3) @(posedge clk);
+	repeat (3) @(posedge CLK);
 	nRESET <= 1;
 
 	// Test IRQ
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nIRQ <= 0;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	I_mask <= 1;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nIRQ <= 1;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	I_mask <= 0;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nIRQ <= 0;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nIRQ <= 1;
 
 	// Test NMI;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nNMI <= 0;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nNMI <= 1;
-	repeat (8) @(posedge clk_en);
+	repeat (8) @(posedge CLK_en);
 	nNMI <= 0;
-	repeat (4) @(posedge clk_en);
+	repeat (4) @(posedge CLK_en);
 	nNMI <= 1;
-	repeat (8) @(posedge clk_en);
+	repeat (8) @(posedge CLK_en);
 	nNMI <= 0;
-	@(posedge clk_en);
+	@(posedge CLK_en);
 	nNMI <= 1;
-	repeat (36) @(posedge clk_en);
+	repeat (36) @(posedge CLK_en);
 	$finish;
 	end
 

@@ -7,13 +7,13 @@ module MOS6502_test ();
 	`define NULL 0
 	`define TIME_LIMIT	20000000
 
-	reg clk;
+	reg CLK;
 	reg nRESET;
 	reg nIRQ;
 	reg nNMI;
 	reg nSO;
 	reg READY;
-	wire clk_en;
+	wire CLK_en;
 	
 	wire [7:0] Data_bus = RnW? mem_out : 8'hzz;
 
@@ -22,8 +22,8 @@ module MOS6502_test ();
 	wire RnW;
 
 	MOS6502 mos6502(
-		.clk(clk),
-		.clk_en(clk_en),
+		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.nRESET(nRESET),
 		.nIRQ(nIRQ),
 		.nNMI(nNMI),
@@ -39,25 +39,25 @@ module MOS6502_test ();
 
 	// Timing
 	
-	initial clk = 0;
-	always clk = #(`CLKPERIOD/2) ~clk;
+	initial CLK = 0;
+	always CLK = #(`CLKPERIOD/2) ~CLK;
 	
-	reg [3:0] clk_count = 0;
-	always @ (posedge clk) clk_count <= clk_count + 1;
-	assign clk_en = &clk_count;
+	reg [3:0] CLK_count = 0;
+	always @ (posedge CLK) CLK_count <= CLK_count + 1;
+	assign CLK_en = &CLK_count;
 	
 	integer i;
 	initial i = `TIME_LIMIT;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(i == 0) $finish;
-		else if(clk_en) i <= i - 1;
+		else if(CLK_en) i <= i - 1;
 	
 	// memory
 	reg [7:0] mem [0:`KiB64];
 	reg [7:0] mem_out;
 	reg STOP_SIG = 0;
 	integer last_adr = 16'hFFFC;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(RnW)
 			mem_out <= mem[Address_bus];
 		else if(Address_bus == `STOP_ADR)
@@ -66,8 +66,8 @@ module MOS6502_test ();
 			mem[Address_bus] <= Data_bus;
 
 
-	always @ (posedge clk)
-		if(clk_en & SYNC) begin
+	always @ (posedge CLK)
+		if(CLK_en & SYNC) begin
 			if(last_adr == Address_bus) $finish;
 			last_adr <= Address_bus;
 		end
@@ -103,10 +103,10 @@ module MOS6502_test ();
 		nSO <= 1;
 		READY <= 1;
 		init_mem;
-		repeat (5) @(posedge clk);
+		repeat (5) @(posedge CLK);
 
 		nRESET <= 1;
-		while(!STOP_SIG) @(posedge clk);
+		while(!STOP_SIG) @(posedge CLK);
 
 		$display("SUCCESS, Congratulations!");
 		$finish;

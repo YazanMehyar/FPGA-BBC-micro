@@ -1,8 +1,8 @@
 `include "TOP.vh"
 
 module PS2_DRIVER(
-	input clk,
-	input clk_en,
+	input CLK,
+	input CLK_en,
 	input nRESET,
 	input PS2_CLK,
 	input PS2_DATA,
@@ -12,27 +12,27 @@ module PS2_DRIVER(
 
 /****************************************************************************************/
 
-	reg [3:0] clk_filter;
-	always @ (posedge clk)
-		if(~nRESET)		clk_filter <= 4'hF;
-		else if(clk_en) begin
-			clk_filter  <= {clk_filter[2:0],PS2_CLK};
+	reg [3:0] CLK_filter;
+	always @ (posedge CLK)
+		if(~nRESET)		CLK_filter <= 4'hF;
+		else if(CLK_en) begin
+			CLK_filter  <= {CLK_filter[2:0],PS2_CLK};
 		end
 
 /****************************************************************************************/
-	wire NEGEDGE_PS2CLK = ~|clk_filter;
-	wire POSEDGE_PS2CLK =  &clk_filter;
+	wire NEGEDGE_PS2CLK = ~|CLK_filter;
+	wire POSEDGE_PS2CLK =  &CLK_filter;
 
     reg CAPTURE;
 	reg RELEASE;
 	reg [10:0] MESSAGE;
 
-	always @ (posedge clk) begin
+	always @ (posedge CLK) begin
 		if(~nRESET) begin
 			MESSAGE  <= 11'h7FF;
 			CAPTURE  <=  0;
 			RELEASE  <=  0;
-		end else if(clk_en) begin
+		end else if(CLK_en) begin
 			if(DONE)
 				MESSAGE <= 11'h7FF;
 			else if(CAPTURE)

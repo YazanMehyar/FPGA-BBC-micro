@@ -6,14 +6,14 @@ module MOS6502_stest ();
 	`define RESET_VEC	16'hFFFC
 	`define TEST_FILE	"./c_src/test_bin/6502_functional_test.bin"
 
-	reg clk;
+	reg CLK;
 	reg nRESET;
 	reg nIRQ;
 	reg nNMI;
 	reg nSO;
 	reg READY;
 	reg [3:0] DEBUG_SEL;
-	wire clk_en;
+	wire CLK_en;
 
 	wire [7:0] Data_bus = RnW? mem_out : 8'hzz;
 
@@ -24,8 +24,8 @@ module MOS6502_stest ();
 
 
 	MOS6502 mos6502(
-		.clk(clk),
-		.clk_en(clk_en),
+		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.nRESET(nRESET),
 		.nIRQ(nIRQ),
 		.nNMI(nNMI),
@@ -42,18 +42,18 @@ module MOS6502_stest ();
 	//initial $dumpvars(0, MOS6502_stest);
 
 	reg STOP_SIG = 0;
-	initial clk = 0;
-	always clk = #(`CLKPERIOD/2) ~clk;
+	initial CLK = 0;
+	always CLK = #(`CLKPERIOD/2) ~CLK;
 
-	reg [3:0] clk_count = 0;
-	always @ (posedge clk)	clk_count <= clk_count + 1;
-	assign clk_en = &clk_count;
+	reg [3:0] CLK_count = 0;
+	always @ (posedge CLK)	CLK_count <= CLK_count + 1;
+	assign CLK_en = &CLK_count;
 
 /**************************************************************************************************/
 	// memory
 	reg [7:0] mem [0:`KiB64];
 	reg [7:0] mem_out;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(RnW) begin
 			mem_out <= mem[Address_bus];
 		end else if(Address_bus == `RESET_VEC) begin
@@ -161,17 +161,17 @@ module MOS6502_stest ();
 		nSO  <= 1;
 		READY <= 1;
 		init_mem;
-		repeat (5) @(posedge clk);
+		repeat (5) @(posedge CLK);
 		nRESET <= 1;
 
-		while(!(SYNC&clk_en)) @(posedge clk);
+		while(!(SYNC&CLK_en)) @(posedge CLK);
 
 		$reset_6502();
 
-		while(!STOP_SIG) @(posedge clk)
-			if(SYNC&clk_en) begin
-				@(posedge clk);
-				while(!clk_en) @(posedge clk);
+		while(!STOP_SIG) @(posedge CLK)
+			if(SYNC&CLK_en) begin
+				@(posedge CLK);
+				while(!CLK_en) @(posedge CLK);
 				$run_step();
 				check_mem;
 			end

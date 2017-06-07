@@ -1,6 +1,6 @@
 module Sound_Generator (
-	input clk,
-	input clk_en,
+	input CLK,
+	input CLK_en,
 	input nWE,
 	input [7:0] DATA,
 
@@ -18,8 +18,8 @@ module Sound_Generator (
 	reg [2:0] control_N;
 
 	reg [2:0] ADR_REG;
-	always @ (posedge clk)
-		if(clk_en & ~nWE)
+	always @ (posedge CLK)
+		if(CLK_en & ~nWE)
 			if(~DATA[7]) begin
 				casex (ADR_REG)
 					3'b000: frequncy_1[9:4] <= DATA[5:0];
@@ -48,21 +48,21 @@ module Sound_Generator (
 /****************************************************************************************/
 // DIVIDER
 
-// The original SN76489 had a DIVIDER_16 rather than 8, but the clk_en here is half
+// The original SN76489 had a DIVIDER_16 rather than 8, but the CLK_en here is half
 // of that provided in the BEEB.
 
 	reg [2:0] DIVIDER_8 = 0;
-	always @ (posedge clk)
-		if(clk_en) DIVIDER_8 <= DIVIDER_8 + 1;
+	always @ (posedge CLK)
+		if(CLK_en) DIVIDER_8 <= DIVIDER_8 + 1;
 
-	wire freq_en = ~|DIVIDER_8 & clk_en;
+	wire freq_en = ~|DIVIDER_8 & CLK_en;
 
 // TONE GENERATOR
 
 	reg [9:0] fcount1 = 0;
 	reg [9:0] fcount2 = 0;
 	reg [9:0] fcount3 = 0;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(freq_en) begin
 			`ifdef SIMULATION
 				if(~nWE)			fcount1 <= 1;
@@ -92,7 +92,7 @@ module Sound_Generator (
 	reg oscillator_1 = 0;
 	reg oscillator_2 = 0;
 	reg oscillator_3 = 0;
-	always @ (posedge clk) begin
+	always @ (posedge CLK) begin
 		if(~|fcount1 & freq_en) oscillator_1 <= ~|frequncy_1? 1'b1 : ~oscillator_1;
 		if(~|fcount2 & freq_en) oscillator_2 <= ~|frequncy_2? 1'b1 : ~oscillator_2;
 		if(~|fcount3 & freq_en) oscillator_3 <= ~|frequncy_3? 1'b1 : ~oscillator_3;
@@ -101,7 +101,7 @@ module Sound_Generator (
 // NOISE GENERATOR
 
 	reg [5:0] ncount = 0;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(freq_en) begin
 			if(~|ncount | ~nWE) case (control_N[1:0])
 				2'b00: ncount <= 6'h0F;
@@ -112,13 +112,13 @@ module Sound_Generator (
 		end
 
 	reg oscillator_n = 0;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(~|ncount & freq_en) oscillator_n <= ~oscillator_n;
 
 	reg [14:0] LFSR;
-	wire LFSR_RES = clk_en & ~nWE & (DATA[6:4] == 3'b110);
+	wire LFSR_RES = CLK_en & ~nWE & (DATA[6:4] == 3'b110);
 	wire SHIFT_en = freq_en & (&control_N[1:0]? ~|fcount3&oscillator_3 : ~|ncount&oscillator_n);
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(LFSR_RES)		LFSR <= 15'h4000;
 		else if(SHIFT_en)	LFSR <= {control_N[2]? ^LFSR[1:0] : LFSR[0], LFSR[14:1]};
 
@@ -148,11 +148,11 @@ module Sound_Generator (
 								+ (oscillator_2? get_volume(attenuator_2) : 0)
 								+ (oscillator_3? get_volume(attenuator_3) : 0);
 
-// NOTE: clk_en is expected to pulse @ 2MHz for correct frequency
+// NOTE: CLK_en is expected to pulse @ 2MHz for correct frequency
 //		also for correct PWM. (2.08 MHz / 8 ~ 260KHz)
 
 	reg [7:0] PWM_DUTY_COUNTER;
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(freq_en) 				PWM_DUTY_COUNTER <= master_volume;
 		else if(|PWM_DUTY_COUNTER)  PWM_DUTY_COUNTER <= PWM_DUTY_COUNTER - 1;
 

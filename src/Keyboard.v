@@ -1,6 +1,6 @@
 module Keyboard (
-	input clk,
-	input clk_en,
+	input CLK,
+	input CLK_en,
 	input nRESET,
 	input autoscan,
 	input [3:0] column,
@@ -18,8 +18,8 @@ module Keyboard (
 /****************************************************************************************/
 
 	PS2_DRIVER ps2(
-		.clk(clk),
-		.clk_en(clk_en),
+		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.nRESET(nRESET),
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
@@ -29,7 +29,7 @@ module Keyboard (
 /****************************************************************************************/
 
 	reg [3:0] COL_COUNTER = 0;
-	always @ (posedge clk) if(clk_en) COL_COUNTER <= COL_COUNTER + 1;
+	always @ (posedge CLK) if(CLK_en) COL_COUNTER <= COL_COUNTER + 1;
 
 	reg [6:0] BBC_CODE; // Combinitorial
 	always @ ( * ) begin
@@ -122,7 +122,7 @@ module Keyboard (
 	reg KEY_RELEASE;
 	reg [7:0] KEY_MAP [0:15];
 
-	always @ (posedge clk) begin
+	always @ (posedge CLK) begin
 		if(~nRESET) begin
 			KEY_RELEASE <= 0;
 			KEY_MAP[0] <= 8'h0;
@@ -141,7 +141,7 @@ module Keyboard (
 			KEY_MAP[13] <= 8'h0;
 			KEY_MAP[14] <= 8'h0;
 			KEY_MAP[15] <= 8'h0;
-		end else if(clk_en)
+		end else if(CLK_en)
 			if(DONE) begin
 				if(DATA == 8'hF0)
 					KEY_RELEASE <= 1;
@@ -187,8 +187,8 @@ module Keyboard (
 // TEST HELPERS
 `ifdef SIMULATION
 	// initial begin
-	// forever @(posedge clk) begin
-	// 	if(clk_en&DONE) $display("Key Pressed is %H", DATA);
+	// forever @(posedge CLK) begin
+	// 	if(CLK_en&DONE) $display("Key Pressed is %H", DATA);
 	// end
 	// end
 `endif

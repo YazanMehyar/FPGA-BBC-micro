@@ -1,11 +1,11 @@
 `include "TOP.vh"
 
-module TOP_test();
+module BEEB_test();
 
 	event START_LOG;
 	initial begin
 		@(START_LOG);
-		$dumpvars(3, TOP_test);
+		$dumpvars(0, BEEB_test);
 	end
 
 	reg CLK100MHZ = 0;
@@ -14,54 +14,69 @@ module TOP_test();
 
 	// Simulate PS2_CLK
 	reg [11:0] PS2_COUNT = 0;
-	always @ ( posedge CLK100MHZ ) PS2_COUNT <= PS2_COUNT + 1;
+	always @ (posedge CLK100MHZ) PS2_COUNT <= PS2_COUNT + 1;
 	wire PS2_CLK = PS2_COUNT[11];
 
-	// Simulate PIXELCLK
-	reg [1:0] PIXELCOUNT = 0;
-	always @ ( posedge CLK100MHZ ) PIXELCOUNT <= PIXELCOUNT + 1;
-	wire PIXELCLK = PIXELCOUNT[0];
+	// Simulate 16MHz enable from 100 MHz clock
+	reg [2:0] COUNT6 = 0;
+	always @ (posedge CLK100MHZ) 
+		if(COUNT6 == 3'h5)	COUNT6 <= 0;
+		else				COUNT6 <= COUNT6 + 1;
+		
+	// Simulate 6MHz enable from 100MHz clock
+	reg [3:0] COUNT16 = 0;
+	always @ (posedge CLK100MHZ) COUNT16 <= COUNT16 + 1;
+	
+	wire CLK_16en = COUNT6  == 0;
+	wire CLK_6en  = COUNT16 == 0;
 
 	// input
-	reg CPU_RESETN;
+	reg nRESET;
 	reg PS2_DATA;
+	reg rMISO;
 
 	// output
-	wire [3:0] VGA_R;
-	wire [3:0] VGA_G;
-	wire [3:0] VGA_B;
-	wire VGA_HS;
-	wire VGA_VS;
-	wire [9:7] JC;
-	wire SD_CMD;
-	wire SD_SCK;
-	reg SD_MISO;
+	wire [2:0] RGB;
+	wire HSYNC;
+	wire VSYNC;
+	wire FIELD;
+	wire SCK;
+	wire MOSI;
+	wire MISO;
 
-	assign SD_SCK = JC[7];
-	assign SD_CMD = JC[8];
-	assign JC[9] = SD_MISO;
-
+	assign MISO = rMISO;
 	always @ (posedge PS2_CLK) begin
-		SD_MISO <= $urandom_range(0,5)/5;
+		rMISO <= $urandom_range(0,5)/5;
 	end
 
-	TOP top(
-		.CLK100MHZ(CLK100MHZ),
+	BBC_MICRO beeb(
+		.CLK(CLK100MHZ),
+		.CLK_16en(CLK_16en),
+		.CLK_6en(CLK_6en),
+		.nRESET(nRESET),
+		
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
-		.CPU_RESETN(CPU_RESETN),
-		.VGA_R(VGA_R),
-		.VGA_G(VGA_G),
-		.VGA_B(VGA_B),
-		.VGA_HS(VGA_HS),
-		.VGA_VS(VGA_VS),
-		.JC(JC),
-		.SW(4'h1),
-		.BTNU(1'b0),
-		.BTND(1'b0),
-		.BTNL(1'b0),
-		.BTNR(1'b0),
-		.BTNC(1'b0)
+		
+		.RGB(RGB),
+		.HSYNC(HSYNC),
+		.VSYNC(VSYNC),
+		.FIELD(FIELD),
+		
+		.DISPLAY_DEBUGGER(1'b1),
+		.DISABLE_INTERRUPTS(1'b0),
+		.EN_BREAKPOINT(1'b0),
+		.SET_BREAKPOINT(1'b0),
+		
+		.BUTTON_UP(1'b0),
+		.BUTTON_DOWN(1'b0),
+		.BUTTON_LEFT(1'b0),
+		.BUTTON_RIGHT(1'b0),
+		.BUTTON_STEP(1'b0),
+		
+		.SCK(SCK),
+		.MISO(MISO),
+		.MOSI(MOSI)
 	);
 
 /******************************************************************************/
@@ -95,13 +110,13 @@ module TOP_test();
 				PS2_SEND(KEY);
 				$display("PRINTING %H", KEY);
 
-			repeat (4) @(posedge VGA_VS);
+			repeat (4) @(posedge VSYNC);
 
 			@(posedge PS2_CLK);
 				PS2_SEND(8'hF0);
 				PS2_SEND(KEY);
 
-			repeat (2) @(posedge VGA_VS);
+			repeat (2) @(posedge VSYNC);
 		end
 	endtask
 
@@ -131,11 +146,11 @@ module TOP_test();
 	initial begin
 		$start_screen;
 		-> START_LOG;
-		CPU_RESETN <= 0;
+		nRESET <= 0;
 		PS2_DATA <= 1;
 		repeat (100) @(posedge CLK100MHZ);
-		CPU_RESETN <= 1;
-		repeat (20) @(posedge VGA_VS);
+		nRESET <= 1;
+		repeat (20) @(posedge VSYNC);
 		$stop;
 		$finish;
 	end
@@ -145,8 +160,8 @@ module TOP_test();
 
 	reg [47:0] CMD;
 	integer CMD_count = 48;
-	always @ (posedge SD_SCK) begin
-		CMD <= {CMD[46:0], SD_CMD};
+	always @ (posedge SCK) begin
+		CMD <= {CMD[46:0], MOSI};
 		if(CMD_count != 0)
 			CMD_count <= CMD_count - 1;
 		else if(CMD[47:46] == 2'b01 && CMD[0]) begin
@@ -156,15 +171,17 @@ module TOP_test();
 	end
 
 	integer SCREEN_COUNT = 0;
-	always @ (posedge VGA_VS) begin
+	always @ (negedge VSYNC) begin
 		$display("SCREEN No. %d", SCREEN_COUNT);
 		SCREEN_COUNT <= SCREEN_COUNT + 1;
 	end
 
+/******************************************************************************/
+// Virtual Screen
 
 	reg [7:0] colour;
 	always @ ( * ) begin
-		case({VGA_R[0],VGA_G[0],VGA_B[0]})
+		case(RGB)
 			0: colour = 0;
 			1: colour = 8'h03;
 			2: colour = 8'h1C;
@@ -177,20 +194,19 @@ module TOP_test();
 		endcase
 	end
 
-// Virtual Screen
 	initial forever begin
-		@(negedge VGA_VS)
-		repeat (31) @(negedge VGA_HS);
-		repeat (48) @(posedge PIXELCLK);
-		$v_sync;
+		@(negedge VSYNC)
+		repeat (24) @(negedge HSYNC);
+		repeat (160) @(posedge CLK_16en);
+		$iv_sync(FIELD);
 	end
 
 	initial forever begin
-		@(negedge VGA_HS)
-		repeat (48) @(posedge PIXELCLK);
-		$h_sync;
+		@(negedge HSYNC)
+		repeat (160) @(posedge CLK_16en);
+		$ih_sync;
 	end
 
-	always @(negedge PIXELCLK) $pixel_scan(colour);
+	always @(negedge CLK_16en) $pixel_scan(colour);
 
 endmodule

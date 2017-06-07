@@ -65,7 +65,7 @@ module Debug_Tool(
 		end
 	`endif
 
-	Edge_Trigger #(0) HSYNC_NEG(.clk(PIXELCLK),.IN(HSYNC),.En(1'b1),.EDGE(NEG_HSYNC));
+	Edge_Trigger #(0) HSYNC_NEG(.CLK(PIXELCLK),.IN(HSYNC),.En(1'b1),.EDGE(NEG_HSYNC));
 	assign BUTTON_NEXT = TOOL_B[0];
 	assign BUTTON_PREV = TOOL_B[1];
 

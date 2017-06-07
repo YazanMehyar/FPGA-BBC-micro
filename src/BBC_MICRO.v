@@ -1,55 +1,57 @@
 `include "TOP.vh"
 
-module TOP(
-	input CLK100MHZ,
-	input CPU_RESETN,
+module BBC_MICRO(
+	input  CLK,
+	input  CLK_16en,
+	input  CLK_6en,
+	input  nRESET,
 
-	input PS2_CLK,
-	input PS2_DATA,
+	input  PS2_CLK,
+	input  PS2_DATA,
 
-	output [3:0] VGA_R,
-	output [3:0] VGA_G,
-	output [3:0] VGA_B,
-	output VGA_HS,
-	output VGA_VS,
+	output [2:0] RGB,
+	output HSYNC,
+	output VSYNC,
+	output FIELD,
 
-	output [1:0] LED,
-	input  [3:0] SW, // [3] control break point, [2] disable interrupts
-					 // [1] set break point, [0] display debugger
-	input BTNU,
-	input BTND,
-	input BTNR,
-	input BTNL,
-	input BTNC,
+	input  DISPLAY_DEBUGGER,
+	input  DISABLE_INTERRUPTS,
+	input  EN_BREAKPOINT,
+	input  SET_BREAKPOINT,
 	
-	output AUD_SD,
-	output AUD_PWM,
-
-	inout [9:7] JC);
+	input  BUTTON_UP,
+	input  BUTTON_DOWN,
+	input  BUTTON_RIGHT,
+	input  BUTTON_LEFT,
+	input  BUTTON_STEP,
+	
+	output AUDIO_PWM,
+	
+	inout  SCK,
+	inout  MISO,
+	inout  MOSI);
 
 /*****************************************************************************/
 
-	wire PIXELCLK;
-	wire dRAM_en;	// d as in double ram
-	wire RAM_en;
-	wire PROC_en;
-	wire hPROC_en;	// h as in half processor
-	wire CRTCF_en;
-	wire CRTCS_en;
-	wire TTX_en;
-	wire V_TURN;	// Video circuitry take control of ram reads
-
+	wire CLK_8en;
+	wire CLK_4en;
+	wire CLK_2en;
+	wire CLK_1en;
+	wire CLK_2ven;
+	
+	wire PIXEL_en = CLK_16en;
+	wire RAM_en   = CLK_4en;
+	wire PROC_en  = CLK_2en;
+	wire IO_en    = CLK_1en;
+	
 	Timing_Generator timer(
-		.CLK100MHZ(CLK100MHZ),
-		.PIXELCLK(PIXELCLK),
-		.dRAM_en(dRAM_en),
-		.RAM_en(RAM_en),
-		.PROC_en(PROC_en),
-		.CRTCS_en(CRTCS_en),
-		.hPROC_en(hPROC_en),
-		.CRTCF_en(CRTCF_en),
-		.TTX_en(TTX_en),
-		.V_TURN(V_TURN)
+		.CLK(CLK),
+		.CLK_16en(CLK_16en),
+		.CLK_8en(CLK_8en),
+		.CLK_4en(CLK_4en),
+		.CLK_2en(CLK_2en),
+		.CLK_1en(CLK_1en),
+		.CLK_2ven(CLK_2ven)
 	);
 
 
@@ -90,10 +92,8 @@ module TOP(
 	wire nIRQ;
 	wire COLUMN_MATCH;
 	wire nBREAK_KEY;
-	wire MOSI, MISO, SCK;
 	wire SOUND;
 	wire DISEN;
-	wire [2:0] RGB;
 
 	wire SHEILA		= &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 	wire OSBANKen	= &pADDRESSBUS[15:14] & ~SHEILA;
@@ -144,27 +144,25 @@ module TOP(
 /*****************************************************************************/
 //	RAM & ROMS
 
-	always @ ( posedge PIXELCLK )
-		if(PROC_en&~nROMSEL) ROM_BANK <= pDATABUS[3:0];
+	always @ (posedge CLK) if(PROC_en)
+		if(~nROMSEL) ROM_BANK <= pDATABUS[3:0];
 
-	always @ ( posedge PIXELCLK )
-		if(RAM_en)
-			if(V_TURN)
-				vDATA <= RAM[vADDRESSBUS];
-			else if(RnW)
-				ram_DATA <= RAM[pADDRESSBUS[14:0]];
-			else if(~pADDRESSBUS[15])
-				RAM[pADDRESSBUS[14:0]] <= pDATABUS;
+	always @ (posedge CLK) if(RAM_en)
+		if(PROC_en)
+			vDATA <= RAM[vADDRESSBUS];
+		else if(RnW)
+			ram_DATA <= RAM[pADDRESSBUS[14:0]];
+		else if(~pADDRESSBUS[15])
+			RAM[pADDRESSBUS[14:0]] <= pDATABUS;
 
-	always @ ( posedge PIXELCLK )
-		if(RAM_en)
-			if(OSBANKen)
-				rom_DATA <= BBCOS12[pADDRESSBUS[13:0]];
-			else if(AUXBANKen)
-				case(ROM_BANK)
-				4'b0000: rom_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
-				4'b0001: rom_DATA <= DFS[pADDRESSBUS[13:0]];
-				endcase
+	always @ (posedge CLK) if(RAM_en)
+		if(OSBANKen)
+			rom_DATA <= BBCOS12[pADDRESSBUS[13:0]];
+		else if(AUXBANKen)
+			case(ROM_BANK)
+			4'b0000: rom_DATA <= BBCBASIC2[pADDRESSBUS[13:0]];
+			4'b0001: rom_DATA <= DFS[pADDRESSBUS[13:0]];
+			endcase
 
 /******************************************************************************/
 // CRTC address correction
@@ -172,10 +170,9 @@ module TOP(
 	reg [7:0] LS259_reg;
 	wire LS259_D;
 	wire [2:0] LS259_A;
-	wire LS259en = nVIA & PROC_en;
 
-	always @ ( posedge PIXELCLK )
-		if(LS259en)	case (LS259_A)
+	always @ ( posedge CLK ) if(PROC_en)
+		if(nVIA) case (LS259_A)
 			0:	LS259_reg[0] <= LS259_D;
 			1:	LS259_reg[1] <= LS259_D;
 			2:	LS259_reg[2] <= LS259_D;
@@ -210,12 +207,12 @@ module TOP(
 	wire BTN_STEP;
 	wire BTN_CONT;
 	
-	Edge_Trigger #(1) POS_BUTTON0(.clk(PIXELCLK),.IN(BTNR),.En(1'b1),.EDGE(BTN_RT));
-	Edge_Trigger #(1) POS_BUTTON1(.clk(PIXELCLK),.IN(BTNL),.En(1'b1),.EDGE(BTN_LT));
-	Edge_Trigger #(1) POS_BUTTON2(.clk(PIXELCLK),.IN(BTND),.En(1'b1),.EDGE(BTN_DN));
-	Edge_Trigger #(1) POS_BUTTON3(.clk(PIXELCLK),.IN(BTNU),.En(1'b1),.EDGE(BTN_UP));
-	Edge_Trigger #(1) BRKS_TRIG(.clk(PIXELCLK),.IN(BTNC&~SW[3]),.En(PROC_en),.EDGE(BTN_STEP));	
-	Edge_Trigger #(1) BRKC_TRIG(.clk(PIXELCLK),.IN(BTNC&SW[3]), .En(PROC_en),.EDGE(BTN_CONT));
+	Edge_Trigger #(1) POS_BUTTON0(.CLK(CLK),.IN(BUTTON_RIGHT),.En(IO_en),.EDGE(BTN_RT));
+	Edge_Trigger #(1) POS_BUTTON1(.CLK(CLK),.IN(BUTTON_LEFT), .En(IO_en),.EDGE(BTN_LT));
+	Edge_Trigger #(1) POS_BUTTON2(.CLK(CLK),.IN(BUTTON_DOWN), .En(IO_en),.EDGE(BTN_DN));
+	Edge_Trigger #(1) POS_BUTTON3(.CLK(CLK),.IN(BUTTON_UP),   .En(IO_en),.EDGE(BTN_UP));
+	Edge_Trigger #(1) BRKS_TRIG(.CLK(CLK),.IN(BUTTON_STEP&~SET_BREAKPOINT),.En(PROC_en),.EDGE(BTN_STEP));	
+	Edge_Trigger #(1) BRKC_TRIG(.CLK(CLK),.IN(BUTTON_STEP&SET_BREAKPOINT), .En(PROC_en),.EDGE(BTN_CONT));
 	
 	reg  [15:0] BREAKPOINT;
 	reg  [1:0]  BRK_STEP;
@@ -223,21 +220,20 @@ module TOP(
 	wire [23:0] BREAK_tag = {`dlB,`dlR,`dlK,`dlSP};
 	wire [3:0]  BRK_INC = BTN_UP? 4'h1 : {4{BTN_DN}};
 	
-	always @ (posedge PIXELCLK)
-		if(SW[3]) case(BRK_STEP)
+	always @ (posedge CLK) if(IO_en)
+		if(SET_BREAKPOINT) case(BRK_STEP)
 			0: BREAKPOINT[3:0]   <= BREAKPOINT[3:0]   + BRK_INC;
 			1: BREAKPOINT[7:4]   <= BREAKPOINT[7:4]   + BRK_INC;
 			2: BREAKPOINT[11:8]  <= BREAKPOINT[11:8]  + BRK_INC;
 			3: BREAKPOINT[15:12] <= BREAKPOINT[15:12] + BRK_INC;
 		endcase
 
-	always @ (posedge PIXELCLK)
-		if(SW[3]) BRK_STEP <= BRK_STEP + (BTN_LT? 2'h1 : {2{BTN_RT}});
+	always @ (posedge CLK) if(IO_en)
+		if(SET_BREAKPOINT) BRK_STEP <= BRK_STEP + (BTN_LT? 2'h1 : {2{BTN_RT}});
 		
-	always @ (posedge PIXELCLK)
-		if(PROC_en)
-			if(BRK_STOP) BRK_STOP <= ~BTN_CONT;
-			else		 BRK_STOP <= SW[1]&(BREAKPOINT == pADDRESSBUS);
+	always @ (posedge CLK) if(PROC_en)
+		if(BRK_STOP) BRK_STOP <= ~BTN_CONT;
+		else		 BRK_STOP <= EN_BREAKPOINT&(BREAKPOINT == pADDRESSBUS);
 			
 	wire BREAK = BRK_STOP & SYNC & ~BTN_STEP;
 	
@@ -246,11 +242,11 @@ module TOP(
 wire [1:0] PROC_VCC = 2'b11;
 // Processor
 	MOS6502 pocessor(
-		.clk(PIXELCLK),
-		.clk_en(SLOW_PROC? hPROC_en : PROC_en),
-		.nRESET(CPU_RESETN&nBREAK_KEY),
+		.CLK(CLK),
+		.CLK_en(SLOW_PROC? IO_en : PROC_en),
+		.nRESET(nRESET&nBREAK_KEY),
 		.SYNC(SYNC),
-		.nIRQ(nIRQ|SW[2]),
+		.nIRQ(nIRQ|DISABLE_INTERRUPTS),
 		.nNMI(PROC_VCC[0]),
 		.nSO(PROC_VCC[1]),
 		.READY(~BREAK),
@@ -263,27 +259,31 @@ wire [1:0] PROC_VCC = 2'b11;
 	);
 
 // Video control
+		
 	Display_Control dc(
-		.PIXELCLK(PIXELCLK),
-		.nRESET(CPU_RESETN),
-		.dRAM_en(dRAM_en),
-		.RAM_en(RAM_en),
+		.CLK(CLK),
+		.nRESET(nRESET),
+		.CLK_16en(CLK_16en),
+		.CLK_8en(CLK_8en),
+		.CLK_6en(CLK_6en),
+		.CLK_4en(CLK_4en),
+		.CLK_2en(CLK_2en),
+		.CLK_1en(CLK_1en),
 		.PROC_en(PROC_en),
-		.CRTCF_en(CRTCF_en),
-		.CRTCS_en(CRTCS_en),
-		.TTX_en(TTX_en),
+		.CLK_2ven(CLK_2ven),
 		.nCS_CRTC(nCRTC),
 		.nCS_VULA(nVIDPROC),
 		.RnW(RnW),
 		.A0(pADDRESSBUS[0]),
 		.vDATABUS(vDATA),
 		.pDATABUS(pDATABUS),
-		.VGA_HS(VGA_HS),
-		.VGA_VS(VGA_VS),
+		.HSYNC(HSYNC),
+		.VSYNC(VSYNC),
 		.TXT_MODE(TXT_MODE),
 		.RGB(RGB),
 		.FRAMESTORE_ADR(FRAMESTORE_ADR),
 		.ROW_ADDRESS(ROW_ADDRESS),
+		.FIELD(FIELD),
 		.DEBUG_SEL(DISP_sel),
 		.DEBUG_VAL(DISP_val),
 		.DEBUG_TAG(DISP_tag)
@@ -293,14 +293,14 @@ wire [2:0] SYS_VCC = 3'b111;
 wire [3:0] VCC_4   = 4'hF;
 // System VIA
 	MOS6522 #(`SYSVIA) sys_via(
-		.clk(PIXELCLK),
-		.clk_en(hPROC_en),
-		.nRESET(CPU_RESETN),
+		.CLK(CLK),
+		.CLK_en(IO_en),
+		.nRESET(nRESET),
 		.CS1(SYS_VCC[0]),
 		.nCS2(nVIA),
 		.RnW(RnW),
 		.RS(pADDRESSBUS[3:0]),
-		.CA1(VGA_VS),
+		.CA1(VSYNC),
 		.CA2(COLUMN_MATCH),
 		.CB1(SYS_VCC[1]),
 		.CB2(SYS_VCC[2]),
@@ -316,23 +316,16 @@ wire [3:0] VCC_4   = 4'hF;
 wire [2:0] USR_VCC = 3'b111;
 // User VIA
 	MOS6522 #(`USRVIA) usr_via(
-		.clk(PIXELCLK),
-		.clk_en(hPROC_en),
-		.nRESET(CPU_RESETN),
+		.CLK(CLK),
+		.CLK_en(IO_en),
+		.nRESET(nRESET),
 		.CS1(USR_VCC[0]),
 		.nCS2(nUVIA),
 		.RnW(RnW),
 		.RS(pADDRESSBUS[3:0]),
 		.CA1(USR_VCC[1]),
 		.CA2(USR_VCC[2]),
-
-		`ifdef SIMULATION
-		// Iverilog issue
-		.CB1(UPORTB[1]),
-		`else
 		.CB1(SCK),
-		`endif
-
 		.CB2(MISO),
 		.DATA(pDATABUS),
 		.PORTB(UPORTB),
@@ -344,9 +337,9 @@ wire [2:0] USR_VCC = 3'b111;
 
 // Keyboard
 	Keyboard keyboard(
-		.clk(PIXELCLK),
-		.clk_en(hPROC_en),
-		.nRESET(CPU_RESETN),
+		.CLK(CLK),
+		.CLK_en(IO_en),
+		.nRESET(nRESET),
 		.autoscan(LS259_reg[3]),
 		.column(PORTA[3:0]),
 		.row(PORTA[6:4]),
@@ -359,8 +352,8 @@ wire [2:0] USR_VCC = 3'b111;
 
 // Sound
 	Sound_Generator sound(
-		.clk(PIXELCLK),
-		.clk_en(PROC_en),
+		.CLK(CLK),
+		.CLK_en(PROC_en),
 		.nWE(LS259_reg[0]),
 		.DATA(PORTA),
 		.PWM(SOUND)
@@ -369,7 +362,7 @@ wire [2:0] USR_VCC = 3'b111;
 // Extra (MOCK) Peripherals
 	Extra_Peripherals extra(
 		.RnW(RnW),
-		.nRESET(CPU_RESETN),
+		.nRESET(nRESET),
 		.nFDC(nFDC),
 		.nADC(nADC),
 		.nTUBE(nTUBE),
@@ -379,29 +372,16 @@ wire [2:0] USR_VCC = 3'b111;
 	);
 
 /**************************************************************************************************/
-	assign AUD_SD  = 1'b1;				 // audio enable
-	assign AUD_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
-	assign VGA_R = {4{(DEBUG_PIXEL&SW[0]) ^ RGB[0]}};
-	assign VGA_G = {4{(DEBUG_PIXEL&SW[0]) ^ RGB[1]}};
-	assign VGA_B = {4{(DEBUG_PIXEL&SW[0]) ^ RGB[2]}};
-	assign LED[0] = 0;
-	assign LED[1] = MISO;
-	`ifdef SIMULATION
-		// Iverilog Issue
-		assign JC[7] = UPORTB[1];
-		assign JC[8] = UPORTB[0];
-	`else
-		assign JC[7] = SCK;
-		assign JC[8] = MOSI;
-	`endif
-	assign MISO = JC[9];
-
-// TEST_ASSISTANCE
-
+	assign AUDIO_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
+//	assign RGB = {3{(DEBUG_PIXEL&DISPLAY_DEBUGGER)}} ^ RGB;
+	
+// Debugger
+/*
 	Debug_Tool dtool(
-		.PIXELCLK(PIXELCLK),
-		.VSYNC(VGA_VS),
-		.HSYNC(VGA_HS),
+		.CLK(CLK),
+		.PIXEL_en(PIXEL_en),
+		.VSYNC(VSYNC),
+		.HSYNC(HSYNC),
 		.TAG1(PROC_tag),
 		.VAL1(PROC_val),
 		.SEL1(PROC_sel),
@@ -416,14 +396,14 @@ wire [2:0] USR_VCC = 3'b111;
 		.SEL4(UVIA_sel),
 		.VALB(BREAKPOINT),
 		.TAGB(BREAK_tag),
-		.TOOL_B({2{~SW[3]}}&{BTN_LT,BTN_RT}),
-		.PROBE_B({2{~SW[3]}}&{BTN_UP,BTN_DN}),
+		.TOOL_B({2{~SET_BREAKPOINT}}&{BTN_LT,BTN_RT}),
+		.PROBE_B({2{~SET_BREAKPOINT}}&{BTN_UP,BTN_DN}),
 		.PIXEL_OUT(DEBUG_PIXEL)
 	);
-
+*/
 
 `ifdef SIMULATION
-
+	
 `endif
 
 endmodule

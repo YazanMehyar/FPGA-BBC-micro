@@ -4,8 +4,8 @@ module Sound_Generator_test ();
 	initial $dumpvars(0, Sound_Generator_test);
 
 	// inputs
-	wire pclk;
-	wire clk_en;
+	wire pCLK;
+	wire CLK_en;
 	reg  nWE;
 	reg  [7:0] DATA;
 
@@ -13,8 +13,8 @@ module Sound_Generator_test ();
 	wire PWM;
 
 	Sound_Generator sound(
-		.clk(pclk),
-		.clk_en(clk_en),
+		.CLK(pCLK),
+		.CLK_en(CLK_en),
 		.nWE(nWE),
 		.DATA(DATA),
 		.PWM(PWM)
@@ -24,30 +24,30 @@ module Sound_Generator_test ();
 	task write_data;
 	input [7:0] data;
 	begin
-		@(posedge clk_en)
+		@(posedge CLK_en)
 		DATA <= data;
 		nWE  <= 0;
-		@(posedge clk_en)
+		@(posedge CLK_en)
 		nWE  <= 1;
 	end
 	endtask
 
-	reg clk;
+	reg CLK;
 	initial begin
-		clk = 0;
-		forever #(`CLKPERIOD/2) clk = ~clk;
+		CLK = 0;
+		forever #(`CLKPERIOD/2) CLK = ~CLK;
 	end
 
 	Timing_Generator t(
-		.CLK100MHZ(clk),
-		.PIXELCLK(pclk),
-		.PROC_en(clk_en)
+		.CLK100MHZ(CLK),
+		.PIXELCLK(pCLK),
+		.PROC_en(CLK_en)
 		);
 
 	// Test Procedure
 	initial begin
 		nWE <= 1;
-		repeat (20) @(posedge clk_en);
+		repeat (20) @(posedge CLK_en);
 
 		// set TONE frequency
 		write_data(8'h80); write_data(8'h04);
@@ -63,7 +63,7 @@ module Sound_Generator_test ();
 		write_data(8'hDF);
 		write_data(8'hF0);
 
-		repeat(100000) @(posedge clk_en);
+		repeat(100000) @(posedge CLK_en);
 		$finish;
 	end
 

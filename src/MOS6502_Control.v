@@ -1,8 +1,8 @@
 `include "MOS6502.vh"
 
 module MOS6502_Control (
-	input clk,
-	input clk_en,
+	input CLK,
+	input CLK_en,
 	input [7:0] DIR,
 
 	input [7:0] iDB,
@@ -64,9 +64,9 @@ module MOS6502_Control (
 /**************************************************************************************************/
 
 MOS6502_Interrupt interrupt(
-	.clk(clk),
+	.CLK(CLK),
 	.nRESET(nRESET&nRESET_req),
-	.clk_en(clk_en),
+	.CLK_en(CLK_en),
 	.nNMI(nNMI),
 	.nIRQ(nIRQ),
 	.nSO(nSO),
@@ -120,16 +120,16 @@ MOS6502_Decode decoder(
 	.decimal_en(decimal_mode));
 
 /**************************************************************************************************/
-always @ (posedge clk) begin
+always @ (posedge CLK) begin
 	READY <= READY_pin | ~RnW;
 
 	if(~nRESET) 	nRESET_req	<= 1'b0;
-	else if(clk_en) nRESET_req	<= (nRESET_req || T_state == `T0);
+	else if(CLK_en) nRESET_req	<= (nRESET_req || T_state == `T0);
 end
 
-always @ (posedge clk) begin
+always @ (posedge CLK) begin
 	if(~nRESET) 	 T_state <= `T1;
-	else if(clk_en)
+	else if(CLK_en)
 		if(READY) begin
 			if(NEXT_S)
 				T_state <= `TSD1;
@@ -152,16 +152,16 @@ always @ (posedge clk) begin
 		end
 end
 
-always @ (posedge clk) begin
+always @ (posedge CLK) begin
 	if(~nRESET)	IR <= 8'h00;
-	else if(clk_en && READY && T_state == `T1)
+	else if(CLK_en && READY && T_state == `T1)
 		IR <= nIRQ_req&nNMI_req&nRESET_req? DIR[7:0] : 8'h00;
 end
 
-always @ (posedge clk)
+always @ (posedge CLK)
 	if (~nRESET)
 		PSR <= 8'h00;
-	else if(clk_en)
+	else if(CLK_en)
 		if (READY) case (T_state)
 			`T0:	case(1'b1)
 					PLP: PSR <= iDB[7:0];
@@ -186,8 +186,8 @@ always @ (posedge clk)
 					endcase
 			endcase else PSR[6] <= PSR[6]|SO_req;
 
-always @ (posedge clk)
-	if(clk_en&READY) begin
+always @ (posedge CLK)
+	if(CLK_en&READY) begin
 		VOUT <= ALU_VOUT;
 		COUT <= ALU_COUT;
 		ZOUT <= ALU_ZOUT;

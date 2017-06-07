@@ -5,14 +5,16 @@ module Display_Control (
 	output reg [23:0] DEBUG_TAG,
 	output reg [15:0] DEBUG_VAL,
 
-	input PIXELCLK,
+	input CLK,
 	input nRESET,
-	input dRAM_en,
-	input RAM_en,
+	input CLK_16en,
+	input CLK_8en,
+	input CLK_6en,
+	input CLK_4en,
+	input CLK_2en,
+	input CLK_1en,
+	input CLK_2ven,
 	input PROC_en,
-	input CRTCF_en,
-	input CRTCS_en,
-	input TTX_en,
 	input nCS_CRTC,
 	input nCS_VULA,
 	input RnW,
@@ -21,257 +23,86 @@ module Display_Control (
 	input [7:0] vDATABUS,
 	inout [7:0] pDATABUS,
 
-	output VGA_HS,
-	output VGA_VS,
+	output HSYNC,
+	output VSYNC,
+	output FIELD,
 	output TXT_MODE,
-	output [2:0] RGB,
+	output [2:0]  RGB,
 	output [13:0] FRAMESTORE_ADR,
 	output [4:0]  ROW_ADDRESS
 	);
 
 // Video Signal generator
-	wire CRTC_en;
 
-// -- Horizontal Timing
-	reg [1:0] H_STATE;
-	reg [6:0] H_COUNTER;
+/**************************************************************************************************/
+// BBC Display Controller (CRTC MC6845)
+
+	wire CRTC_en;
+	wire CURSOR;
+	wire HSYNC;
+	wire VSYNC;
+	wire DISEN;
+	wire [23:0] CRTC_DEBUG_TAG;
+	wire [15:0] CRTC_DEBUG_VAL;
 	
 	`ifdef SIMULATION
-		initial begin
-			H_STATE   <= 0;
-			H_COUNTER <= 0;
-			V_STATE   <= 0;
-			V_COUNTER <= 0;
-			NEWLINE   <= 0;
-			cursor_blink_count <= 7'h3F;
-		end
+		reg [4:0] RESET_COUNTER = 5'h1F;
+		always @(posedge CLK) if(PROC_en)
+			RESET_COUNTER <= RESET_COUNTER - (|RESET_COUNTER&~nCS_CRTC? 1 : 0);
 	`endif
 
-	always @ ( posedge PIXELCLK ) begin
-		if(CRTCS_en) begin
-			H_COUNTER <= ~|H_COUNTER? `H_COUNTER_INIT : H_COUNTER - 1;
+	CRTC6845 crtc(
+	.DEBUG_SEL(DEBUG_SEL),
+	.DEBUG_TAG(CRTC_DEBUG_TAG),
+	.DEBUG_VAL(CRTC_DEBUG_VAL),
 
-			case (H_STATE)
-				`H_BACK:   H_STATE <= ~|H_COUNTER? `H_DISPLAY :`H_BACK;
-				`H_PULSE:  H_STATE <= H_COUNTER == `H_BACK_COUNT?  `H_BACK  : `H_PULSE;
-				`H_FRONT:  H_STATE <= H_COUNTER == `H_PULSE_COUNT? `H_PULSE : `H_FRONT;
-				`H_DISPLAY:H_STATE <= H_COUNTER == `H_FRONT_COUNT? `H_FRONT : `H_DISPLAY;
-			endcase
-		end
-	end
-
-	reg NEWLINE;
-	always @(posedge PIXELCLK)
-		if(CRTCF_en) // Back edge
-			if(NEWLINE) 		NEWLINE <= 0;
-			else if(~CRTCS_en)	NEWLINE <= ~|H_COUNTER;
-		
-	assign VGA_HS = H_STATE == `H_PULSE;
-
-// -- Vertical Timing
-	reg [1:0] V_STATE;
-	reg [9:0] V_COUNTER;
-
-	always @ ( posedge PIXELCLK ) begin
-		if(CRTCS_en&NEWLINE) begin
-			V_COUNTER <= ~|V_COUNTER? `V_COUNTER_INIT : V_COUNTER - 1;
-
-			case (V_STATE)
-				`V_BACK:   V_STATE <= ~|V_COUNTER? `V_DISPLAY :`V_BACK;
-				`V_PULSE:  V_STATE <= V_COUNTER == `V_BACK_COUNT?  `V_BACK  : `V_PULSE;
-				`V_FRONT:  V_STATE <= V_COUNTER == `V_PULSE_COUNT? `V_PULSE : `V_FRONT;
-				`V_DISPLAY:V_STATE <= V_COUNTER == `V_FRONT_COUNT? `V_FRONT : `V_DISPLAY;
-			endcase
-		end
-	end
-
-	wire NEWSCREEN = ~|V_COUNTER & NEWLINE;
-	wire VID_DISEN = V_STATE == `V_DISPLAY && H_STATE == `H_DISPLAY;
-	assign VGA_VS  = V_STATE == `V_PULSE;
-
-/****************************************************************************************/
-
-// BBC Display Controller (CRTC)
-
-	reg [13:0] start_adr;
-	reg [13:0] cursor_adr;
-	reg [3:0]  reg_sel;
-	reg [7:0]  horz_display;
-	reg [6:0]  vert_display;
-	reg [4:0]  max_scanline;
-	reg [4:0]  cursor_start_row;
-	reg [4:0]  cursor_end_row;
-	reg [1:0]  cursor_blink_mode;
-	reg [1:0]  interlace_mode;
-
-	// More registers can be included to meet more spec of the 6845 CRTC
-	reg [7:0] pDATABUS_out;
-	always @ ( * ) case (reg_sel[0])
-		1'b0: pDATABUS_out = {2'b00,cursor_adr[13:8]};
-		1'b1: pDATABUS_out = cursor_adr[7:0];
-		default: pDATABUS_out = 8'hxx;
-	endcase
-
-	assign pDATABUS  = ~nCS_CRTC&RnW&nRESET? pDATABUS_out : 8'hzz;
-
-	wire CRTC_WRITE = ~nCS_CRTC&~RnW&PROC_en;
-
-	always @ (posedge PIXELCLK) begin
-		if(CRTC_WRITE) begin
-			if(A0) case (reg_sel)
-				4'h1: horz_display   <= pDATABUS;
-				4'h6: vert_display   <= pDATABUS[6:0];
-				4'h8: interlace_mode <= pDATABUS[1:0];
-				4'h9: max_scanline   <= pDATABUS[4:0];
-				4'hA: begin
-						cursor_blink_mode <= pDATABUS[6:5];
-						cursor_start_row  <= pDATABUS[4:0];
-					  end
-				4'hB: cursor_end_row  <= pDATABUS[4:0];
-				4'hC: start_adr[13:8] <= pDATABUS[5:0];
-				4'hD: start_adr[7:0]  <= pDATABUS;
-				4'hE: cursor_adr[13:8]<= pDATABUS[5:0];
-				4'hF: cursor_adr[7:0] <= pDATABUS;
-			endcase else reg_sel <= pDATABUS[4:0];
-		end
-	end
-
-// -- BBC's display timing (NB MUST be a subset of the host)
-
-	reg [7:0] HORZ_DISPLAY_COUNT;
-	reg [6:0] VERT_DISPLAY_COUNT;
-
-	wire INTERLACE_SYNC = ~&interlace_mode;
-	wire DISEN = VID_DISEN & |HORZ_DISPLAY_COUNT & |VERT_DISPLAY_COUNT;
-	wire NEWvCHAR = rROW_ADR == max_scanline && NEWLINE && (INTERLACE_SYNC? FIELD:1'b1);
-
-	always @ (posedge PIXELCLK)
-		if(CRTC_en) begin
-			if(NEWLINE)
-				HORZ_DISPLAY_COUNT <= horz_display;
-			else if(|HORZ_DISPLAY_COUNT)
-				HORZ_DISPLAY_COUNT <= HORZ_DISPLAY_COUNT - 1;
-
-			if(NEWSCREEN)
-				VERT_DISPLAY_COUNT <= vert_display;
-			else if(NEWvCHAR & |VERT_DISPLAY_COUNT)
-				VERT_DISPLAY_COUNT <= VERT_DISPLAY_COUNT - 1;
-		end
-
-// -- RAM addressing
-
-	reg [13:0] NEWLINE_ADR;
-	reg [13:0] rFRAMESTORE_ADR;
-	reg [13:0] NEWCHAR_ADR;
-	reg [4:0]  rROW_ADR;
-	reg FIELD;
-	wire [4:0] NEXT_ROW = rROW_ADR + (INTERLACE_SYNC? FIELD:1);
-
-	always @ (posedge PIXELCLK)
-		if(CRTC_en) begin
+	.CLK(CLK),
+	.nRESET(nRESET`ifdef SIMULATION & ~|RESET_COUNTER`endif),
+	.CRTC_en(CRTC_en),
+	.PROC_en(PROC_en),
+	.nCS_CRTC(nCS_CRTC),
+	.RnW(RnW),
+	.A0(A0),
 	
-			rFRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
-			
-			if(NEWSCREEN|NEWvCHAR) begin
-				NEWLINE_ADR     <= FRAMESTORE_ADR;
-				NEWCHAR_ADR     <= FRAMESTORE_ADR + horz_display;
-			end
-		end
+	.pDATABUS(pDATABUS),
 
-	// Simulate interlace mode but progressively
-	always @ (posedge PIXELCLK)
-		if(CRTC_en) begin
-			if(NEWSCREEN|NEWvCHAR|NEWLINE) begin
-				FIELD    <= NEWSCREEN|NEWvCHAR? 0 : ~FIELD;
-				rROW_ADR <= NEWSCREEN|NEWvCHAR? 0 : NEXT_ROW;
-			end
-		end
+	.HSYNC(HSYNC),
+	.VSYNC(VSYNC),
+	.DISEN(DISEN),
+	.FIELD(FIELD),
+	.CURSOR(CURSOR),
+	.FRAMESTORE_ADR(FRAMESTORE_ADR),
+	.ROW_ADDRESS(ROW_ADDRESS));
 	
-	assign FRAMESTORE_ADR = NEWSCREEN? start_adr   : 
-							NEWvCHAR?  NEWCHAR_ADR :  
-							NEWLINE?   NEWLINE_ADR : rFRAMESTORE_ADR;
-							
-	assign ROW_ADDRESS = NEWvCHAR|NEWSCREEN? 0 :
-						 NEWLINE?     NEXT_ROW : rROW_ADR;
+/**************************************************************************************************/
+// BBC Teletext chip (SA5050)
 
+	wire [2:0] SA_RGB;
 
-// -- Cursor position
+    TELETEXT_5050 teletext (
+    .CLK(CLK),
+    .SA_F1(CLK_1en),
+    .SA_T6(CLK_6en),
+    .VSYNC(VSYNC),
+    .HSYNC(HSYNC),
+    .DISEN(DISEN),
+    .CHAR_ROUND(ROW_ADDRESS[0]),
+    .DATABUS(vDATABUS[6:0]),
+    .RGB(SA_RGB)
+    );
 
-	reg [6:0] cursor_blink_count;
-	reg cursor_display;
-	wire AT_CURSOR = FRAMESTORE_ADR == cursor_adr
-				&& ROW_ADDRESS >= cursor_start_row
-				&& ROW_ADDRESS <= cursor_end_row
-				&& DISEN
-				&& cursor_display;
-
-	always @ (posedge PIXELCLK) begin
-		if(NEWSCREEN&CRTC_en) begin
-			cursor_blink_count <= cursor_blink_count + 1;
-			case (cursor_blink_mode)
-				2'b00: cursor_display <= 1;
-				2'b01: cursor_display <= 0;
-				2'b10: cursor_display <= cursor_blink_count[5];
-				2'b11: cursor_display <= cursor_blink_count[6];
-				default: cursor_display <= 1'bx;
-			endcase
-		end
-	end
-
-	reg [2:0] CURSOR_seg;
-	reg CURSOR_DRAW;
-
-	always @ ( posedge PIXELCLK ) begin
-		if(~nRESET) CURSOR_seg <= 3'b000;
-		else if(CRTC_en) begin
-			if(AT_CURSOR)	CURSOR_seg <= 3'b001;
-			else			CURSOR_seg <= CURSOR_seg << 1;
-
-			CURSOR_DRAW <= AT_CURSOR&CONTROL[7]
-							| CURSOR_seg[0]&CONTROL[6]
-							| CURSOR_seg[1]&CONTROL[5]
-							| CURSOR_seg[2]&CONTROL[5];
-		end
-	end
-	
-/****************************************************************************************/
-// SA5050 Teletext
-	wire SA_F1 = CRTC_en;
-	wire SA_T6 = TTX_en;
-	wire [5:0] SA_dots;
-	reg  [6:0] SA_code;
-	reg  [3:0] SA_row;
-	reg  [5:0] SA_shifter;
-	reg  SA_DISEN;
-	
-	SA_ROM char_rom(.code(SA_code),.line(SA_row),.pattern(SA_dots));
-
-	always @ (posedge PIXELCLK) begin
-		if(SA_F1) begin
-			SA_code <= vDATABUS[6:0];
-			SA_shifter <= SA_dots;
-			SA_DISEN <= DISEN;
-		end else if(SA_T6) begin
-			SA_shifter <= SA_shifter << 1;
-		end
-	end
-	
-	always @ (posedge PIXELCLK) 
-		if(SA_F1) begin
-			if(NEWSCREEN)	SA_row <= 0;
-			else if(NEWLINE)SA_row <= (SA_row == 9)? 0 : SA_row + FIELD;
-		end
-	
-	wire[2:0] SA_BGR = SA_DISEN? {3{SA_shifter[5]}} : 3'b000;
-	assign TXT_MODE = CONTROL[1];
-
-
-/****************************************************************************************/
+/**************************************************************************************************/
 // Video ULA
-
+	
 	reg [7:0] CONTROL;
 	reg [7:0] SHIFTER;
+	reg [2:0] CURSOR_seg;
+	reg CURSOR_DRAW;
+	reg SHIFT_en;
 
+	assign CRTC_en  = CONTROL[4]? CLK_2ven : CLK_1en;
+	assign TXT_MODE = CONTROL[1];
+	
 	// Synthesizer has trouble with the following so it is broken down
 	// reg [3:0] PALETTE [0:15];
 	reg [3:0] PALETTE0,PALETTE1,PALETTE2,PALETTE3;
@@ -279,108 +110,104 @@ module Display_Control (
 	reg [3:0] PALETTE8,PALETTE9,PALETTEA,PALETTEB;
 	reg [3:0] PALETTEC,PALETTED,PALETTEE,PALETTEF;
 
-	assign CRTC_en = CONTROL[4]? CRTCF_en : CRTCS_en;
 
-// -- Shift speed
+	always @ ( * ) case (CONTROL[3:2])
+		2'b00: SHIFT_en = CLK_2en;
+		2'b01: SHIFT_en = CLK_4en;
+		2'b10: SHIFT_en = CLK_8en;
+		2'b11: SHIFT_en = CLK_16en;
+	endcase
 
-	reg SHIFT_en;
-	always @ ( * ) begin
-		case (CONTROL[3:2])
-			2'b00: SHIFT_en = CRTCF_en;
-			2'b01: SHIFT_en = RAM_en;
-			2'b10: SHIFT_en = dRAM_en;
-			2'b11: SHIFT_en = 1'b1;
-			default: SHIFT_en = 1'bx;
-		endcase
-	end
-
-	always @ ( posedge PIXELCLK ) begin
+	always @ (posedge CLK)
 		if(CRTC_en)			SHIFTER <= vDATABUS;
 		else if(SHIFT_en)	SHIFTER <= {SHIFTER[6:0],1'b1};
-	end
 
-// -- uProcessor interface
 
-	always @ ( posedge PIXELCLK ) begin
+	always @ ( posedge CLK )
+		if(CRTC_en) begin
+			if(CURSOR)	CURSOR_seg <= 3'b001;
+			else		CURSOR_seg <= CURSOR_seg << 1;
+
+			CURSOR_DRAW <= CURSOR&CONTROL[7]
+							| CURSOR_seg[0]&CONTROL[6]
+							| CURSOR_seg[1]&CONTROL[5]
+							| CURSOR_seg[2]&CONTROL[5];
+		end
+
+    // -- uProcessor interface
+	always @ ( posedge CLK)
 		if(~nRESET) CONTROL <= 8'h00;
 		else if(PROC_en&~nCS_VULA)
 	 		if(A0)  case (pDATABUS[7:4])
-	 			4'h0: PALETTE0 <= pDATABUS[3:0];	4'h1: PALETTE1 <= pDATABUS[3:0];
-				4'h2: PALETTE2 <= pDATABUS[3:0];	4'h3: PALETTE3 <= pDATABUS[3:0];
-				4'h4: PALETTE4 <= pDATABUS[3:0];	4'h5: PALETTE5 <= pDATABUS[3:0];
-				4'h6: PALETTE6 <= pDATABUS[3:0];	4'h7: PALETTE7 <= pDATABUS[3:0];
-				4'h8: PALETTE8 <= pDATABUS[3:0];	4'h9: PALETTE9 <= pDATABUS[3:0];
-				4'hA: PALETTEA <= pDATABUS[3:0];	4'hB: PALETTEB <= pDATABUS[3:0];
-				4'hC: PALETTEC <= pDATABUS[3:0];	4'hD: PALETTED <= pDATABUS[3:0];
-				4'hE: PALETTEE <= pDATABUS[3:0];	4'hF: PALETTEF <= pDATABUS[3:0];
+ 			4'h0: PALETTE0 <= pDATABUS[3:0];	4'h1: PALETTE1 <= pDATABUS[3:0];
+			4'h2: PALETTE2 <= pDATABUS[3:0];	4'h3: PALETTE3 <= pDATABUS[3:0];
+			4'h4: PALETTE4 <= pDATABUS[3:0];	4'h5: PALETTE5 <= pDATABUS[3:0];
+			4'h6: PALETTE6 <= pDATABUS[3:0];	4'h7: PALETTE7 <= pDATABUS[3:0];
+			4'h8: PALETTE8 <= pDATABUS[3:0];	4'h9: PALETTE9 <= pDATABUS[3:0];
+			4'hA: PALETTEA <= pDATABUS[3:0];	4'hB: PALETTEB <= pDATABUS[3:0];
+			4'hC: PALETTEC <= pDATABUS[3:0];	4'hD: PALETTED <= pDATABUS[3:0];
+			4'hE: PALETTEE <= pDATABUS[3:0];	4'hF: PALETTEF <= pDATABUS[3:0];
 	 		endcase else CONTROL <= pDATABUS;
-	end
 
 	reg [3:0] PALETTE_COLOUR;
-	always @ ( * ) begin
-		case ({SHIFTER[7],SHIFTER[5],SHIFTER[3],SHIFTER[1]})
-			4'h0: PALETTE_COLOUR = PALETTE0;	4'h1: PALETTE_COLOUR = PALETTE1;
-			4'h2: PALETTE_COLOUR = PALETTE2;	4'h3: PALETTE_COLOUR = PALETTE3;
-			4'h4: PALETTE_COLOUR = PALETTE4;	4'h5: PALETTE_COLOUR = PALETTE5;
-			4'h6: PALETTE_COLOUR = PALETTE6;	4'h7: PALETTE_COLOUR = PALETTE7;
-			4'h8: PALETTE_COLOUR = PALETTE8;	4'h9: PALETTE_COLOUR = PALETTE9;
-			4'hA: PALETTE_COLOUR = PALETTEA;	4'hB: PALETTE_COLOUR = PALETTEB;
-			4'hC: PALETTE_COLOUR = PALETTEC;	4'hD: PALETTE_COLOUR = PALETTED;
-			4'hE: PALETTE_COLOUR = PALETTEE;	4'hF: PALETTE_COLOUR = PALETTEF;
-			default: PALETTE_COLOUR = 4'hx;
-		endcase
-	end
+	always @ ( * ) case ({SHIFTER[7],SHIFTER[5],SHIFTER[3],SHIFTER[1]})
+		4'h0: PALETTE_COLOUR = PALETTE0;	4'h1: PALETTE_COLOUR = PALETTE1;
+		4'h2: PALETTE_COLOUR = PALETTE2;	4'h3: PALETTE_COLOUR = PALETTE3;
+		4'h4: PALETTE_COLOUR = PALETTE4;	4'h5: PALETTE_COLOUR = PALETTE5;
+		4'h6: PALETTE_COLOUR = PALETTE6;	4'h7: PALETTE_COLOUR = PALETTE7;
+		4'h8: PALETTE_COLOUR = PALETTE8;	4'h9: PALETTE_COLOUR = PALETTE9;
+		4'hA: PALETTE_COLOUR = PALETTEA;	4'hB: PALETTE_COLOUR = PALETTEB;
+		4'hC: PALETTE_COLOUR = PALETTEC;	4'hD: PALETTE_COLOUR = PALETTED;
+		4'hE: PALETTE_COLOUR = PALETTEE;	4'hF: PALETTE_COLOUR = PALETTEF;
+	endcase
 
-    wire [2:0] VDU_COLOUR = PALETTE_COLOUR[2:0];
-// -- Pixel colour
 	wire VULA_DISEN = DISEN & (~ROW_ADDRESS[3]|CONTROL[1]);
 	wire FLASH = ~(PALETTE_COLOUR[3]&CONTROL[0]);
-	wire [2:0] PIXEL_COLOR = VULA_DISEN? FLASH? ~VDU_COLOUR : VDU_COLOUR : 3'b000;
-    wire [2:0] BGR = CONTROL[1]? SA_BGR : PIXEL_COLOR;
-	assign RGB = CURSOR_DRAW? ~BGR : BGR;
+	wire [2:0] PIXEL_COLOR = CONTROL[1]? SA_RGB : VULA_DISEN? (FLASH?~PALETTE_COLOUR[2:0]:PALETTE_COLOUR[2:0]) : 3'b000;
+	assign RGB = CURSOR_DRAW? ~PIXEL_COLOR : PIXEL_COLOR;
 
-/****************************************************************************************/
+/**************************************************************************************************/
 
+	reg [23:0] VULA_DEBUG_TAG;
+	reg [15:0] VULA_DEBUG_VAL;
+	
 	always @ ( * ) begin
 		case (DEBUG_SEL)
-		4'h0: DEBUG_VAL = start_adr;
-		4'h1: DEBUG_VAL = horz_display;
-		4'h2: DEBUG_VAL = vert_display;
-		4'h3: DEBUG_VAL = max_scanline;
-		4'h4: DEBUG_VAL = interlace_mode;
-		4'h5: DEBUG_VAL = cursor_adr;
-		4'h6: DEBUG_VAL = CONTROL;
-		4'h8: DEBUG_VAL = PALETTE4;
-		4'h9: DEBUG_VAL = PALETTE5;
-		4'hA: DEBUG_VAL = PALETTE6;
-		4'hB: DEBUG_VAL = PALETTE7;
-		4'hC: DEBUG_VAL = PALETTE8;
-		4'hD: DEBUG_VAL = PALETTE9;
-		4'hE: DEBUG_VAL = PALETTEA;
-		4'hF: DEBUG_VAL = PALETTEB;
-		default:DEBUG_VAL = 8'h00;
+			4'h8: VULA_DEBUG_VAL = PALETTE4;
+			4'h9: VULA_DEBUG_VAL = PALETTE5;
+			4'hA: VULA_DEBUG_VAL = PALETTE6;
+			4'hB: VULA_DEBUG_VAL = PALETTE7;
+			4'hC: VULA_DEBUG_VAL = PALETTE8;
+			4'hD: VULA_DEBUG_VAL = PALETTE9;
+			4'hE: VULA_DEBUG_VAL = PALETTEA;
+			4'hF: VULA_DEBUG_VAL = PALETTEB;
+			default:VULA_DEBUG_VAL = 8'h00;
 		endcase
 
 		case (DEBUG_SEL)
-		4'h0: DEBUG_TAG = {`dlS,`dlT,`dlA,`dlD};
-		4'h1: DEBUG_TAG = {`dlH,`dlZ,`dlD,`dlP};
-		4'h2: DEBUG_TAG = {`dlV,`dlT,`dlD,`dlP};
-		4'h3: DEBUG_TAG = {`dlM,`dlX,`dlS,`dlL};
-		4'h4: DEBUG_TAG = {`dlI,`dlN,`dlT,`dlM};
-		4'h5: DEBUG_TAG = {`dlC,`dlS,`dlA,`dlD};
-		4'h6: DEBUG_TAG = {`dlC,`dlT,`dlR,`dlL};
-		4'h8: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl4};
-		4'h9: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl5};
-		4'hA: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl6};
-		4'hB: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl7};
-		4'hC: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl8};
-		4'hD: DEBUG_TAG = {`dlP,`dlA,`dlL,`dl9};
-		4'hE: DEBUG_TAG = {`dlP,`dlA,`dlL,`dlA};
-		4'hF: DEBUG_TAG = {`dlP,`dlA,`dlL,`dlB};
-		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
+			4'h6: VULA_DEBUG_TAG = {`dlC,`dlT,`dlR,`dlL};
+			4'h8: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl4};
+			4'h9: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl5};
+			4'hA: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl6};
+			4'hB: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl7};
+			4'hC: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl8};
+			4'hD: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl9};
+			4'hE: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dlA};
+			4'hF: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dlB};
+			default: VULA_DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
 	end
 
-/****************************************************************************************/
+	always @ ( * ) begin
+		case (DEBUG_SEL[3])
+		1'b0: DEBUG_VAL = CRTC_DEBUG_VAL;
+		1'b1: DEBUG_VAL = VULA_DEBUG_VAL;
+		endcase
+
+		case (DEBUG_SEL[3])
+		1'b0: DEBUG_TAG = CRTC_DEBUG_TAG;
+		1'b1: DEBUG_TAG = VULA_DEBUG_TAG;
+		endcase
+	end
 
 endmodule

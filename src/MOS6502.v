@@ -6,8 +6,8 @@ module MOS6502 (
 	output reg [23:0] DEBUG_TAG,
 	output reg [15:0] DEBUG_VAL,
 
-	input clk,
-	input clk_en,
+	input CLK,
+	input CLK_en,
 	input nRESET,
 	input nIRQ,
 	input nNMI,
@@ -83,8 +83,8 @@ module MOS6502 (
 
 	assign Data_bus = ~RnW? iDB : 8'hzz;
 
-	always @ (posedge clk) begin
-		if(clk_en) begin
+	always @ (posedge CLK) begin
+		if(CLK_en) begin
 			if(DIR_en) DIR <= Data_bus;
 			if(AOR_en) AOR <= ALU_out;
 		end
@@ -126,13 +126,13 @@ module MOS6502 (
 /**************************************************************************************************/
 // Register Bank
 
-    always @ (posedge clk) begin
+    always @ (posedge CLK) begin
 	    if(~nRESET) begin
 		    SP  <= 8'h00;
 		    Acc <= 8'h00;
 		    iX  <= 8'h00;
 		    iY  <= 8'h00;
-	    end else if(clk_en) begin
+	    end else if(CLK_en) begin
 		    if(SP_en)  SP  <= SB;
 		    if(ACC_en) Acc <= SB;
 		    if(iX_en)  iX  <= SB;
@@ -143,11 +143,11 @@ module MOS6502 (
 /**************************************************************************************************/
 // Program Counter
 
-    always @ (posedge clk) begin
+    always @ (posedge CLK) begin
 	    if(~nRESET) begin
 		    PCL <= 8'h00;
 		    PCH <= 8'h00;
-	    end else if(clk_en)
+	    end else if(CLK_en)
 	    	if(PC_en) begin
 			    PCL <= ADBL + PC_inc;
 			    PCH <= ADBH + (&ADBL? PC_inc : 0);
@@ -161,8 +161,8 @@ module MOS6502 (
 
 	assign Address_bus = {ADBH, ADBL};
 
-	always @ (posedge clk) begin
-		if(clk_en)
+	always @ (posedge CLK) begin
+		if(CLK_en)
 			if(READY|~RnW) begin
 				buff_hi <= ADBH;
 				buff_lo <= ADBL;
@@ -201,8 +201,8 @@ module MOS6502 (
 /**************************************************************************************************/
 
 MOS6502_Control control(
-	.clk(clk),
-	.clk_en(clk_en),
+	.CLK(CLK),
+	.CLK_en(CLK_en),
 	.DIR(DIR),
 	.iDB(iDB),
 	.ALU_COUT(ALU_COUT),

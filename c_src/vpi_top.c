@@ -55,11 +55,7 @@ screen_reset(void){
 
 static void
 next_line(void){
-	if(pixel_pos % PIXELS == 0) {
-		pixel_pos++;
-	} else {
-		while(pixel_pos % PIXELS) pixel_pos++;
-	}
+	pixel_pos+= PIXELS - pixel_pos%PIXELS;
 }
 
 
@@ -115,6 +111,31 @@ pixel_scan(char *data) {
 	return 0;
 }
 
+int
+iv_sync(char *data) {
+
+	uint8_t field;
+
+	/* vpi get argument */
+
+	vpiHandle args_iter;
+	struct t_vpi_value argval;
+
+	args_iter = vpi_iterate(vpiArgument, vpi_handle(vpiSysTfCall, NULL));
+	argval.format = vpiIntVal;
+	vpi_get_value(vpi_scan(args_iter), &argval);
+	field = (uint8_t) argval.value.integer;
+	vpi_free_object(args_iter);
+
+	/* vpi get argument */
+
+	screen_reset();
+	if(field) next_line();
+
+	return 0;
+}
+int ih_sync(char *data){ next_line(); next_line(); return 0;}
+
 int v_sync(char *data){ screen_reset(); return 0;}
 int h_sync(char *data){ next_line();    return 0;}
 
@@ -127,10 +148,12 @@ top_register(void){
 		{.type=vpiSysTask,.tfname="$start_screen",.calltf=start_screen,.sizetf=0,.user_data=0},
         {.type=vpiSysTask,.tfname="$pixel_scan",.calltf=pixel_scan,.sizetf=0,.user_data=0},
 		{.type=vpiSysTask,.tfname="$v_sync",.calltf=v_sync,.sizetf=0,.user_data=0},
-		{.type=vpiSysTask,.tfname="$h_sync",.calltf=h_sync,.sizetf=0,.user_data=0}
+		{.type=vpiSysTask,.tfname="$h_sync",.calltf=h_sync,.sizetf=0,.user_data=0},
+		{.type=vpiSysTask,.tfname="$ih_sync",.calltf=ih_sync,.sizetf=0,.user_data=0},
+		{.type=vpiSysTask,.tfname="$iv_sync",.calltf=iv_sync,.sizetf=0,.user_data=0}			
     };
 
-	for(uint8_t i = 0; i < 4; i++){
+	for(uint8_t i = 0; i < 6; i++){
 		vpi_register_systf(&tf_data[i]);
 	}
 }

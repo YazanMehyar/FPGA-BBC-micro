@@ -14,8 +14,8 @@ module MOS6502_demo ();
 	reg nNMI;
 	reg nSO;
 	reg READY;
-	reg clk;
-	wire clk_en;
+	reg CLK;
+	wire CLK_en;
 
 	// inout
 	wire [7:0] Data_bus = RnW? mem_out : 8'hzz;
@@ -26,8 +26,8 @@ module MOS6502_demo ();
 	wire RnW;
 
 	MOS6502 mos6502(
-		.clk(clk),
-		.clk_en(clk_en),
+		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.nRESET(nRESET),
 		.nIRQ(nIRQ),
 		.nNMI(nNMI),
@@ -39,13 +39,13 @@ module MOS6502_demo ();
 		.SYNC(SYNC));
 
 	// timing
-	initial clk = 0;
-	always #(`CLKPERIOD/2) clk = ~clk;
+	initial CLK = 0;
+	always #(`CLKPERIOD/2) CLK = ~CLK;
 
-	reg [3:0] clk_count;
-	initial clk_count = 0;
-	always @ (posedge clk) clk_count <= clk_count + 1;
-	assign clk_en = &clk_count;
+	reg [3:0] CLK_count;
+	initial CLK_count = 0;
+	always @ (posedge CLK) CLK_count <= CLK_count + 1;
+	assign CLK_en = &CLK_count;
 
 	// memory
 	reg [7:0] mem [0:`KiB64];
@@ -53,15 +53,15 @@ module MOS6502_demo ();
 
 	`include "demo_mem.vh"
 
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(RnW) mem_out <= mem[Address_bus];
 		else	mem[Address_bus] <= Data_bus;
 
 
 	// Termination
 	reg STOP = 0;
-	always @ (posedge clk)
-		if(clk_en)	STOP <= STOP || Address_bus == `RESET_VEC && ~RnW;
+	always @ (posedge CLK)
+		if(CLK_en)	STOP <= STOP || Address_bus == `RESET_VEC && ~RnW;
 
 /**************************************************************************************************/
 
@@ -72,7 +72,7 @@ module MOS6502_demo ();
 		nIRQ <= 1;
 		nSO <= 1;
 		READY <= 1;
-		repeat (5) @(posedge clk);
+		repeat (5) @(posedge CLK);
 
 		nRESET <= 1;
 		@(posedge STOP)	#5 $finish;

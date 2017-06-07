@@ -1,7 +1,7 @@
 `include "TOP.vh"
 
 module Edge_Trigger (
-	input clk,
+	input CLK,
 	input IN,
 	input En,
 
@@ -20,10 +20,10 @@ module Edge_Trigger (
 		if(TYPE == 1) wEDGE = prev_IN  & ~prev_IN2;
 		else		  wEDGE = ~prev_IN &  prev_IN2;
 
-	always @ (posedge clk) prev_IN <= IN;
-	always @ (posedge clk) prev_IN2<= prev_IN;
+	always @ (posedge CLK) prev_IN <= IN;
+	always @ (posedge CLK) prev_IN2<= prev_IN;
 	
-	always @ (posedge clk)
+	always @ (posedge CLK)
 		if(~EDGE|En) EDGE <= wEDGE;
 
 endmodule // Edge_Trigger
