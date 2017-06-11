@@ -1,5 +1,5 @@
 module Debug_Probe (
-	input PIXELCLK,
+	input CLK,
 	input DEBUGen,
 	input UPDATE,
 	input SELen,
@@ -24,7 +24,7 @@ module Debug_Probe (
 	wire BUTTON_NEXT = BUTTON[0];
 	wire BUTTON_PREV = BUTTON[1];
 
-	always @ (posedge PIXELCLK)
+	always @ (posedge CLK)
 		if(SELen)
 			if(BUTTON_NEXT)
 				SEL <= SEL + 1;
@@ -34,7 +34,7 @@ module Debug_Probe (
 	reg [23:0] TAG_SR;
 	reg [15:0] VALUE_SR;
 
-	always @ ( posedge PIXELCLK ) begin
+	always @ ( posedge CLK ) begin
 		if(UPDATE) begin
 			TAG_SR   <= TAG;
 			VALUE_SR <= VALUE;

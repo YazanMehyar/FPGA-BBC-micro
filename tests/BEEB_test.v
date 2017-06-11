@@ -76,7 +76,11 @@ module BEEB_test();
 		
 		.SCK(SCK),
 		.MISO(MISO),
-		.MOSI(MOSI)
+		.MOSI(MOSI),
+		
+		.DEBUG_CLK(1'b0),
+		.DEBUG_ENABLE(1'b0),
+		.DEBUG_NEWLINE(1'b0)
 	);
 
 /******************************************************************************/
@@ -197,13 +201,13 @@ module BEEB_test();
 	initial forever begin
 		@(negedge VSYNC)
 		repeat (24) @(negedge HSYNC);
-		repeat (160) @(posedge CLK_16en);
+		repeat (176) @(posedge CLK_16en);
 		$iv_sync(FIELD);
 	end
 
 	initial forever begin
 		@(negedge HSYNC)
-		repeat (160) @(posedge CLK_16en);
+		repeat (176) @(posedge CLK_16en);
 		$ih_sync;
 	end
 

@@ -1,7 +1,8 @@
 module Debug_Tool(
-	input PIXELCLK,
-	input VSYNC,
-	input HSYNC,
+	input CLK,
+	input NEWLINE,
+	input ENABLE,
+	input BUTTON_EN,
 
 	input [23:0] TAG1,
 	input [23:0] TAG2,
@@ -25,29 +26,19 @@ module Debug_Tool(
 
 	`define CHAR_HEIGHT 9
 	`define CHAR_WIDTH  7
-	`ifdef SIMULATION
-		`define DEBUG_LINE  440
-	`else
-		`define DEBUG_LINE  535
-	`endif
-	`define DEBUG_HLINE 63
 
 	reg [5:0] CHAR_ADDR;
 	reg [3:0] PIXEL_COUNT;
-	reg [9:0] LINE_COUNT;
-	reg [5:0] H_DISPLAY;
 	reg [3:0] ROW_ADDRESS;
-	reg [1:0] LINE;
+	reg [2:0] LINE;
 	reg [3:0] Dsel;
 	reg [5:0] Den;
 	reg [4:0] PROBEen;
 	reg HIGHLIGHT;
 
 	wire NEXT_CHAR;
-	wire NEG_HSYNC;
 	wire BUTTON_NEXT;
 	wire BUTTON_PREV;
-	wire DEBUG_DISEN;
 	wire UPDATE;
 
 	wire [5:0] CHARADR1;
@@ -65,59 +56,47 @@ module Debug_Tool(
 		end
 	`endif
 
-	Edge_Trigger #(0) HSYNC_NEG(.CLK(PIXELCLK),.IN(HSYNC),.En(1'b1),.EDGE(NEG_HSYNC));
 	assign BUTTON_NEXT = TOOL_B[0];
 	assign BUTTON_PREV = TOOL_B[1];
 
-	always @ ( posedge PIXELCLK )
-		if(VSYNC)
-			LINE_COUNT <= `DEBUG_LINE;
-		else if(NEG_HSYNC & |LINE_COUNT)
-			LINE_COUNT <= LINE_COUNT - 1;
-
-	always @ (posedge PIXELCLK)
-		if(HSYNC)
-			H_DISPLAY <= `DEBUG_HLINE;
-		else if(|H_DISPLAY)
-			H_DISPLAY <=  H_DISPLAY - 1;
-
-	always @ ( posedge PIXELCLK )
-		if(~|PIXEL_COUNT | HSYNC)
+	always @ ( posedge CLK )
+		if(~|PIXEL_COUNT|NEWLINE)
 			PIXEL_COUNT <= `CHAR_WIDTH;
-		else if(DEBUG_DISEN)
+		else if(ENABLE)
 			PIXEL_COUNT <= PIXEL_COUNT - 1;
 
-	always @ ( posedge PIXELCLK )
+	always @ ( posedge CLK ) if(BUTTON_EN) begin
 		if(~|Dsel)
 			Dsel <= 4'h1;
 		else if(BUTTON_NEXT)
 			Dsel <= {Dsel[2:0],Dsel[3]};
 		else if(BUTTON_PREV)
 			Dsel <= {Dsel[0],Dsel[3:1]};
+	end
 
-	always @ (posedge PIXELCLK)
-		if(VSYNC)
+	always @ (posedge CLK)
+		if(~ENABLE)
 			ROW_ADDRESS <= 0;
-		else if(HSYNC & DEBUG_DISEN)
+		else if(NEWLINE)
 			if(ROW_ADDRESS != `CHAR_HEIGHT)
 				ROW_ADDRESS <= ROW_ADDRESS + 1;
 			else
 				ROW_ADDRESS <= 0;
 
-	always @ (posedge PIXELCLK) begin
-		if(VSYNC)
-			LINE <= 2'h2;
-		else if(HSYNC & DEBUG_DISEN & (ROW_ADDRESS == `CHAR_HEIGHT))
-			LINE <= LINE - 1;
+	always @ (posedge CLK) begin
+		if(~ENABLE)
+			LINE <= 3'h4;
+		else if(~LINE[0] & NEWLINE & (ROW_ADDRESS == `CHAR_HEIGHT))
+			LINE <= LINE >> 1;
 	end
 
-	always @ (posedge PIXELCLK)
-		if(HSYNC)
+	always @ (posedge CLK)
+		if(NEWLINE)
 			Den <= 0;
 		else if(NEXT_CHAR & ~&Den)
 			Den <= Den + 1;
 
-	always @ (posedge PIXELCLK)
+	always @ (posedge CLK)
 		if(NEXT_CHAR) HIGHLIGHT <= |(Dsel&PROBEen);
 
 	always @ ( * )
@@ -132,19 +111,18 @@ module Debug_Tool(
 
 
 /****************************************************************************************/
-	assign DEBUG_DISEN = &{~|LINE_COUNT,~|H_DISPLAY,|LINE};
-	assign NEXT_CHAR = ~|PIXEL_COUNT & DEBUG_DISEN;
-	assign PIXEL_OUT = DEBUG_DISEN? HIGHLIGHT ~^ CHAR_SR[`CHAR_WIDTH] : 1'b0;
-	assign UPDATE = |LINE_COUNT;
+	assign NEXT_CHAR = ~|PIXEL_COUNT & ENABLE;
+	assign PIXEL_OUT = ENABLE&~LINE[0]? HIGHLIGHT ~^ CHAR_SR[`CHAR_WIDTH] : 1'b0;
+	assign UPDATE = ~ENABLE;
 
 	Debug_Probe dp1(
-		.PIXELCLK(PIXELCLK),
+		.CLK(CLK),
 		.DEBUGen(PROBEen[0]),
-		.SELen(Dsel[0]),
+		.SELen(Dsel[0]&BUTTON_EN),
 		.UPDATE(UPDATE),
 		.VALUE(VAL1),
 		.TAG(TAG1),
-		.LINE(LINE[0]),
+		.LINE(LINE[1]),
 		.NEXT_CHAR(NEXT_CHAR),
 		.BUTTON(PROBE_B),
 		.SEL(SEL1),
@@ -152,13 +130,13 @@ module Debug_Tool(
 	);
 
 	Debug_Probe dp2(
-		.PIXELCLK(PIXELCLK),
+		.CLK(CLK),
 		.DEBUGen(PROBEen[1]),
-		.SELen(Dsel[1]),
+		.SELen(Dsel[1]&BUTTON_EN),
 		.UPDATE(UPDATE),
 		.VALUE(VAL2),
 		.TAG(TAG2),
-		.LINE(LINE[0]),
+		.LINE(LINE[1]),
 		.NEXT_CHAR(NEXT_CHAR),
 		.BUTTON(PROBE_B),
 		.SEL(SEL2),
@@ -166,13 +144,13 @@ module Debug_Tool(
 	);
 
 	Debug_Probe dp3(
-		.PIXELCLK(PIXELCLK),
+		.CLK(CLK),
 		.DEBUGen(PROBEen[2]),
-		.SELen(Dsel[2]),
+		.SELen(Dsel[2]&BUTTON_EN),
 		.UPDATE(UPDATE),
 		.VALUE(VAL3),
 		.TAG(TAG3),
-		.LINE(LINE[0]),
+		.LINE(LINE[1]),
 		.NEXT_CHAR(NEXT_CHAR),
 		.BUTTON(PROBE_B),
 		.SEL(SEL3),
@@ -180,13 +158,13 @@ module Debug_Tool(
 	);
 
 	Debug_Probe dp4(
-		.PIXELCLK(PIXELCLK),
+		.CLK(CLK),
 		.DEBUGen(PROBEen[3]),
-		.SELen(Dsel[3]),
+		.SELen(Dsel[3]&BUTTON_EN),
 		.UPDATE(UPDATE),
 		.VALUE(VAL4),
 		.TAG(TAG4),
-		.LINE(LINE[0]),
+		.LINE(LINE[1]),
 		.NEXT_CHAR(NEXT_CHAR),
 		.BUTTON(PROBE_B),
 		.SEL(SEL4),
@@ -194,13 +172,13 @@ module Debug_Tool(
 	);
 
 	Debug_Probe dp_break(
-		.PIXELCLK(PIXELCLK),
+		.CLK(CLK),
 		.DEBUGen(PROBEen[4]),
 		.SELen(1'b0),
 		.UPDATE(UPDATE),
 		.VALUE(VALB),
 		.TAG(TAGB),
-		.LINE(LINE[0]),
+		.LINE(LINE[1]),
 		.NEXT_CHAR(NEXT_CHAR),
 		.BUTTON(2'b00),
 		.CHAR_ADDR(CHARADRB)
@@ -212,7 +190,7 @@ module Debug_Tool(
 	reg [`CHAR_WIDTH:0] CHAR_SR;
 	reg [`CHAR_WIDTH:0] CHAR_ROM;
 
-	always @ (posedge PIXELCLK)
+	always @ (posedge CLK)
 		if(NEXT_CHAR) CHAR_SR <= CHAR_ROM;
 		else		  CHAR_SR <= {CHAR_SR[6:0],1'b1};
 

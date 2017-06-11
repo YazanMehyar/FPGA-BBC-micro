@@ -8,12 +8,12 @@
 #include <stdint.h>
 #include <vpi_user.h>
 
-#define PIXELS  640 /* screen width  */
-#define LINES   480 /* screen height */
+#define PIXELS  800 /* screen width  */
+#define LINES   600 /* screen height */
 #define SHMSZ   (PIXELS*LINES)+1 /* size of the shared memory buffer */
 #define KEY     123
 
-static char *screen_args[] = {"vscreen", "-c332", "-k123", "-s2", NULL};
+static char *screen_args[] = {"vscreen", "-c332", "-k123", "-s2", "-w800", "-h600", "NULL"};
 static uint32_t pixel_pos = 0;
 /******************************************************************************/
 // C helper functions

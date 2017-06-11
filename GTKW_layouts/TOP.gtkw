@@ -1,123 +1,50 @@
 [*]
-[*] GTKWave Analyzer v3.3.79 (w)1999-2017 BSI
-[*] Sun Apr 16 11:15:40 2017
+[*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
+[*] Sun Jun 11 16:57:28 2017
 [*]
-[dumpfile] "/home/zen/FinalYearProject/The BEEB/sim_dump/TOP_test.lx2"
-[dumpfile_mtime] "Sun Apr 16 10:57:18 2017"
-[dumpfile_size] 62149181
-[savefile] "/home/zen/FinalYearProject/The BEEB/GTKW_layouts/TOP.gtkw"
-[timestart] 38759703
-[size] 1916 1037
+[dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/TOP_test.lx2"
+[dumpfile_mtime] "Sun Jun 11 16:52:40 2017"
+[dumpfile_size] 20984377
+[savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/TOP.gtkw"
+[timestart] 61616500
+[size] 1916 1157
 [pos] -1 -1
-*-10.000000 38761425 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-17.000000 62125510 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP_test.
-[treeopen] TOP_test.top.
-[treeopen] TOP_test.top.keyboard.
-[treeopen] TOP_test.top.sys_via.
-[sst_width] 223
-[signals_width] 257
+[treeopen] TOP_test.beeb.
+[treeopen] TOP_test.beeb.dc.
+[treeopen] TOP_test.vga.
+[sst_width] 214
+[signals_width] 290
 [sst_expanded] 1
-[sst_vpaned_height] 295
+[sst_vpaned_height] 345
 @28
-TOP_test.CLK100MHZ[0]
-TOP_test.CPU_RESETN[0]
-TOP_test.PIXELCLK[0]
-TOP_test.top.RAM_en[0]
-TOP_test.top.PROC_en[0]
-TOP_test.top.hPROC_en[0]
+TOP_test.CLK_16en[0]
+TOP_test.CLK_6en[0]
 @200
 -
--Processor
+-BBC Output
 @28
-TOP_test.top.pocessor.nIRQ[0]
-@22
-TOP_test.top.pocessor.Address_bus[15:0]
-TOP_test.top.pocessor.Data_bus[7:0]
+TOP_test.HSYNC[0]
+TOP_test.VSYNC[0]
+TOP_test.RGB[2:0]
+@24
+TOP_test.vga.WRITE_HADR[9:0]
+TOP_test.vga.WRITE_VADR[8:0]
 @28
-TOP_test.top.pocessor.RnW[0]
-TOP_test.top.pocessor.SYNC[0]
-@22
-TOP_test.top.pocessor.IR[7:0]
-TOP_test.top.pocessor.Acc[7:0]
-TOP_test.top.pocessor.iX[7:0]
-TOP_test.top.pocessor.iY[7:0]
-TOP_test.top.pocessor.SP[7:0]
-@28
-TOP_test.top.pocessor.PSR[7:0]
-@23
-TOP_test.top.pocessor.DIR[7:0]
+TOP_test.vga.WRITE_STOP[0]
 @200
 -
--Video
 @28
-TOP_test.top.dc.nCS_CRTC[0]
-TOP_test.top.dc.nCS_VULA[0]
-TOP_test.top.dc.CRTC_en[0]
-@22
-TOP_test.top.vDATA[7:0]
-TOP_test.top.dc.H_COUNTER[7:0]
+TOP_test.vga.VGA_HSYNC[0]
+TOP_test.VGA_VSYNC[0]
+TOP_test.vga.VGA_DISEN[0]
+@24
+TOP_test.vga.READ_HADR[9:0]
+TOP_test.vga.READ_VADR[9:0]
 @28
-TOP_test.top.dc.NEWLINE[0]
-@22
-TOP_test.top.dc.CONTROL[7:0]
-@28
-TOP_test.top.dc.NEWvCHAR[0]
-TOP_test.top.dc.NEWSCREEN[0]
-@22
-TOP_test.top.dc.FRAMESTORE_ADR[13:0]
-TOP_test.top.dc.ROW_ADDRESS[4:0]
-TOP_test.top.dc.SHIFTER[7:0]
+TOP_test.vga.READ_STOP[0]
 @200
 -
--SVIA
-@28
-TOP_test.top.nVIA[0]
-TOP_test.top.sys_nIRQ[0]
-@22
-TOP_test.top.sys_via.PCR[7:0]
-TOP_test.top.sys_via.ACR[7:0]
-TOP_test.top.sys_via.IER[6:0]
-@28
-TOP_test.top.sys_via.IFR[6:0]
-@22
-TOP_test.top.sys_via.T1COUNTER[15:0]
-TOP_test.top.sys_via.T1REG[15:0]
-@200
--UVIA
-@28
-TOP_test.top.nUVIA[0]
-TOP_test.top.usr_nIRQ[0]
-TOP_test.top.usr_via.CB2[0]
-@22
-TOP_test.top.usr_via.DDRB[7:0]
-TOP_test.top.usr_via.OUTB[7:0]
-TOP_test.top.usr_via.PCR[7:0]
-TOP_test.top.usr_via.ACR[7:0]
-TOP_test.top.usr_via.IER[6:0]
-@28
-TOP_test.top.usr_via.IFR[6:0]
-@22
-TOP_test.top.usr_via.SR[7:0]
-@28
-TOP_test.top.usr_via.SR_ACCESS[0]
-TOP_test.top.usr_via.SR_SHIFT[0]
-TOP_test.top.usr_via.CB1_TRIGGER[0]
-TOP_test.top.usr_via.CB1_out[0]
-@22
-TOP_test.top.usr_via.SR_COUNT[3:0]
-@28
-TOP_test.top.usr_via.SR_INT[0]
-TOP_test.top.usr_via.SR_ACTIVE[0]
-@200
--
--Keyboard
-@28
-TOP_test.top.keyboard.PS2_CLK[0]
-TOP_test.top.keyboard.PS2_DATA[0]
-TOP_test.top.keyboard.DONE[0]
-TOP_test.top.keyboard.KEY_RELEASE[0]
-TOP_test.top.keyboard.VALID_KEY[0]
-@22
-TOP_test.top.keyboard.DATA[7:0]
 [pattern_trace] 1
 [pattern_trace] 0

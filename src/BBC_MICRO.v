@@ -12,7 +12,6 @@ module BBC_MICRO(
 	output [2:0] RGB,
 	output HSYNC,
 	output VSYNC,
-	output FIELD,
 
 	input  DISPLAY_DEBUGGER,
 	input  DISABLE_INTERRUPTS,
@@ -29,7 +28,12 @@ module BBC_MICRO(
 	
 	inout  SCK,
 	inout  MISO,
-	inout  MOSI);
+	inout  MOSI,
+	
+	input  DEBUG_CLK,
+	input  DEBUG_ENABLE,
+	input  DEBUG_NEWLINE,
+	output [2:0] DEBUG_RGB);
 
 /*****************************************************************************/
 
@@ -93,7 +97,6 @@ module BBC_MICRO(
 	wire COLUMN_MATCH;
 	wire nBREAK_KEY;
 	wire SOUND;
-	wire DISEN;
 
 	wire SHEILA		= &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 	wire OSBANKen	= &pADDRESSBUS[15:14] & ~SHEILA;
@@ -283,7 +286,6 @@ wire [1:0] PROC_VCC = 2'b11;
 		.RGB(RGB),
 		.FRAMESTORE_ADR(FRAMESTORE_ADR),
 		.ROW_ADDRESS(ROW_ADDRESS),
-		.FIELD(FIELD),
 		.DEBUG_SEL(DISP_sel),
 		.DEBUG_VAL(DISP_val),
 		.DEBUG_TAG(DISP_tag)
@@ -373,15 +375,15 @@ wire [2:0] USR_VCC = 3'b111;
 
 /**************************************************************************************************/
 	assign AUDIO_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
-//	assign RGB = {3{(DEBUG_PIXEL&DISPLAY_DEBUGGER)}} ^ RGB;
+	assign DEBUG_RGB = DISPLAY_DEBUGGER? {3{DEBUG_PIXEL}} : 3'b000;
 	
 // Debugger
-/*
+
 	Debug_Tool dtool(
-		.CLK(CLK),
-		.PIXEL_en(PIXEL_en),
-		.VSYNC(VSYNC),
-		.HSYNC(HSYNC),
+		.CLK(DEBUG_CLK),
+		.ENABLE(DEBUG_ENABLE),
+		.BUTTON_EN(IO_en),
+		.NEWLINE(DEBUG_NEWLINE),
 		.TAG1(PROC_tag),
 		.VAL1(PROC_val),
 		.SEL1(PROC_sel),
@@ -400,7 +402,7 @@ wire [2:0] USR_VCC = 3'b111;
 		.PROBE_B({2{~SET_BREAKPOINT}}&{BTN_UP,BTN_DN}),
 		.PIXEL_OUT(DEBUG_PIXEL)
 	);
-*/
+
 
 `ifdef SIMULATION
 	

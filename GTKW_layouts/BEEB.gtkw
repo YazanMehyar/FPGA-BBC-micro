@@ -1,25 +1,30 @@
 [*]
 [*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Wed Jun  7 22:16:59 2017
+[*] Thu Jun  8 17:47:44 2017
 [*]
 [dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/BEEB_test.lx2"
-[dumpfile_mtime] "Wed Jun  7 22:14:13 2017"
-[dumpfile_size] 131454447
+[dumpfile_mtime] "Thu Jun  8 17:47:32 2017"
+[dumpfile_size] 65100493
 [savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/BEEB.gtkw"
-[timestart] 0
+[timestart] 28982890
 [size] 1916 1157
 [pos] -1 -1
-*-25.000000 49179785 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-12.000000 28992965 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] BEEB_test.
 [treeopen] BEEB_test.beeb.
 [treeopen] BEEB_test.beeb.dc.
 [sst_width] 214
-[signals_width] 242
+[signals_width] 248
 [sst_expanded] 1
 [sst_vpaned_height] 345
 @28
 BEEB_test.beeb.CLK[0]
 BEEB_test.beeb.CLK_16en[0]
+BEEB_test.beeb.timer.CLK_8en[0]
+BEEB_test.beeb.timer.CLK_4en[0]
+BEEB_test.beeb.timer.CLK_2en[0]
+BEEB_test.beeb.timer.CLK_1en[0]
+BEEB_test.beeb.CLK_6en[0]
 @200
 -Processor - 6502
 @28
@@ -38,11 +43,11 @@ BEEB_test.beeb.pocessor.PSR[7:0]
 BEEB_test.beeb.pocessor.SP[7:0]
 BEEB_test.beeb.pocessor.IR[7:0]
 @200
+-
 -CRTC - 6845
 @28
 BEEB_test.beeb.nCRTC[0]
 @22
-BEEB_test.beeb.dc.crtc.reg_sel[4:0]
 BEEB_test.beeb.dc.crtc.horz_total[7:0]
 BEEB_test.beeb.dc.crtc.horz_display[7:0]
 BEEB_test.beeb.dc.crtc.horz_syncpos[7:0]
@@ -53,44 +58,25 @@ BEEB_test.beeb.dc.crtc.vert_display[6:0]
 BEEB_test.beeb.dc.crtc.vert_syncpos[6:0]
 BEEB_test.beeb.dc.crtc.display_mode[7:0]
 BEEB_test.beeb.dc.crtc.max_scanline[4:0]
+BEEB_test.beeb.dc.crtc.cursor_adr[13:0]
+BEEB_test.beeb.dc.crtc.start_adr[13:0]
 @200
 -
 @28
-BEEB_test.beeb.dc.crtc.NEWLINE[0]
-BEEB_test.beeb.dc.crtc.NEWvCHAR[0]
-BEEB_test.beeb.dc.crtc.NEWSCREEN[0]
-@22
-BEEB_test.beeb.dc.crtc.HORZ_COUNT[7:0]
-@28
-BEEB_test.beeb.dc.crtc.V_STATE[1:0]
-@22
-BEEB_test.beeb.dc.crtc.VERT_COUNT[6:0]
-BEEB_test.beeb.dc.crtc.VERT_ADJ_COUNT[4:0]
-@28
-BEEB_test.beeb.dc.crtc.VADJ_WAIT[0]
-BEEB_test.beeb.dc.crtc.VEND[0]
-BEEB_test.beeb.dc.crtc.VADJ[0]
-@200
--
-@28
-BEEB_test.beeb.dc.crtc.HSYNC[0]
-BEEB_test.beeb.dc.crtc.VSYNC[0]
-BEEB_test.beeb.dc.crtc.FIELD[0]
-BEEB_test.beeb.RAM_en[0]
-BEEB_test.beeb.CLK_2ven[0]
-BEEB_test.beeb.PROC_en[0]
-BEEB_test.beeb.CLK[0]
 BEEB_test.beeb.dc.CRTC_en[0]
-@22
-BEEB_test.beeb.dc.crtc.FRAMESTORE_ADR[13:0]
-BEEB_test.beeb.dc.crtc.ROW_ADDRESS[4:0]
-@200
--
-@28
 BEEB_test.beeb.dc.crtc.NEWLINE[0]
 BEEB_test.beeb.dc.crtc.NEWvCHAR[0]
 BEEB_test.beeb.dc.crtc.NEWSCREEN[0]
 BEEB_test.beeb.dc.teletext.DISEN[0]
+BEEB_test.beeb.dc.crtc.FIELD[0]
+@22
+BEEB_test.beeb.dc.crtc.FRAMESTORE_ADR[13:0]
+BEEB_test.beeb.dc.crtc.ROW_ADDRESS[4:0]
+@28
+BEEB_test.beeb.dc.crtc.CURSOR[0]
+@200
+-
+-Video ULA
 @22
 BEEB_test.beeb.dc.vDATABUS[7:0]
 BEEB_test.beeb.dc.SHIFTER[7:0]
@@ -107,9 +93,18 @@ BEEB_test.beeb.dc.CONTROL[7:0]
 (7)BEEB_test.beeb.dc.CONTROL[7:0]
 @1401200
 -group_end
-@29
-BEEB_test.beeb.dc.crtc.AT_CURSOR[0]
+@22
+BEEB_test.beeb.dc.crtc.CURSOR_BLINK_COUNT[5:0]
 @28
 BEEB_test.beeb.dc.RGB[2:0]
+BEEB_test.beeb.dc.CURSOR_DRAW[0]
+@200
+-
+-Teletext - SA5050
+@22
+BEEB_test.beeb.dc.teletext.DATABUS[6:0]
+BEEB_test.beeb.dc.teletext.SA_code[6:0]
+BEEB_test.beeb.dc.teletext.SA_dots[5:0]
+BEEB_test.beeb.dc.teletext.SA_shifter[5:0]
 [pattern_trace] 1
 [pattern_trace] 0

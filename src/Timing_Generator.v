@@ -19,10 +19,10 @@ module Timing_Generator(
 	reg [3:0] COUNTER;
 	always @ (posedge CLK) if(CLK_16en) COUNTER <= COUNTER + 1;
 	
-	assign CLK_8en = COUNTER[0]   &CLK_16en;
-	assign CLK_4en = &COUNTER[1:0]&CLK_16en;
-	assign CLK_2en = &COUNTER[2:0]&CLK_16en;
-	assign CLK_1en = &COUNTER[3:0]&CLK_16en;
+	assign CLK_8en = ~COUNTER[0]   &CLK_16en;
+	assign CLK_4en = ~|COUNTER[1:0]&CLK_16en;
+	assign CLK_2en = ~|COUNTER[2:0]&CLK_16en;
+	assign CLK_1en = ~|COUNTER[3:0]&CLK_16en;
 	
 	// CRTC clock, it interleaves with the processor clock (CLK_2en)
 	assign CLK_2ven = CLK_4en&~CLK_2en;

@@ -10,41 +10,14 @@
 `define V_PULSE  2'b10
 `define V_BACK   2'b11
 
+`define H_COUNTER_INIT 1039
+`define H_FRONT_COUNT  240
+`define H_PULSE_COUNT  184
+`define H_BACK_COUNT   64
 
-`ifdef SIMULATION
+`define V_COUNTER_INIT 665
+`define V_FRONT_COUNT  66
+`define V_PULSE_COUNT  29
+`define V_BACK_COUNT   23
 
-	// 640 x 480
-
-	`define H_COUNTER_INIT 799
-	`define H_FRONT_COUNT  160
-	`define H_PULSE_COUNT  144
-	`define H_BACK_COUNT   48
-
-	`define V_COUNTER_INIT 523
-	`define V_FRONT_COUNT  44
-	`define V_PULSE_COUNT  33
-	`define V_BACK_COUNT   31
-    
-    `define VGA_BUFFER_W   640
-    `define VGA_BUFFER_H   480
-
-`else
-
-	// 800 x 600
-
-	`define H_COUNTER_INIT 1039
-	`define H_FRONT_COUNT  240
-	`define H_PULSE_COUNT  184
-	`define H_BACK_COUNT   64
-
-	`define V_COUNTER_INIT 665
-	`define V_FRONT_COUNT  66
-	`define V_PULSE_COUNT  29
-	`define V_BACK_COUNT   23
-
-    `define VGA_BUFFER_W   800
-    `define VGA_BUFFER_H   600
-
-`endif
-
-`define VGA_BUFFER_SIZE (`VGA_BUFFER_H*`VGA_BUFFER_W)-1
+`define VGA_BUFFER_SIZE (288*1024)-1

@@ -44,9 +44,9 @@ module MOS6502 (
 	reg  [7:0] ADBL;
     reg  [7:0] ADBH;
 
-    reg [7:0] ALU_B;
-    reg [7:0] SB;
-    reg [7:0] iDB;
+    wire [7:0] ALU_B;
+	wire [7:0] SB;
+    wire [7:0] iDB;
 
     reg [7:0] DIR;
     reg [7:0] AOR;
@@ -90,38 +90,22 @@ module MOS6502 (
 		end
 	end
 
-	always @ ( * ) begin
-		case (iDB_SEL)
-			`iDB_PCL: iDB = PCL;
-			`iDB_PCH: iDB = PCH;
-			`iDB_SB : iDB = SB;
-			`iDB_DIR: iDB = DIR;
-			`iDB_ACC: iDB = Acc;
-			`iDB_PSR: iDB = PSR;
-			`iDB_ABH: iDB = ADBH;
-			default: iDB = 8'hxx;
-		endcase
-	end
+	assign iDB = (iDB_SEL == `iDB_PCL)? PCL :
+				 (iDB_SEL == `iDB_PCH)? PCH :
+				 (iDB_SEL == `iDB_SB)?   SB :
+				 (iDB_SEL == `iDB_DIR)? DIR :
+				 (iDB_SEL == `iDB_ACC)? Acc :
+				 (iDB_SEL == `iDB_PSR)? PSR :
+				 						ADBH;
+	
+	assign SB = (SB_SEL == `SB_iDB)? DIR :
+				(SB_SEL == `SB_ACC)? Acc :
+				(SB_SEL == `SB_iX)?   iX :
+				(SB_SEL == `SB_iY)?   iY :
+				(SB_SEL == `SB_SP)?   SP :
+								     AOR;
 
-	always @ ( * ) begin
-		case (SB_SEL)
-			`SB_iDB: SB = iDB;
-			`SB_ACC: SB = Acc;
-			`SB_iX:  SB = iX;
-			`SB_iY:  SB = iY;
-			`SB_SP:  SB = SP;
-			`SB_AOR: SB = AOR;
-			default: SB = 8'hxx;
-		endcase
-	end
-
-	always @ ( * ) begin
-		case (ALU_B_SEL)
-			`ALUB_iDB: ALU_B = iDB;
-			`ALUB_ADL: ALU_B = ADBL;
-			default: ALU_B = 8'hxx;
-		endcase
-	end
+	assign ALU_B = (ALU_B_SEL == `ALUB_iDB)? iDB :ADBL;
 
 /**************************************************************************************************/
 // Register Bank

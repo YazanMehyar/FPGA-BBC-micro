@@ -23,7 +23,6 @@ module CRTC6845 (
 	output VSYNC,
 	output reg DISEN,
 	output reg CURSOR,
-	output reg FIELD,
 	output [13:0] FRAMESTORE_ADR,
 	output [4:0]  ROW_ADDRESS
 	);
@@ -42,7 +41,7 @@ module CRTC6845 (
         V_STATE      = 0;
 		VADJ_WAIT    = 0;
 		VERT_ADJ_COUNT = 0;
-		CURSOR_BLINK_COUNT = 0;
+		CURSOR_BLINK_COUNT = 6'h30;
 		end
 	`endif
 
@@ -125,7 +124,7 @@ module CRTC6845 (
     reg  [1:0] H_STATE;
     reg  [7:0] HORZ_COUNT;
     reg  [3:0] HPULSE_COUNT;
-    wire [7:0] nHORZ_COUNT = NEWLINE? 0 : HORZ_COUNT + (NEWLINE? 0:1);
+    wire [7:0] nHORZ_COUNT = NEWLINE? 0 : HORZ_COUNT + 1;
 
     always @ (posedge CLK) if(CRTC_en`ifdef SIMULATION &nRESET `endif) begin
 
@@ -167,6 +166,7 @@ module CRTC6845 (
     reg  [4:0] VERT_ADJ_COUNT;
     reg  [3:0] VPULSE_COUNT;
     reg        VADJ_WAIT;
+    reg		   FIELD;
     wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + (VEND? 0:NEWvCHAR);
     wire       nVADJ       = |vert_total_adj;
     wire       VADJ        = VERT_ADJ_COUNT == vert_total_adj;
@@ -189,7 +189,7 @@ module CRTC6845 (
             			
             `V_PULSE:   if(VPULSE_COUNT==hv_sync[7:4]) begin
             				V_STATE        <= `V_BACK;
-            				FIELD 		   <= ~FIELD;
+            				FIELD 		   <= ~FIELD & display_mode[0];
             			end else begin
             				VPULSE_COUNT   <= VPULSE_COUNT + 1;
             			end
@@ -253,15 +253,15 @@ module CRTC6845 (
 	wire       F_CURSOR  = FRAMESTORE_ADR == cursor_adr;
 	wire       RS_CURSOR = ROW_ADDRESS    >= cursor_start_row;
 	wire       RE_CURSOR = ROW_ADDRESS    <= cursor_end_row;
-	wire       AT_CURSOR = DISEN&CURSOR_DISPLAY&F_CURSOR&RS_CURSOR&RE_CURSOR;
+	wire       AT_CURSOR = CURSOR_DISPLAY&F_CURSOR&RS_CURSOR&RE_CURSOR;
 	
 	always @ (*) casex(display_mode[7:6]) 
-		2'b00: CURSOR = AT_CURSOR;
-		2'b01: CURSOR = CURSOR_SKEW[0];
-		2'b1x: CURSOR = CURSOR_SKEW[1];
+		2'b00: CURSOR = DISEN&AT_CURSOR;
+		2'b01: CURSOR = DISEN&CURSOR_SKEW[0];
+		2'b1x: CURSOR = DISEN&CURSOR_SKEW[1];
 	endcase
 
-	always @ (posedge CLK) begin
+	always @ (posedge CLK) if(CRTC_en) begin
 		if(NEWSCREEN) begin
 			CURSOR_BLINK_COUNT <= CURSOR_BLINK_COUNT + 1;
 			case (cursor_blink_mode)
@@ -271,29 +271,33 @@ module CRTC6845 (
 				2'b11: CURSOR_DISPLAY <= CURSOR_BLINK_COUNT[5];
 			endcase
 		end
-		if(CRTC_en) CURSOR_SKEW <= {CURSOR_SKEW[0],AT_CURSOR};
+		CURSOR_SKEW <= {CURSOR_SKEW[0],AT_CURSOR};
 	end
 
 /*********************************************************************************************/
 
     always @ ( * ) begin
 		case (DEBUG_SEL)
-		4'h0: DEBUG_VAL = start_adr;
-		4'h1: DEBUG_VAL = horz_display;
-		4'h2: DEBUG_VAL = vert_display;
+		4'h0: DEBUG_VAL = horz_total;
+		4'h1: DEBUG_VAL = horz_syncpos;
+		4'h2: DEBUG_VAL = horz_display;
 		4'h3: DEBUG_VAL = max_scanline;
 		4'h4: DEBUG_VAL = display_mode;
-		4'h5: DEBUG_VAL = cursor_adr;
+		4'h5: DEBUG_VAL = vert_total;
+		4'h6: DEBUG_VAL = vert_syncpos;
+		4'h7: DEBUG_VAL = vert_display;
 		default:DEBUG_VAL = 8'h00;
 		endcase
 
 		case (DEBUG_SEL)
-		4'h0: DEBUG_TAG = {`dlS,`dlT,`dlA,`dlD};
-		4'h1: DEBUG_TAG = {`dlH,`dlZ,`dlD,`dlP};
-		4'h2: DEBUG_TAG = {`dlV,`dlT,`dlD,`dlP};
+		4'h0: DEBUG_TAG = {`dlH,`dlZ,`dlT,`dlL};
+		4'h1: DEBUG_TAG = {`dlH,`dlZ,`dlS,`dlP};
+		4'h2: DEBUG_TAG = {`dlH,`dlZ,`dlD,`dlP};
 		4'h3: DEBUG_TAG = {`dlM,`dlX,`dlS,`dlL};
-		4'h4: DEBUG_TAG = {`dlI,`dlN,`dlT,`dlM};
-		4'h5: DEBUG_TAG = {`dlC,`dlS,`dlA,`dlD};
+		4'h4: DEBUG_TAG = {`dlD,`dlM,`dlO,`dlD};
+		4'h5: DEBUG_TAG = {`dlV,`dlT,`dlT,`dlL};
+		4'h6: DEBUG_TAG = {`dlV,`dlT,`dlS,`dlP};
+		4'h7: DEBUG_TAG = {`dlV,`dlT,`dlD,`dlP};
 		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
 	end

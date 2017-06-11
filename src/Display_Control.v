@@ -25,7 +25,6 @@ module Display_Control (
 
 	output HSYNC,
 	output VSYNC,
-	output FIELD,
 	output TXT_MODE,
 	output [2:0]  RGB,
 	output [13:0] FRAMESTORE_ADR,
@@ -47,7 +46,7 @@ module Display_Control (
 	
 	`ifdef SIMULATION
 		reg [4:0] RESET_COUNTER = 5'h1F;
-		always @(posedge CLK) if(PROC_en)
+		always @(posedge CLK) if(PROC_en&nRESET)
 			RESET_COUNTER <= RESET_COUNTER - (|RESET_COUNTER&~nCS_CRTC? 1 : 0);
 	`endif
 
@@ -69,7 +68,6 @@ module Display_Control (
 	.HSYNC(HSYNC),
 	.VSYNC(VSYNC),
 	.DISEN(DISEN),
-	.FIELD(FIELD),
 	.CURSOR(CURSOR),
 	.FRAMESTORE_ADR(FRAMESTORE_ADR),
 	.ROW_ADDRESS(ROW_ADDRESS));
@@ -78,6 +76,13 @@ module Display_Control (
 // BBC Teletext chip (SA5050)
 
 	wire [2:0] SA_RGB;
+	reg  [6:0] SA_DATA;
+	reg		   SA_DISEN;
+	
+	always @ (posedge CLK) if(CLK_1en) begin
+		SA_DATA  <= vDATABUS[6:0];
+		SA_DISEN <= DISEN;
+	end
 
     TELETEXT_5050 teletext (
     .CLK(CLK),
@@ -85,11 +90,10 @@ module Display_Control (
     .SA_T6(CLK_6en),
     .VSYNC(VSYNC),
     .HSYNC(HSYNC),
-    .DISEN(DISEN),
+    .LOSE(SA_DISEN),
     .CHAR_ROUND(ROW_ADDRESS[0]),
-    .DATABUS(vDATABUS[6:0]),
-    .RGB(SA_RGB)
-    );
+    .DATABUS(SA_DATA),
+    .RGB(SA_RGB));
 
 /**************************************************************************************************/
 // Video ULA
@@ -127,7 +131,7 @@ module Display_Control (
 		if(CRTC_en) begin
 			if(CURSOR)	CURSOR_seg <= 3'b001;
 			else		CURSOR_seg <= CURSOR_seg << 1;
-
+			
 			CURSOR_DRAW <= CURSOR&CONTROL[7]
 							| CURSOR_seg[0]&CONTROL[6]
 							| CURSOR_seg[1]&CONTROL[5]
