@@ -20,4 +20,4 @@
 `define V_PULSE_COUNT  29
 `define V_BACK_COUNT   23
 
-`define VGA_BUFFER_SIZE (288*1024)-1
+`define VGA_BUFFER_SIZE (288*256)-1

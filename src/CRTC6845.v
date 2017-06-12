@@ -23,8 +23,8 @@ module CRTC6845 (
 	output VSYNC,
 	output reg DISEN,
 	output reg CURSOR,
-	output [13:0] FRAMESTORE_ADR,
-	output [4:0]  ROW_ADDRESS
+	output reg [13:0] FRAMESTORE_ADR,
+	output reg [4:0]  ROW_ADDRESS
 	);
 	
 	`ifdef SIMULATION
@@ -36,7 +36,6 @@ module CRTC6845 (
 		HPULSE_COUNT = 0;
 		VERT_COUNT   = 0;
 		VPULSE_COUNT = 0;
-		rROW_ADR     = 0;
         H_STATE      = 0;
         V_STATE      = 0;
 		VADJ_WAIT    = 0;
@@ -105,10 +104,12 @@ module CRTC6845 (
     reg [1:0] DISEN_SKEW;
 
     always @ (posedge CLK) 
-        if(CRTC_en) DISEN_SKEW <= {DISEN_SKEW[0],H_DISEN&V_DISEN};
+        if(CRTC_en) begin
+        	DISEN_SKEW <= {DISEN_SKEW[0],H_DISEN&V_DISEN};
+        end
 
 	always @ (*) casex(display_mode[5:4])
-		2'b00: DISEN = H_DISEN & V_DISEN;
+		2'b00: DISEN = H_DISEN&V_DISEN;
 		2'b01: DISEN = DISEN_SKEW[0];
 		2'b1x: DISEN = DISEN_SKEW[1];
 	endcase
@@ -117,19 +118,24 @@ module CRTC6845 (
 // Horizontal Sync
 
     wire       H_DISEN = H_STATE == `H_DISP;
-    wire       NEWLINE = HORZ_COUNT == horz_total;
-    assign     HSYNC   = H_STATE == `H_PULSE;
+    wire       NEWLINE = HORZ_COUNT == horz_total || H_RESET;
+	assign	   HSYNC   = H_STATE == `H_PULSE;
 
     // Local wires / registers
+    reg        H_RESET;
     reg  [1:0] H_STATE;
     reg  [7:0] HORZ_COUNT;
     reg  [3:0] HPULSE_COUNT;
     wire [7:0] nHORZ_COUNT = NEWLINE? 0 : HORZ_COUNT + 1;
 
-    always @ (posedge CLK) if(CRTC_en`ifdef SIMULATION &nRESET `endif) begin
-
+    always @ (posedge CLK) if(CRTC_en) begin
         HORZ_COUNT <= nHORZ_COUNT;
-        case(H_STATE)
+        H_RESET    <= CRTC_WRITE&&A0&&reg_sel[4:2]==3'b000;
+        
+        if(NEWLINE) begin
+        	H_STATE		 <= `H_DISP;
+        	HPULSE_COUNT <= 0;
+        end else case(H_STATE)
             `H_BACK:    if(NEWLINE) begin 
             				H_STATE 	 <= `H_DISP;
             				HPULSE_COUNT <= 0;
@@ -157,10 +163,11 @@ module CRTC6845 (
    
     wire       V_DISEN   = V_STATE == `V_DISP;
     wire       NEWvCHAR  = REND&NEWLINE;
-    wire       NEWSCREEN = VEND&(NEWvCHAR&~nVADJ|VADJ&nVADJ&NEWLINE);
-    assign     VSYNC     = V_STATE == `V_PULSE;
+    wire       NEWSCREEN = VEND&(NEWvCHAR&~nVADJ|VADJ&nVADJ&NEWLINE)||V_RESET;
+	assign	   VSYNC	 = V_STATE == `V_PULSE;
 
     // Local wires / registers
+    reg		   V_RESET;
     reg  [1:0] V_STATE;
    	reg  [6:0] VERT_COUNT;
     reg  [4:0] VERT_ADJ_COUNT;
@@ -174,9 +181,15 @@ module CRTC6845 (
     wire       nV_FRONT    = nVERT_COUNT    == vert_display;
 
     always @ (posedge CLK) if(NEWLINE&CRTC_en) begin 
-
         VERT_COUNT <= nVERT_COUNT;
-        case(V_STATE)
+        V_RESET    <= CRTC_WRITE&&A0&&reg_sel[4:2]==3'b001;
+        
+        if(NEWSCREEN) begin
+        	V_STATE 	   <= `V_DISP;
+			VPULSE_COUNT   <=  0;
+			VERT_ADJ_COUNT <=  0;
+			VADJ_WAIT	   <=  0;
+        end else case(V_STATE)
             `V_BACK:    if(NEWSCREEN) begin
             				V_STATE 	   <= `V_DISP;
             				VPULSE_COUNT   <=  0;
@@ -189,7 +202,7 @@ module CRTC6845 (
             			
             `V_PULSE:   if(VPULSE_COUNT==hv_sync[7:4]) begin
             				V_STATE        <= `V_BACK;
-            				FIELD 		   <= ~FIELD & display_mode[0];
+            				FIELD 		   <= ~FIELD;
             			end else begin
             				VPULSE_COUNT   <= VPULSE_COUNT + 1;
             			end
@@ -208,39 +221,32 @@ module CRTC6845 (
 
 /*********************************************************************************************/
 // RAM addressing
-
 	reg [13:0] NEWLINE_ADR;
-	reg [13:0] rFRAMESTORE_ADR;
-	reg [13:0] NEWCHAR_ADR;
-    reg  [4:0] rROW_ADR;	
-	wire [4:0] NEXT_ROW = rROW_ADR + (ISYNC? 1 : 2);
-	wire       ISYNC    = ~&display_mode[1:0];
-    wire       ODD_ROW  = ~ISYNC&FIELD;
-    wire       REND     = rROW_ADR[4:1]==max_scanline[4:1]
-                          &&(~ISYNC|rROW_ADR[0]~^max_scanline[0]);
+	wire       VISYNC   = &display_mode[1:0];
+    wire       ODD_ROW  = VISYNC&FIELD;
+    wire       REND     = ROW_ADDRESS[4:1]==max_scanline[4:1]
+                          &&(VISYNC||ROW_ADDRESS[0]==max_scanline[0]);
 
 	always @ (posedge CLK)
 	if(~nRESET) begin
-		rFRAMESTORE_ADR <= 0;
-		rROW_ADR 		<= 0;
-		NEWCHAR_ADR		<= 0;
-		NEWLINE_ADR		<= 0;
+		FRAMESTORE_ADR <= 0;
+		ROW_ADDRESS    <= 0;
 	end else if(CRTC_en) begin
-        rFRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
-		if(NEWSCREEN|NEWvCHAR) begin
-			NEWLINE_ADR <= FRAMESTORE_ADR;
-	    	NEWCHAR_ADR <= FRAMESTORE_ADR + horz_display;
-			rROW_ADR    <= 0;
-		end else if(NEWLINE) rROW_ADR    <= NEXT_ROW;
+		if(NEWSCREEN) begin
+			ROW_ADDRESS    <= ODD_ROW;
+			FRAMESTORE_ADR <= start_adr;
+			NEWLINE_ADR    <= start_adr;
+		end else if(NEWvCHAR) begin
+			NEWLINE_ADR    <= NEWLINE_ADR + horz_display;
+			FRAMESTORE_ADR <= NEWLINE_ADR + horz_display;
+			ROW_ADDRESS    <= ODD_ROW;
+		end else if(NEWLINE) begin
+			FRAMESTORE_ADR <= NEWLINE_ADR;
+			ROW_ADDRESS    <= ROW_ADDRESS + (VISYNC? 2 : 1);
+		end else begin
+			FRAMESTORE_ADR <= FRAMESTORE_ADR + 1;
+		end
     end
-	
-	assign FRAMESTORE_ADR = NEWSCREEN? start_adr   : 
-							NEWvCHAR?  NEWCHAR_ADR :  
-							NEWLINE?   NEWLINE_ADR : rFRAMESTORE_ADR;
-							
-	assign ROW_ADDRESS = NEWvCHAR|NEWSCREEN? ODD_ROW :
-						 NEWLINE?     {NEXT_ROW[4:1],ODD_ROW|NEXT_ROW[0]} 
-                                    : {rROW_ADR[4:1],ODD_ROW|rROW_ADR[0]};
 
 
 /*********************************************************************************************/
@@ -249,16 +255,16 @@ module CRTC6845 (
 	reg  [5:0] CURSOR_BLINK_COUNT;
 	reg  [1:0] CURSOR_SKEW;
 	reg        CURSOR_DISPLAY;
-
+	
 	wire       F_CURSOR  = FRAMESTORE_ADR == cursor_adr;
 	wire       RS_CURSOR = ROW_ADDRESS    >= cursor_start_row;
 	wire       RE_CURSOR = ROW_ADDRESS    <= cursor_end_row;
 	wire       AT_CURSOR = CURSOR_DISPLAY&F_CURSOR&RS_CURSOR&RE_CURSOR;
 	
 	always @ (*) casex(display_mode[7:6]) 
-		2'b00: CURSOR = DISEN&AT_CURSOR;
-		2'b01: CURSOR = DISEN&CURSOR_SKEW[0];
-		2'b1x: CURSOR = DISEN&CURSOR_SKEW[1];
+		2'b00: CURSOR = AT_CURSOR;
+		2'b01: CURSOR = CURSOR_SKEW[0];
+		2'b1x: CURSOR = CURSOR_SKEW[1];
 	endcase
 
 	always @ (posedge CLK) if(CRTC_en) begin

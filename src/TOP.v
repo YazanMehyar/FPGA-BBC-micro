@@ -56,6 +56,9 @@ module TOP(
 	wire VSYNC;
 	wire FIELD;
 	wire DISEN;
+	
+	assign LED[0] = JC[8];
+	assign LED[1] = SW[3];
 
 
 	BBC_MICRO beeb(

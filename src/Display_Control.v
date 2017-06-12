@@ -38,17 +38,12 @@ module Display_Control (
 
 	wire CRTC_en;
 	wire CURSOR;
-	wire HSYNC;
-	wire VSYNC;
-	wire DISEN;
+	wire wDISEN;
 	wire [23:0] CRTC_DEBUG_TAG;
 	wire [15:0] CRTC_DEBUG_VAL;
 	
-	`ifdef SIMULATION
-		reg [4:0] RESET_COUNTER = 5'h1F;
-		always @(posedge CLK) if(PROC_en&nRESET)
-			RESET_COUNTER <= RESET_COUNTER - (|RESET_COUNTER&~nCS_CRTC? 1 : 0);
-	`endif
+	reg DISEN;
+	always @ (posedge CLK) if(CRTC_en) DISEN <= wDISEN;
 
 	CRTC6845 crtc(
 	.DEBUG_SEL(DEBUG_SEL),
@@ -56,7 +51,7 @@ module Display_Control (
 	.DEBUG_VAL(CRTC_DEBUG_VAL),
 
 	.CLK(CLK),
-	.nRESET(nRESET`ifdef SIMULATION & ~|RESET_COUNTER`endif),
+	.nRESET(nRESET),
 	.CRTC_en(CRTC_en),
 	.PROC_en(PROC_en),
 	.nCS_CRTC(nCS_CRTC),
@@ -67,7 +62,7 @@ module Display_Control (
 
 	.HSYNC(HSYNC),
 	.VSYNC(VSYNC),
-	.DISEN(DISEN),
+	.DISEN(wDISEN),
 	.CURSOR(CURSOR),
 	.FRAMESTORE_ADR(FRAMESTORE_ADR),
 	.ROW_ADDRESS(ROW_ADDRESS));
@@ -100,9 +95,9 @@ module Display_Control (
 	
 	reg [7:0] CONTROL;
 	reg [7:0] SHIFTER;
-	reg [2:0] CURSOR_seg;
-	reg CURSOR_DRAW;
+	reg [3:0] CURSOR_seg;
 	reg SHIFT_en;
+	wire CURSOR_DRAW;
 
 	assign CRTC_en  = CONTROL[4]? CLK_2ven : CLK_1en;
 	assign TXT_MODE = CONTROL[1];
@@ -127,16 +122,17 @@ module Display_Control (
 		else if(SHIFT_en)	SHIFTER <= {SHIFTER[6:0],1'b1};
 
 
-	always @ ( posedge CLK )
-		if(CRTC_en) begin
-			if(CURSOR)	CURSOR_seg <= 3'b001;
-			else		CURSOR_seg <= CURSOR_seg << 1;
-			
-			CURSOR_DRAW <= CURSOR&CONTROL[7]
-							| CURSOR_seg[0]&CONTROL[6]
-							| CURSOR_seg[1]&CONTROL[5]
-							| CURSOR_seg[2]&CONTROL[5];
-		end
+	always @ (posedge CLK) if(CRTC_en) begin
+		if(CURSOR)		
+			if(CONTROL[1])	CURSOR_seg <= DISEN;
+			else			CURSOR_seg <= wDISEN;
+		else			CURSOR_seg <= CURSOR_seg << 1;
+	end
+		
+	assign CURSOR_DRAW = CONTROL[7]&CURSOR_seg[0]
+						|CONTROL[6]&CURSOR_seg[1]
+						|CONTROL[5]&CURSOR_seg[2]
+						|CONTROL[5]&CURSOR_seg[3];
 
     // -- uProcessor interface
 	always @ ( posedge CLK)
@@ -165,7 +161,7 @@ module Display_Control (
 		4'hE: PALETTE_COLOUR = PALETTEE;	4'hF: PALETTE_COLOUR = PALETTEF;
 	endcase
 
-	wire VULA_DISEN = DISEN & (~ROW_ADDRESS[3]|CONTROL[1]);
+	wire VULA_DISEN = DISEN&~ROW_ADDRESS[3];
 	wire FLASH = ~(PALETTE_COLOUR[3]&CONTROL[0]);
 	wire [2:0] PIXEL_COLOR = CONTROL[1]? SA_RGB : VULA_DISEN? (FLASH?~PALETTE_COLOUR[2:0]:PALETTE_COLOUR[2:0]) : 3'b000;
 	assign RGB = CURSOR_DRAW? ~PIXEL_COLOR : PIXEL_COLOR;

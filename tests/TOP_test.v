@@ -173,7 +173,7 @@ module TOP_test();
 		nRESET <= 1;
 		@(posedge VSYNC)
 		-> START_LOG;
-		repeat (2) @(posedge VSYNC);
+		repeat (4) @(posedge VSYNC);
 		repeat (100) @(posedge CLK50MHZ);
 		$stop;
 		$finish;
