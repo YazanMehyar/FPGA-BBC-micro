@@ -224,7 +224,7 @@ module BBC_MICRO(
 	wire [23:0] BREAK_tag = {`dlB,`dlR,`dlK,`dlSP};
 	wire [3:0]  BRK_INC = BTN_UP? 4'h1 : {4{BTN_DN}};
 	
-	always @ (posedge CLK) if(IO_en)
+	always @ (posedge CLK) if(DBUTTON_en)
 		if(SET_BREAKPOINT) case(BRK_STEP)
 			0: BREAKPOINT[3:0]   <= BREAKPOINT[3:0]   + BRK_INC;
 			1: BREAKPOINT[7:4]   <= BREAKPOINT[7:4]   + BRK_INC;
@@ -232,7 +232,7 @@ module BBC_MICRO(
 			3: BREAKPOINT[15:12] <= BREAKPOINT[15:12] + BRK_INC;
 		endcase
 
-	always @ (posedge CLK) if(IO_en)
+	always @ (posedge CLK) if(DBUTTON_en)
 		if(SET_BREAKPOINT) BRK_STEP <= BRK_STEP + (BTN_LT? 2'h1 : {2{BTN_RT}});
 		
 	always @ (posedge CLK) if(PROC_en)

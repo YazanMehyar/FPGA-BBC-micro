@@ -94,6 +94,7 @@ module MOS6522 (
 				4'h3: DDRA <= DATA;
 				4'h4,
 				4'h6: T1REG[7:0] <= DATA;
+				4'h5,
 				4'h7: T1REG[15:8]<= DATA;
 				4'h8: T2REG[7:0] <= DATA;
 				4'hB: ACR  <= DATA;
@@ -226,22 +227,22 @@ module MOS6522 (
 	wire T1_INT_TRIGGER = ACR[6]?~|T1COUNTER:~|{PB7,T1COUNTER};
 	wire T1_WRITE = CS && RS == 4'h5 && ~RnW;
 
-	always @ (posedge CLK)
-		if(CLK_en)
-			if(T1_WRITE)
-				T1COUNTER <= {DATA,T1REG[7:0]};
-			else if(~|T1COUNTER)
-				T1COUNTER <= T1REG;
-			else if(CLK_en)
-				T1COUNTER <= T1COUNTER + 16'hFFFF;
+	always @ (posedge CLK) if(CLK_en) begin
+		if(T1_WRITE)
+			T1COUNTER <= {DATA,T1REG[7:0]};
+		else if(~|T1COUNTER)
+			T1COUNTER <= T1REG;
+		else if(CLK_en)
+			T1COUNTER <= T1COUNTER + 16'hFFFF;
+	end
 
 
 	reg PB7;
-	always @ (posedge CLK)
-		if(CLK_en)
-			if(ACR[6])		PB7 <= ~|T1COUNTER? ~PB7 : PB7;
-			else if(PB7)	PB7 <= ~T1_WRITE;
-			else			PB7 <= ~|T1COUNTER;
+	always @ (posedge CLK) if(CLK_en) begin
+		if(ACR[6])		PB7 <= ~|T1COUNTER? ~PB7 : PB7;
+		else if(PB7)	PB7 <= ~T1_WRITE;
+		else			PB7 <= ~|T1COUNTER;
+	end
 
 
 /****************************************************************************************/
@@ -327,19 +328,23 @@ module MOS6522 (
 /****************************************************************************************/
 
 	always @ ( * ) begin
-		case (DEBUG_SEL[2:0])
-		3'h0: DEBUG_VAL = DDRA;
-		3'h1: DEBUG_VAL = PORTA;
-		3'h2: DEBUG_VAL = DDRB;
-		3'h3: DEBUG_VAL = PORTB;
-		3'h4: DEBUG_VAL = PCR;
-		3'h5: DEBUG_VAL = ACR;
-		3'h6: DEBUG_VAL = IER;
-		3'h7: DEBUG_VAL = IFR;
+		case (DEBUG_SEL)
+		4'h0: DEBUG_VAL = DDRA;
+		4'h1: DEBUG_VAL = PORTA;
+		4'h2: DEBUG_VAL = DDRB;
+		4'h3: DEBUG_VAL = PORTB;
+		4'h4: DEBUG_VAL = PCR;
+		4'h5: DEBUG_VAL = ACR;
+		4'h6: DEBUG_VAL = IER;
+		4'h7: DEBUG_VAL = IFR;
+		4'h8: DEBUG_VAL = T1REG;
+		4'h9: DEBUG_VAL = T1COUNTER;
+		4'hA: DEBUG_VAL = T2REG;
+		4'hB: DEBUG_VAL = T2COUNTER;
 		default:DEBUG_VAL = 0;
 		endcase
 
-		if(TYPE == `SYSVIA) case (DEBUG_SEL[2:0])
+		if(TYPE == `SYSVIA) case (DEBUG_SEL)
 		4'h0: DEBUG_TAG = {`dlS,`dlD,`dlR,`dlA};
 		4'h1: DEBUG_TAG = {`dlS,`dlP,`dlR,`dlA};
 		4'h2: DEBUG_TAG = {`dlS,`dlD,`dlR,`dlB};
@@ -348,6 +353,10 @@ module MOS6522 (
 		4'h5: DEBUG_TAG = {`dlS,`dlA,`dlC,`dlR};
 		4'h6: DEBUG_TAG = {`dlS,`dlI,`dlE,`dlR};
 		4'h7: DEBUG_TAG = {`dlS,`dlI,`dlF,`dlR};
+		4'h8: DEBUG_TAG = {`dlS,`dlT,`dl1,`dlR};
+		4'h9: DEBUG_TAG = {`dlS,`dlT,`dl1,`dlC};
+		4'hA: DEBUG_TAG = {`dlS,`dlT,`dl2,`dlR};
+		4'hB: DEBUG_TAG = {`dlS,`dlT,`dl2,`dlC};
 		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase else case (DEBUG_SEL)
 		4'h0: DEBUG_TAG = {`dlU,`dlD,`dlR,`dlA};
@@ -358,6 +367,10 @@ module MOS6522 (
 		4'h5: DEBUG_TAG = {`dlU,`dlA,`dlC,`dlR};
 		4'h6: DEBUG_TAG = {`dlU,`dlI,`dlE,`dlR};
 		4'h7: DEBUG_TAG = {`dlU,`dlI,`dlF,`dlR};
+		4'h8: DEBUG_TAG = {`dlU,`dlT,`dl1,`dlR};
+		4'h9: DEBUG_TAG = {`dlU,`dlT,`dl1,`dlC};
+		4'hA: DEBUG_TAG = {`dlU,`dlT,`dl2,`dlR};
+		4'hB: DEBUG_TAG = {`dlU,`dlT,`dl2,`dlC};
 		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
 	end

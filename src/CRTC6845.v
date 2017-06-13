@@ -3,7 +3,6 @@
 /*
     Features not implemented:
     - half-scanline delay/eager for interlace VSync.
-    - No vertical adjustment counter
  */
 module CRTC6845 (
 	input [3:0] DEBUG_SEL,
