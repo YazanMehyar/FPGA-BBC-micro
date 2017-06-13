@@ -14,8 +14,11 @@ module TOP(
 	output VGA_VS,
 
 	output [1:0] LED,
-	input  [3:0] SW, // [3] control break point, [2] disable interrupts
-					 // [1] set break point, [0] display debugger
+	input  [4:0] SW, // [4] delay debugger
+					 // [3] control break point
+					 // [2] disable interrupts
+					 // [1] set break point
+					 // [0] display debugger
 	input BTNU,
 	input BTND,
 	input BTNR,
@@ -26,24 +29,29 @@ module TOP(
 	output AUD_PWM,
 
 	inout [9:7] JC);
-
-	// Simulate VGA pixel scan rate
-	reg CLK50MHZ = 0;
-	always @ (posedge CLK100MHZ) CLK50MHZ <= ~CLK50MHZ;
 	
 	// Simulate 16MHz enable from 100 MHz clock
-	reg [1:0] COUNT3 = 0;
-	always @ (posedge CLK50MHZ) 
-		if(COUNT3[1])	COUNT3 <= 0;
-		else			COUNT3 <= COUNT3 + 1;
+	wire DELAY_DEBUG = SW[4];
+	
+	reg [11:0] COUNT4096 = 0;
+	reg [10:0] COUNT1280 = 0;
+	reg [2:0]  COUNT6  = 0;
+	reg [3:0]  COUNT16 = 0;
+	always @ (posedge CLK100MHZ) begin
+		if(COUNT6==5)	COUNT6 <= 0;
+		else			COUNT6 <= COUNT6 + 1;
 		
-	// Simulate 6MHz enable from 100MHz clock
-	reg [2:0] COUNT8 = 0;
-	always @ (posedge CLK50MHZ) COUNT8 <= COUNT8 + 1;
+		if(COUNT1280==1279) COUNT1280 <= 0;
+		else			    COUNT1280 <= COUNT1280 + 1;
+		
+		COUNT4096 <= COUNT4096 + 1;
+		COUNT16   <= COUNT16 + 1;
+	end
 	
-	
-	wire CLK_16en = COUNT3 == 0;
-	wire CLK_6en  = COUNT8 == 0;
+	wire CLK_50en = COUNT6[0];
+	wire CLK_DBen = COUNT6 == 0;
+	wire CLK_16en = ~DELAY_DEBUG? COUNT6  == 0 : COUNT1280 == 0;
+	wire CLK_6en  = ~DELAY_DEBUG? COUNT16 == 0 : COUNT4096 == 0;
 
 
 /**************************************************************************************************/
@@ -62,7 +70,7 @@ module TOP(
 
 
 	BBC_MICRO beeb(
-		.CLK(CLK50MHZ),
+		.CLK(CLK100MHZ),
 		.CLK_16en(CLK_16en),
 		.CLK_6en(CLK_6en),
 		.nRESET(CPU_RESETN),
@@ -91,7 +99,8 @@ module TOP(
 		
 		.AUDIO_PWM(AUD_PWM),
 		
-		.DEBUG_CLK(CLK50MHZ),
+		.DEBUG_CLK_en(CLK_50en),
+		.DBUTTON_en(CLK_DBen),
 		.DEBUG_ENABLE(OUT_OF_SCREEN),
 		.DEBUG_NEWLINE(VGA_NEWLINE),
 		.DEBUG_RGB(DEBUG_RGB)
@@ -100,8 +109,6 @@ module TOP(
 	assign AUD_SD = 1'b1;
 	
 	// output
-	wire       VGA_VSYNC;
-	wire       VGA_HSYNC;
 	wire [2:0] VGA_RGB;
 	
 	wire [2:0] PIXEL = OUT_OF_SCREEN? VGA_RGB^DEBUG_RGB : VGA_RGB;
@@ -111,8 +118,8 @@ module TOP(
 	assign VGA_B = {4{PIXEL[2]}};
 	
 	VGA vga(
-		.CLK(CLK50MHZ),
-		.READ_en(1'b1),
+		.CLK(CLK100MHZ),
+		.READ_en(CLK_50en),
 		.WRITE_en(CLK_16en),
 		.VSYNC(VSYNC),
 		.HSYNC(HSYNC),

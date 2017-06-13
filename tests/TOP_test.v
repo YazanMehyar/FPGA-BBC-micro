@@ -8,46 +8,31 @@ module TOP_test();
 		$dumpvars(0, TOP_test);
 	end
 
-	reg CLK50MHZ = 0;
-	always #(`CLKPERIOD) CLK50MHZ = ~CLK50MHZ;
+	reg CLK100MHZ = 0;
+	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
 	
 	// Simulate PS2_CLK
-	reg [10:0] PS2_COUNT = 0;
-	always @ ( posedge CLK50MHZ ) PS2_COUNT <= PS2_COUNT + 1;
-	wire PS2_CLK = PS2_COUNT[10];
-	
-	// Simulate 16MHz enable from 50 MHz clock
-	reg [1:0] COUNT3 = 0;
-	always @ (posedge CLK50MHZ) 
-		if(COUNT3[1])	COUNT3 <= 0;
-		else			COUNT3 <= COUNT3 + 1;
-		
-	// Simulate 6MHz enable from 50MHz clock
-	reg [2:0] COUNT8 = 0;
-	always @ (posedge CLK50MHZ) COUNT8 <= COUNT8 + 1;
-	
-	// Simulate VGA pixel scan rate
-	
-	wire CLK_16en = COUNT3 == 0;
-	wire CLK_6en  = COUNT8 == 0;
+	reg [11:0] PS2_COUNT = 0;
+	always @ (posedge CLK100MHZ) PS2_COUNT <= PS2_COUNT + 1;
+	wire PS2_CLK = PS2_COUNT[11];
 
 	// Task to simplify sending data via PS2
 	task PS2_SEND;
 		input [7:0] DATA;
 		begin
-			@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
+			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
 			PS2_DATA <= 1'b0;
 
 			repeat (8) begin
-				@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
+				@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
 				PS2_DATA <= DATA[0];
 				DATA <= {DATA[0],DATA[7:1]};
 			end
 
-			@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
+			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
 			PS2_DATA <= ^DATA;
 
-			@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
+			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
 			PS2_DATA <= 1'b1;
 			@(posedge PS2_CLK);
 		end
@@ -60,13 +45,13 @@ module TOP_test();
 				PS2_SEND(KEY);
 				$display("PRINTING %H", KEY);
 
-			@(posedge VSYNC)
+			@(posedge VGA_VS)
 
 			@(posedge PS2_CLK);
 				PS2_SEND(8'hF0);
 				PS2_SEND(KEY);
 
-			@(posedge VSYNC);
+			@(posedge VGA_VS);
 		end
 	endtask
 
@@ -94,94 +79,56 @@ module TOP_test();
 
 /**************************************************************************************************/
 	// input
-	reg nRESET;
-	reg rMISO;
+	reg CPU_RESETN;
 	reg PS2_DATA;
-
-	wire VGA_NEWLINE;
-	wire OUT_OF_SCREEN;
 	
 	// output
-	wire [2:0] RGB;
-	wire [2:0] DEBUG_RGB;
-	wire HSYNC;
-	wire VSYNC;
-	wire SCK;
-	wire MOSI;
-	wire MISO;
+	wire [3:0] VGA_R;
+	wire [3:0] VGA_G;
+	wire [3:0] VGA_B;
+	wire VGA_HS;
+	wire VGA_VS;
+	wire [2:0] JC;
 
-
-	BBC_MICRO beeb(
-		.CLK(CLK50MHZ),
-		.CLK_16en(CLK_16en),
-		.CLK_6en(CLK_6en),
-		.nRESET(nRESET),
-		
+	TOP top(
+		.CLK100MHZ(CLK100MHZ),
+		.CPU_RESETN(CPU_RESETN),
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
-		
-		.RGB(RGB),
-		.HSYNC(HSYNC),
-		.VSYNC(VSYNC),
-		
-		.DISPLAY_DEBUGGER(1'b1),
-		.DISABLE_INTERRUPTS(1'b0),
-		.EN_BREAKPOINT(1'b0),
-		.SET_BREAKPOINT(1'b0),
-		
-		.BUTTON_UP(1'b0),
-		.BUTTON_DOWN(1'b0),
-		.BUTTON_LEFT(1'b0),
-		.BUTTON_RIGHT(1'b0),
-		.BUTTON_STEP(1'b0),
-		
-		.SCK(SCK),
-		.MISO(MISO),
-		.MOSI(MOSI),
-		
-		.DEBUG_CLK(CLK50MHZ),
-		.DEBUG_ENABLE(OUT_OF_SCREEN),
-		.DEBUG_NEWLINE(VGA_NEWLINE),
-		.DEBUG_RGB(DEBUG_RGB)
-	);
-	
-	// output
-	wire       VGA_VSYNC;
-	wire       VGA_HSYNC;
-	wire [2:0] VGA_RGB;
-	
-	VGA vga(
-		.CLK(CLK50MHZ),
-		.READ_en(1'b1),
-		.WRITE_en(CLK_16en),
-		.VSYNC(VSYNC),
-		.HSYNC(HSYNC),
-		.RGB(RGB),
-		.VGA_HSYNC(VGA_HSYNC),
-		.VGA_VSYNC(VGA_VSYNC),
-		.VGA_RGB(VGA_RGB),
-		.VGA_NEWLINE(VGA_NEWLINE),
-		.OUT_OF_SCREEN(OUT_OF_SCREEN)
+		.VGA_B(VGA_B),
+		.VGA_G(VGA_G),
+		.VGA_R(VGA_R),
+		.VGA_HS(VGA_HS),
+		.VGA_VS(VGA_VS),
+		.SW(5'h1),
+		.BTNU(1'b0),
+		.BTND(1'b0),
+		.BTNR(1'b0),
+		.BTNL(1'b0),
+		.BTNC(1'b0),
+		.JC(JC)
 	);
 
 /**************************************************************************************************/
 
 	initial begin
 		$start_screen;
-		nRESET <= 0;
-		repeat (100) @(posedge CLK50MHZ);
-		nRESET <= 1;
-		@(posedge VSYNC)
+		CPU_RESETN <= 0;
+		repeat (100) @(posedge CLK100MHZ);
+		CPU_RESETN <= 1;
+		@(posedge VGA_VS)
 		-> START_LOG;
-		repeat (4) @(posedge VSYNC);
-		repeat (100) @(posedge CLK50MHZ);
+		repeat (4) @(posedge VGA_VS);
+		repeat (100) @(posedge CLK100MHZ);
 		$stop;
 		$finish;
 	end
 
 /**************************************************************************************************/
 // Virtual Screen
-	wire [2:0] PIXEL = OUT_OF_SCREEN? VGA_RGB^DEBUG_RGB : VGA_RGB;
+	wire [2:0] PIXEL = {VGA_B[0],VGA_G[0],VGA_R[0]};
+	reg  PIXEL_CLK = 0;
+	always @ (posedge CLK100MHZ) PIXEL_CLK <= ~PIXEL_CLK;
 
 	reg [7:0] colour;
 	always @ ( * ) begin
@@ -198,30 +145,30 @@ module TOP_test();
 	end
 
 	integer SCREEN_COUNT = 0;
-	always @ (negedge VSYNC) begin
+	always @ (negedge VGA_VS) begin
 		$display("BBC SCREEN No. %d", SCREEN_COUNT);
 		SCREEN_COUNT <= SCREEN_COUNT + 1;
 	end
 	
 	integer VGA_SCREEN_COUNT = 0;
-	always @ (negedge VGA_VSYNC) begin
+	always @ (negedge VGA_VS) begin
 		$display("VGA SCREEN No. %d", VGA_SCREEN_COUNT);
 		VGA_SCREEN_COUNT <= VGA_SCREEN_COUNT + 1;
 	end
 
 	initial forever begin
-		@(negedge VGA_VSYNC)
-		repeat (31) @(negedge VGA_HSYNC);
-		repeat (40) @(posedge CLK50MHZ);
+		@(negedge VGA_VS)
+		repeat (31) @(negedge VGA_HS);
+		repeat (40) @(posedge PIXEL_CLK);
 		$v_sync;
 	end
 
 	initial forever begin
-		@(negedge VGA_HSYNC)
-		repeat (40) @(posedge CLK50MHZ);
+		@(negedge VGA_HS)
+		repeat (40) @(posedge PIXEL_CLK);
 		$h_sync;
 	end
 
-	always @(negedge CLK50MHZ) $pixel_scan(colour);
+	always @(negedge PIXEL_CLK) $pixel_scan(colour);
 
 endmodule

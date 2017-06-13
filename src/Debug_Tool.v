@@ -1,5 +1,6 @@
 module Debug_Tool(
 	input CLK,
+	input CLK_en,
 	input NEWLINE,
 	input ENABLE,
 	input BUTTON_EN,
@@ -59,13 +60,14 @@ module Debug_Tool(
 	assign BUTTON_NEXT = TOOL_B[0];
 	assign BUTTON_PREV = TOOL_B[1];
 
-	always @ ( posedge CLK )
+	always @ (posedge CLK) if(CLK_en) begin
 		if(~|PIXEL_COUNT|NEWLINE)
 			PIXEL_COUNT <= `CHAR_WIDTH;
 		else if(ENABLE)
 			PIXEL_COUNT <= PIXEL_COUNT - 1;
+	end
 
-	always @ ( posedge CLK ) if(BUTTON_EN) begin
+	always @ (posedge CLK) if(BUTTON_EN) begin
 		if(~|Dsel)
 			Dsel <= 4'h1;
 		else if(BUTTON_NEXT)
@@ -74,7 +76,7 @@ module Debug_Tool(
 			Dsel <= {Dsel[0],Dsel[3:1]};
 	end
 
-	always @ (posedge CLK)
+	always @ (posedge CLK) if(CLK_en) begin
 		if(~ENABLE)
 			ROW_ADDRESS <= 0;
 		else if(NEWLINE)
@@ -82,22 +84,25 @@ module Debug_Tool(
 				ROW_ADDRESS <= ROW_ADDRESS + 1;
 			else
 				ROW_ADDRESS <= 0;
+	end
 
-	always @ (posedge CLK) begin
+	always @ (posedge CLK) if(CLK_en) begin
 		if(~ENABLE)
 			LINE <= 3'h4;
 		else if(~LINE[0] & NEWLINE & (ROW_ADDRESS == `CHAR_HEIGHT))
 			LINE <= LINE >> 1;
 	end
 
-	always @ (posedge CLK)
+	always @ (posedge CLK) if(CLK_en) begin
 		if(NEWLINE)
 			Den <= 0;
 		else if(NEXT_CHAR & ~&Den)
 			Den <= Den + 1;
+	end
 
-	always @ (posedge CLK)
+	always @ (posedge CLK) if(CLK_en) begin
 		if(NEXT_CHAR) HIGHLIGHT <= |(Dsel&PROBEen);
+	end
 
 	always @ ( * )
 		if(~Den[2]) case (Den[5:3])
@@ -117,6 +122,7 @@ module Debug_Tool(
 
 	Debug_Probe dp1(
 		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.DEBUGen(PROBEen[0]),
 		.SELen(Dsel[0]&BUTTON_EN),
 		.UPDATE(UPDATE),
@@ -131,6 +137,7 @@ module Debug_Tool(
 
 	Debug_Probe dp2(
 		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.DEBUGen(PROBEen[1]),
 		.SELen(Dsel[1]&BUTTON_EN),
 		.UPDATE(UPDATE),
@@ -145,6 +152,7 @@ module Debug_Tool(
 
 	Debug_Probe dp3(
 		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.DEBUGen(PROBEen[2]),
 		.SELen(Dsel[2]&BUTTON_EN),
 		.UPDATE(UPDATE),
@@ -159,6 +167,7 @@ module Debug_Tool(
 
 	Debug_Probe dp4(
 		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.DEBUGen(PROBEen[3]),
 		.SELen(Dsel[3]&BUTTON_EN),
 		.UPDATE(UPDATE),
@@ -173,6 +182,7 @@ module Debug_Tool(
 
 	Debug_Probe dp_break(
 		.CLK(CLK),
+		.CLK_en(CLK_en),
 		.DEBUGen(PROBEen[4]),
 		.SELen(1'b0),
 		.UPDATE(UPDATE),
@@ -190,9 +200,10 @@ module Debug_Tool(
 	reg [`CHAR_WIDTH:0] CHAR_SR;
 	reg [`CHAR_WIDTH:0] CHAR_ROM;
 
-	always @ (posedge CLK)
+	always @ (posedge CLK) if(CLK_en) begin
 		if(NEXT_CHAR) CHAR_SR <= CHAR_ROM;
 		else		  CHAR_SR <= {CHAR_SR[6:0],1'b1};
+	end
 
 	always @ ( * )
 		case (CHAR_ADDR[5:3])

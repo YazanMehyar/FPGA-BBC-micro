@@ -3,6 +3,7 @@
 /*
     Features not implemented:
     - half-scanline delay/eager for interlace VSync.
+    - No vertical adjustment counter
  */
 module CRTC6845 (
 	input [3:0] DEBUG_SEL,
@@ -174,10 +175,10 @@ module CRTC6845 (
     reg  [3:0] VPULSE_COUNT;
     reg        VADJ_WAIT;
     reg		   FIELD;
-    wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + (VEND? 0:NEWvCHAR);
+    wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + NEWvCHAR;
     wire       nVADJ       = |vert_total_adj;
     wire       VADJ        = VERT_ADJ_COUNT == vert_total_adj;
-    wire       VEND        = VERT_COUNT     == vert_total;
+    wire       VEND        = VERT_COUNT     >= vert_total;
     wire       nV_FRONT    = nVERT_COUNT    == vert_display;
 
     always @ (posedge CLK) if(NEWLINE&CRTC_en) begin 
@@ -292,6 +293,10 @@ module CRTC6845 (
 		4'h5: DEBUG_VAL = vert_total;
 		4'h6: DEBUG_VAL = vert_syncpos;
 		4'h7: DEBUG_VAL = vert_display;
+		4'h8: DEBUG_VAL = V_STATE;
+		4'h9: DEBUG_VAL = VERT_COUNT;		
+		4'hA: DEBUG_VAL = VPULSE_COUNT;
+		4'hB: DEBUG_VAL = start_adr;
 		default:DEBUG_VAL = 8'h00;
 		endcase
 
@@ -304,6 +309,10 @@ module CRTC6845 (
 		4'h5: DEBUG_TAG = {`dlV,`dlT,`dlT,`dlL};
 		4'h6: DEBUG_TAG = {`dlV,`dlT,`dlS,`dlP};
 		4'h7: DEBUG_TAG = {`dlV,`dlT,`dlD,`dlP};
+		4'h8: DEBUG_TAG = {`dlV,`dlSP,`dlS,`dlT};
+		4'h9: DEBUG_TAG = {`dlV,`dlC,`dlN,`dlT};
+		4'hA: DEBUG_TAG = {`dlV,`dlP,`dlL,`dlC};
+		4'hB: DEBUG_TAG = {`dlS,`dlT,`dlA,`dlD};
 		default: DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
 	end

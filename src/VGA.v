@@ -9,7 +9,7 @@ module VGA(
 	input      [2:0] RGB,
 	output reg       VGA_VSYNC,
 	output reg       VGA_HSYNC,
-	output reg [2:0] VGA_RGB,
+	output	   [2:0] VGA_RGB,
 	output reg 		 VGA_NEWLINE,
 	output reg		 OUT_OF_SCREEN);
 
@@ -23,7 +23,7 @@ module VGA(
 			VGA_FIELD = 0;
 		end
 	`endif
-
+    
 /**************************************************************************************************/
 // -- Horizontal Timing    
 	reg  [1:0] H_STATE;
@@ -69,33 +69,24 @@ module VGA(
 
     reg [9:0] READ_VADR;
     reg [8:0] WRITE_VADR;
-    reg [7:0] READ_HADR, WRITE_HADR;
+    reg [9:0] READ_HADR, WRITE_HADR;
     reg		  VGA_FIELD;
     
-    wire HSYNC_neg;
+    wire READ_STOP = READ_VADR[9]&READ_VADR[6];
+    wire HSYNC_neg, VSYNC_neg;
+    Edge_Trigger #(0) nvsync_trigger(.CLK(CLK),.IN(VSYNC),.En(WRITE_en),.EDGE(VSYNC_neg));
     Edge_Trigger #(0) nhsync_trigger(.CLK(CLK),.IN(HSYNC),.En(WRITE_en),.EDGE(HSYNC_neg));
-    
-    wire READ_STOP  = READ_VADR[9] &READ_VADR[6];
-    reg  [1:0] RCOUNT = 0, WCOUNT = 0;
-    wire WRITE_STORE = (WCOUNT == 2) && WRITE_en;
-    wire LOAD_en     = (RCOUNT == 0) && READ_en;
-    
-    always @ (posedge CLK) begin
-    	if(READ_en)  RCOUNT <= RCOUNT + 1;
-    	if(WRITE_en) WCOUNT <= WCOUNT + 1;
-    end
-    
 
     always @ (posedge CLK) if(READ_en) begin
         if (NEWSCREEN) begin
         	READ_VADR <= 0;
-        	READ_HADR <= 25;
+        	READ_HADR <= 100;
         	VGA_FIELD <= ~VGA_FIELD;
         end else if(NEWLINE) begin
         	READ_VADR <= READ_VADR + (READ_STOP? 0 : 1);
-        	READ_HADR <= 25;
+        	READ_HADR <= 100;
         end else if(VGA_DISEN) begin
-        	READ_HADR <= READ_HADR + LOAD_en;
+        	READ_HADR <= READ_HADR + 1;
         end
     end
     
@@ -105,56 +96,44 @@ module VGA(
     end
     
     always @ (posedge CLK) if(WRITE_en) begin
-        if(VSYNC) begin
+        if(VSYNC_neg) begin
             WRITE_VADR <= 9'h1E8;
             WRITE_HADR <= 0;
         end else if(HSYNC_neg) begin
             WRITE_HADR <= 0;
-            if(WRITE_VADR!=288)
-            	WRITE_VADR <= WRITE_VADR + 1;
-        end else if(WRITE_STORE) begin
+            WRITE_VADR <= WRITE_VADR + 1;
+        end else begin
             WRITE_HADR <= WRITE_HADR + 1;
         end
     end
     
-	/*
-		The VGA buffer overwrites the previous field as it captures the new one.
-		As the buffer is read to display its pixels the reader returns 0 in
-		alternating screens.
-	*/    
-    reg [11:0] VGA_BUFFER [0:`VGA_BUFFER_SIZE];
-    reg [16:0] WRITE_ADDRESS, READ_ADDRESS;
-    reg [11:0] WRITE_SHIFT, READ_SHIFT;
-    reg [11:0] READ_RGB;
+    reg [2:0]  VGA_BUFFER_1 [0:256*1024-1];
+    reg [2:0]  VGA_BUFFER_2 [0:32*1024-1];
+    reg [18:0] WRITE_ADDRESS, READ_ADDRESS;
+    reg [2:0]  READ_RGB1, READ_RGB2, COLOUR;
     
-    always @ (posedge CLK) if(READ_en) begin
-		if(VGA_FIELD^READ_VADR[0])
-			VGA_RGB <= 3'b000;
-		else
-			VGA_RGB <= READ_SHIFT[11:9];
-			
-    	if(LOAD_en)
-    		READ_SHIFT <= READ_RGB;
-		else
-    		READ_SHIFT <= READ_SHIFT << 3;
-    		
-    	if(LOAD_en) READ_ADDRESS <= {READ_VADR[9:1],READ_HADR};
-    		
+    always @ (posedge CLK) if(READ_en) begin			
+    	READ_ADDRESS <= {READ_VADR[9:1],READ_HADR};
     end
     
     always @ (posedge CLK) if(WRITE_en) begin
-		if(WRITE_STORE)
-			WRITE_ADDRESS <= {WRITE_VADR,WRITE_HADR};
-		
-		WRITE_SHIFT   <= {WRITE_SHIFT[8:0],RGB};
+		WRITE_ADDRESS <= {WRITE_VADR,WRITE_HADR};
+		COLOUR <= RGB;
     end
     	
+    assign VGA_RGB = (VGA_FIELD^READ_VADR[0])? 3'b000 : READ_ADDRESS[18]? READ_RGB2 : READ_RGB1;
     
     always @ (posedge CLK) begin
-    	if(LOAD_en)
-    		READ_RGB <= VGA_BUFFER[READ_ADDRESS];
-    	else if(WRITE_STORE)
-    		VGA_BUFFER[WRITE_ADDRESS] <= WRITE_SHIFT;
+    	if(READ_en)
+    		if(READ_STOP)			  READ_RGB2 <= 3'b000;
+    		else if(READ_ADDRESS[18]) READ_RGB2 <= VGA_BUFFER_2[READ_ADDRESS[14:0]];
+    		else				 	  READ_RGB1 <= VGA_BUFFER_1[READ_ADDRESS[17:0]];
+    		
+    	if(WRITE_en)
+    		if(WRITE_ADDRESS[18]) begin
+    			if(~|WRITE_ADDRESS[17:15])
+    				 VGA_BUFFER_2[WRITE_ADDRESS[14:0]] <= COLOUR;
+    		end else VGA_BUFFER_1[WRITE_ADDRESS[17:0]] <= COLOUR;
    	end
    	
 endmodule

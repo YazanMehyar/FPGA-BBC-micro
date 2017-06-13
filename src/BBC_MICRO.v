@@ -30,7 +30,8 @@ module BBC_MICRO(
 	inout  MISO,
 	inout  MOSI,
 	
-	input  DEBUG_CLK,
+	input  DEBUG_CLK_en,
+	input  DBUTTON_en,
 	input  DEBUG_ENABLE,
 	input  DEBUG_NEWLINE,
 	output [2:0] DEBUG_RGB);
@@ -210,10 +211,10 @@ module BBC_MICRO(
 	wire BTN_STEP;
 	wire BTN_CONT;
 	
-	Edge_Trigger #(1) POS_BUTTON0(.CLK(CLK),.IN(BUTTON_RIGHT),.En(IO_en),.EDGE(BTN_RT));
-	Edge_Trigger #(1) POS_BUTTON1(.CLK(CLK),.IN(BUTTON_LEFT), .En(IO_en),.EDGE(BTN_LT));
-	Edge_Trigger #(1) POS_BUTTON2(.CLK(CLK),.IN(BUTTON_DOWN), .En(IO_en),.EDGE(BTN_DN));
-	Edge_Trigger #(1) POS_BUTTON3(.CLK(CLK),.IN(BUTTON_UP),   .En(IO_en),.EDGE(BTN_UP));
+	Edge_Trigger #(1) POS_BUTTON0(.CLK(CLK),.IN(BUTTON_RIGHT),.En(DBUTTON_en),.EDGE(BTN_RT));
+	Edge_Trigger #(1) POS_BUTTON1(.CLK(CLK),.IN(BUTTON_LEFT), .En(DBUTTON_en),.EDGE(BTN_LT));
+	Edge_Trigger #(1) POS_BUTTON2(.CLK(CLK),.IN(BUTTON_DOWN), .En(DBUTTON_en),.EDGE(BTN_DN));
+	Edge_Trigger #(1) POS_BUTTON3(.CLK(CLK),.IN(BUTTON_UP),   .En(DBUTTON_en),.EDGE(BTN_UP));
 	Edge_Trigger #(1) BRKS_TRIG(.CLK(CLK),.IN(BUTTON_STEP&~SET_BREAKPOINT),.En(PROC_en),.EDGE(BTN_STEP));	
 	Edge_Trigger #(1) BRKC_TRIG(.CLK(CLK),.IN(BUTTON_STEP&SET_BREAKPOINT), .En(PROC_en),.EDGE(BTN_CONT));
 	
@@ -380,9 +381,10 @@ wire [2:0] USR_VCC = 3'b111;
 // Debugger
 
 	Debug_Tool dtool(
-		.CLK(DEBUG_CLK),
+		.CLK(CLK),
+		.CLK_en(DEBUG_CLK_en),
 		.ENABLE(DEBUG_ENABLE),
-		.BUTTON_EN(IO_en),
+		.BUTTON_EN(DBUTTON_en),
 		.NEWLINE(DEBUG_NEWLINE),
 		.TAG1(PROC_tag),
 		.VAL1(PROC_val),

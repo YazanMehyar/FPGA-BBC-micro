@@ -173,40 +173,25 @@ module Display_Control (
 	
 	always @ ( * ) begin
 		case (DEBUG_SEL)
-			4'h8: VULA_DEBUG_VAL = PALETTE4;
-			4'h9: VULA_DEBUG_VAL = PALETTE5;
-			4'hA: VULA_DEBUG_VAL = PALETTE6;
-			4'hB: VULA_DEBUG_VAL = PALETTE7;
-			4'hC: VULA_DEBUG_VAL = PALETTE8;
-			4'hD: VULA_DEBUG_VAL = PALETTE9;
-			4'hE: VULA_DEBUG_VAL = PALETTEA;
-			4'hF: VULA_DEBUG_VAL = PALETTEB;
+			4'hF: 	VULA_DEBUG_VAL = CONTROL;
 			default:VULA_DEBUG_VAL = 8'h00;
 		endcase
 
 		case (DEBUG_SEL)
-			4'h6: VULA_DEBUG_TAG = {`dlC,`dlT,`dlR,`dlL};
-			4'h8: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl4};
-			4'h9: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl5};
-			4'hA: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl6};
-			4'hB: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl7};
-			4'hC: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl8};
-			4'hD: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dl9};
-			4'hE: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dlA};
-			4'hF: VULA_DEBUG_TAG = {`dlP,`dlA,`dlL,`dlB};
+			4'hF: 	 VULA_DEBUG_TAG = {`dlC,`dlT,`dlR,`dlL};
 			default: VULA_DEBUG_TAG = {`dlN,`dlU,`dlL,`dlL};
 		endcase
 	end
 
 	always @ ( * ) begin
-		case (DEBUG_SEL[3])
-		1'b0: DEBUG_VAL = CRTC_DEBUG_VAL;
-		1'b1: DEBUG_VAL = VULA_DEBUG_VAL;
+		case (DEBUG_SEL)
+		4'hF:	 DEBUG_VAL = VULA_DEBUG_VAL;
+		default: DEBUG_VAL = CRTC_DEBUG_VAL;
 		endcase
 
-		case (DEBUG_SEL[3])
-		1'b0: DEBUG_TAG = CRTC_DEBUG_TAG;
-		1'b1: DEBUG_TAG = VULA_DEBUG_TAG;
+		case (DEBUG_SEL)
+		4'hF:	 DEBUG_TAG = VULA_DEBUG_TAG;
+		default: DEBUG_TAG = CRTC_DEBUG_TAG;
 		endcase
 	end
 

@@ -1,21 +1,21 @@
 [*]
 [*] GTKWave Analyzer v3.3.61 (w)1999-2014 BSI
-[*] Sun Jun 11 16:57:28 2017
+[*] Mon Jun 12 18:56:10 2017
 [*]
 [dumpfile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/sim_dump/TOP_test.lx2"
-[dumpfile_mtime] "Sun Jun 11 16:52:40 2017"
-[dumpfile_size] 20984377
+[dumpfile_mtime] "Mon Jun 12 18:53:10 2017"
+[dumpfile_size] 42155555
 [savefile] "/home/mbax4ym3/FPGA_Designs/bbc_micro_FPGA/GTKW_layouts/TOP.gtkw"
-[timestart] 61616500
+[timestart] 25244000
 [size] 1916 1157
 [pos] -1 -1
-*-17.000000 62125510 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-18.000000 26275610 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] TOP_test.
 [treeopen] TOP_test.beeb.
 [treeopen] TOP_test.beeb.dc.
 [treeopen] TOP_test.vga.
 [sst_width] 214
-[signals_width] 290
+[signals_width] 215
 [sst_expanded] 1
 [sst_vpaned_height] 345
 @28
@@ -27,24 +27,35 @@ TOP_test.CLK_6en[0]
 @28
 TOP_test.HSYNC[0]
 TOP_test.VSYNC[0]
-TOP_test.RGB[2:0]
+TOP_test.beeb.dc.crtc.DISEN[0]
+TOP_test.vga.STORE[0]
+@22
+TOP_test.vga.WRITE_HADR[7:0]
 @24
-TOP_test.vga.WRITE_HADR[9:0]
 TOP_test.vga.WRITE_VADR[8:0]
+@22
+TOP_test.vga.WRITE_SHIFT[11:0]
 @28
-TOP_test.vga.WRITE_STOP[0]
+TOP_test.RGB[2:0]
 @200
 -
 @28
 TOP_test.vga.VGA_HSYNC[0]
 TOP_test.VGA_VSYNC[0]
 TOP_test.vga.VGA_DISEN[0]
-@24
-TOP_test.vga.READ_HADR[9:0]
+TOP_test.vga.LOAD[0]
+@22
+TOP_test.vga.READ_HADR[7:0]
 TOP_test.vga.READ_VADR[9:0]
 @28
 TOP_test.vga.READ_STOP[0]
 @200
 -
+-
+@22
+TOP_test.vga.READ_RGB[11:0]
+TOP_test.vga.READ_SHIFT[11:0]
+@28
+TOP_test.vga.VGA_RGB[2:0]
 [pattern_trace] 1
 [pattern_trace] 0
