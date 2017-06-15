@@ -72,12 +72,8 @@ module Display_Control (
 
 	wire [2:0] SA_RGB;
 	reg  [6:0] SA_DATA;
-	reg		   SA_DISEN;
 	
-	always @ (posedge CLK) if(CLK_1en) begin
-		SA_DATA  <= vDATABUS[6:0];
-		SA_DISEN <= DISEN;
-	end
+	always @ (posedge CLK) if(CLK_1en) SA_DATA  <= vDATABUS[6:0];
 
     TELETEXT_5050 teletext (
     .CLK(CLK),
@@ -85,7 +81,7 @@ module Display_Control (
     .SA_T6(CLK_6en),
     .VSYNC(VSYNC),
     .HSYNC(HSYNC),
-    .LOSE(SA_DISEN),
+    .LOSE(DISEN),
     .CHAR_ROUND(ROW_ADDRESS[0]),
     .DATABUS(SA_DATA),
     .RGB(SA_RGB));

@@ -80,11 +80,11 @@ module VGA(
     always @ (posedge CLK) if(READ_en) begin
         if (NEWSCREEN) begin
         	READ_VADR <= 0;
-        	READ_HADR <= 100;
+        	READ_HADR <= 120;
         	VGA_FIELD <= ~VGA_FIELD;
         end else if(NEWLINE) begin
         	READ_VADR <= READ_VADR + (READ_STOP? 0 : 1);
-        	READ_HADR <= 100;
+        	READ_HADR <= 120;
         end else if(VGA_DISEN) begin
         	READ_HADR <= READ_HADR + 1;
         end
