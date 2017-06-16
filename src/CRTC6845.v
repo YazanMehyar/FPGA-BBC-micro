@@ -164,7 +164,7 @@ module CRTC6845 (
     wire       V_DISEN   = V_STATE == `V_DISP;
     wire       NEWvCHAR  = REND&NEWLINE;
     wire       NEWSCREEN = VEND&(NEWvCHAR&~nVADJ|VADJ&nVADJ&NEWLINE)||V_RESET;
-	assign	   VSYNC	 = V_STATE == `V_PULSE;
+	assign	   VSYNC	 = display_mode[0]&FIELD? IVSYNC : V_STATE == `V_PULSE;
 
     // Local wires / registers
     reg		   V_RESET;
@@ -174,11 +174,15 @@ module CRTC6845 (
     reg  [3:0] VPULSE_COUNT;
     reg        VADJ_WAIT;
     reg		   FIELD;
+    reg		   IVSYNC;
     wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + NEWvCHAR;
     wire       nVADJ       = |vert_total_adj;
     wire       VADJ        = VERT_ADJ_COUNT == vert_total_adj;
     wire       VEND        = VERT_COUNT     >= vert_total;
     wire       nV_FRONT    = nVERT_COUNT    == vert_display;
+    
+    always @ (posedge CLK) if(CRTC_en)
+    	if(HORZ_COUNT==horz_total[7:1]) IVSYNC <= V_STATE == `V_PULSE;
 
     always @ (posedge CLK) if(NEWLINE&CRTC_en) begin 
         VERT_COUNT <= nVERT_COUNT;

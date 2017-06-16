@@ -32,26 +32,46 @@ module TOP(
 	
 	// Simulate 16MHz enable from 100 MHz clock
 	wire DELAY_DEBUG = SW[4];
+	wire CLK_6en;
+	wire CLK_16en;
+	wire CLK_DBen;
+	wire CLK_50en;
 	
-	reg [11:0] COUNT4096 = 0;
-	reg [10:0] COUNT1280 = 0;
-	reg [2:0]  COUNT6  = 0;
-	reg [3:0]  COUNT16 = 0;
-	always @ (posedge CLK100MHZ) begin
-		if(COUNT6==5)	COUNT6 <= 0;
-		else			COUNT6 <= COUNT6 + 1;
+	`ifdef SIMULATION // Faster simulation
+		reg [1:0]  COUNT3 = 0;
+		reg [2:0]  COUNT8 = 0;
+		always @ (posedge CLK100MHZ) begin
+			if(COUNT3==2)	COUNT3 <= 0;
+			else			COUNT3 <= COUNT3 + 1;
 		
-		if(COUNT1280==1279) COUNT1280 <= 0;
-		else			    COUNT1280 <= COUNT1280 + 1;
-		
-		COUNT4096 <= COUNT4096 + 1;
-		COUNT16   <= COUNT16 + 1;
-	end
+			COUNT8 <= COUNT8 + 1;
+		end
 	
-	wire CLK_50en = COUNT6[0];
-	wire CLK_DBen = COUNT6 == 0;
-	wire CLK_16en = ~DELAY_DEBUG? COUNT6  == 0 : COUNT1280 == 0;
-	wire CLK_6en  = ~DELAY_DEBUG? COUNT16 == 0 : COUNT4096 == 0;
+		assign CLK_50en = 1'b1;
+		assign CLK_DBen = COUNT3 == 0;
+		assign CLK_16en = COUNT3 == 0;
+		assign CLK_6en  = COUNT8 == 0;
+	`else
+		reg [11:0] COUNT4096 = 0;
+		reg [10:0] COUNT1280 = 0;
+		reg [2:0]  COUNT6    = 0;
+		reg [3:0]  COUNT16   = 0;
+		always @ (posedge CLK100MHZ) begin
+			if(COUNT6==5)	COUNT6 <= 0;
+			else			COUNT6 <= COUNT6 + 1;
+		
+			if(COUNT1280==1279) COUNT1280 <= 0;
+			else			    COUNT1280 <= COUNT1280 + 1;
+		
+			COUNT4096 <= COUNT4096 + 1;
+			COUNT16   <= COUNT16 + 1;
+		end
+	
+		assign CLK_50en = COUNT6[0];
+		assign CLK_DBen = COUNT6 == 0;
+		assign CLK_16en = ~DELAY_DEBUG? COUNT6  == 0 : COUNT1280 == 0;
+		assign CLK_6en  = ~DELAY_DEBUG? COUNT16 == 0 : COUNT4096 == 0;
+	`endif
 
 
 /**************************************************************************************************/
@@ -65,7 +85,7 @@ module TOP(
 	wire FIELD;
 	wire DISEN;
 	
-	assign LED[0] = JC[8];
+	assign LED[0] = JC[9];
 	assign LED[1] = SW[3];
 
 

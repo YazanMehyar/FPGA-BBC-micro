@@ -8,31 +8,31 @@ module TOP_test();
 		$dumpvars(0, TOP_test);
 	end
 
-	reg CLK100MHZ = 0;
-	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
+	reg CLK50MHZ = 0;
+	always #(`CLKPERIOD) CLK50MHZ = ~CLK50MHZ;
 	
 	// Simulate PS2_CLK
-	reg [11:0] PS2_COUNT = 0;
-	always @ (posedge CLK100MHZ) PS2_COUNT <= PS2_COUNT + 1;
-	wire PS2_CLK = PS2_COUNT[11];
+	reg [10:0] PS2_COUNT = 0;
+	always @ (posedge CLK50MHZ) PS2_COUNT <= PS2_COUNT + 1;
+	wire PS2_CLK = PS2_COUNT[10];
 
 	// Task to simplify sending data via PS2
 	task PS2_SEND;
 		input [7:0] DATA;
 		begin
-			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
 			PS2_DATA <= 1'b0;
 
 			repeat (8) begin
-				@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+				@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
 				PS2_DATA <= DATA[0];
 				DATA <= {DATA[0],DATA[7:1]};
 			end
 
-			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
 			PS2_DATA <= ^DATA;
 
-			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (500) @(posedge CLK50MHZ);
 			PS2_DATA <= 1'b1;
 			@(posedge PS2_CLK);
 		end
@@ -91,7 +91,7 @@ module TOP_test();
 	wire [2:0] JC;
 
 	TOP top(
-		.CLK100MHZ(CLK100MHZ),
+		.CLK100MHZ(CLK50MHZ),
 		.CPU_RESETN(CPU_RESETN),
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
@@ -114,12 +114,12 @@ module TOP_test();
 	initial begin
 		$start_screen;
 		CPU_RESETN <= 0;
-		repeat (100) @(posedge CLK100MHZ);
+		repeat (100) @(posedge CLK50MHZ);
 		CPU_RESETN <= 1;
 		@(posedge VGA_VS)
 		-> START_LOG;
-		repeat (4) @(posedge VGA_VS);
-		repeat (100) @(posedge CLK100MHZ);
+		repeat (6) @(posedge VGA_VS);
+		repeat (100) @(posedge CLK50MHZ);
 		$stop;
 		$finish;
 	end
@@ -127,8 +127,7 @@ module TOP_test();
 /**************************************************************************************************/
 // Virtual Screen
 	wire [2:0] PIXEL = {VGA_B[0],VGA_G[0],VGA_R[0]};
-	reg  PIXEL_CLK = 0;
-	always @ (posedge CLK100MHZ) PIXEL_CLK <= ~PIXEL_CLK;
+	wire  PIXEL_CLK = CLK50MHZ;
 
 	reg [7:0] colour;
 	always @ ( * ) begin
