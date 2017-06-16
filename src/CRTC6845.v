@@ -1,9 +1,5 @@
 `include "VIDEO.vh"
 
-/*
-    Features not implemented:
-    - half-scanline delay/eager for interlace VSync.
- */
 module CRTC6845 (
 	input [3:0] DEBUG_SEL,
 	output reg [23:0] DEBUG_TAG,
@@ -164,7 +160,7 @@ module CRTC6845 (
     wire       V_DISEN   = V_STATE == `V_DISP;
     wire       NEWvCHAR  = REND&NEWLINE;
     wire       NEWSCREEN = VEND&(NEWvCHAR&~nVADJ|VADJ&nVADJ&NEWLINE)||V_RESET;
-	assign	   VSYNC	 = display_mode[0]&FIELD? IVSYNC : V_STATE == `V_PULSE;
+	assign	   VSYNC	 = display_mode[0]&FSYNC? IVSYNC : V_STATE == `V_PULSE;
 
     // Local wires / registers
     reg		   V_RESET;
@@ -174,6 +170,7 @@ module CRTC6845 (
     reg  [3:0] VPULSE_COUNT;
     reg        VADJ_WAIT;
     reg		   FIELD;
+    reg		   FSYNC;
     reg		   IVSYNC;
     wire [6:0] nVERT_COUNT = NEWSCREEN? 0 : VERT_COUNT + NEWvCHAR;
     wire       nVADJ       = |vert_total_adj;
@@ -193,13 +190,9 @@ module CRTC6845 (
 			VPULSE_COUNT   <=  0;
 			VERT_ADJ_COUNT <=  0;
 			VADJ_WAIT	   <=  0;
+			FSYNC		   <=  FIELD;
         end else case(V_STATE)
-            `V_BACK:    if(NEWSCREEN) begin
-            				V_STATE 	   <= `V_DISP;
-            				VPULSE_COUNT   <=  0;
-            				VERT_ADJ_COUNT <=  0;
-            				VADJ_WAIT	   <=  0;
-            			end else if (VEND) begin
+            `V_BACK:    if (VEND) begin
             				VERT_ADJ_COUNT <= VERT_ADJ_COUNT + (NEWvCHAR|VADJ_WAIT);
             				VADJ_WAIT	   <= NEWvCHAR;
             			end

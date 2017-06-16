@@ -100,7 +100,7 @@ module TOP_test();
 		.VGA_R(VGA_R),
 		.VGA_HS(VGA_HS),
 		.VGA_VS(VGA_VS),
-		.SW(5'h1),
+		.SW(5'h01),
 		.BTNU(1'b0),
 		.BTND(1'b0),
 		.BTNR(1'b0),

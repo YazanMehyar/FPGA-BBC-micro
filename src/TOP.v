@@ -82,7 +82,6 @@ module TOP(
 	wire OUT_OF_SCREEN;
 	wire HSYNC;
 	wire VSYNC;
-	wire FIELD;
 	wire DISEN;
 	
 	assign LED[0] = JC[9];

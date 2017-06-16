@@ -5,7 +5,6 @@ module TELETEXT_5050(
     input       VSYNC,
     input       HSYNC,
     input       LOSE,
-    input       CHAR_ROUND,
     input [6:0] DATABUS,
     output[2:0] RGB);
 
@@ -128,6 +127,6 @@ module TELETEXT_5050(
     end
     wire FLASH = |FLASH_COUNTER[19:18] & SA_flash;
 	wire [2:0] SA_fcolour = SA_G2[1]? SA_graphicC : SA_alphaC;
-    assign RGB = SA_LOSE[1]? SA_shifter[5]? FLASH? SA_fcolour : ~SA_fcolour : SA_bcolour:3'b000;
+    assign RGB = SA_LOSE[1]? SA_shifter[5]? FLASH? ~SA_fcolour : SA_fcolour : SA_bcolour:3'b000;
 
 endmodule

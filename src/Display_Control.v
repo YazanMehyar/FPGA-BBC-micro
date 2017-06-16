@@ -82,7 +82,6 @@ module Display_Control (
     .VSYNC(VSYNC),
     .HSYNC(HSYNC),
     .LOSE(DISEN),
-    .CHAR_ROUND(ROW_ADDRESS[0]),
     .DATABUS(SA_DATA),
     .RGB(SA_RGB));
 
