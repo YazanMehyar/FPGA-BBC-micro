@@ -8,12 +8,10 @@
 #include <stdint.h>
 #include <vpi_user.h>
 
-#define PIXELS  800 /* screen width  */
-#define LINES   600 /* screen height */
-#define SHMSZ   (PIXELS*LINES)+1 /* size of the shared memory buffer */
 #define KEY     123
 
-static char *screen_args[] = {"vscreen", "-c332", "-k123", "-s2", "-w800", "-h600", "NULL"};
+static uint32_t PIXELS;
+static uint32_t LINES;
 static uint32_t pixel_pos = 0;
 /******************************************************************************/
 // C helper functions
@@ -24,6 +22,7 @@ set_pixel(uint32_t colour){
 
 	int shmid;
 	char *shm, *hndshk;
+	uint32_t SHMSZ = PIXELS*LINES+1;
 
 	if (pixel_pos > SHMSZ - 2) return;
 
@@ -64,6 +63,22 @@ next_line(void){
 int
 start_screen(char *data) {
     pid_t scrPid;
+    
+    /* vpi get argument */
+
+	vpiHandle args_iter;
+	struct t_vpi_value argval;
+
+	args_iter = vpi_iterate(vpiArgument, vpi_handle(vpiSysTfCall, NULL));
+	argval.format = vpiIntVal;
+	vpi_get_value(vpi_scan(args_iter), &argval);
+	PIXELS = (uint32_t) argval.value.integer;
+	vpi_get_value(vpi_scan(args_iter), &argval);
+	LINES  = (uint32_t) argval.value.integer;
+	vpi_free_object(args_iter);
+
+	/* vpi get argument */
+	uint32_t SHMSZ = PIXELS*LINES+1;
 
     if ((shmget((key_t) KEY, SHMSZ, 0666)) >= 0) {
         vpi_printf("vscreen already running\n");
@@ -76,6 +91,20 @@ start_screen(char *data) {
         exit(EXIT_FAILURE);
     } else if (scrPid == 0) {
         nice(10);
+        char swidth[7];
+        char sheight[7];
+        
+        sprintf(swidth,"-w%d",PIXELS);
+        sprintf(sheight,"-h%d",LINES);
+        
+        static char *screen_args[7];
+        screen_args[0] = "vscreen";
+        screen_args[1] = "-c332";
+        screen_args[2] = "-k123";
+        screen_args[3] = "-s2";
+        screen_args[4] = swidth;
+        screen_args[5] = sheight;
+        screen_args[6] = (char*) NULL;
         if (execvp("vscreen", screen_args)) {
             vpi_printf("caller: ERROR - cannot start vscreen.\n");
             exit(EXIT_FAILURE);
@@ -114,30 +143,16 @@ pixel_scan(char *data) {
 int
 iv_sync(char *data) {
 
-	uint8_t field;
-
-	/* vpi get argument */
-
-	vpiHandle args_iter;
-	struct t_vpi_value argval;
-
-	args_iter = vpi_iterate(vpiArgument, vpi_handle(vpiSysTfCall, NULL));
-	argval.format = vpiIntVal;
-	vpi_get_value(vpi_scan(args_iter), &argval);
-	field = (uint8_t) argval.value.integer;
-	vpi_free_object(args_iter);
-
-	/* vpi get argument */
-
+	static uint8_t field;
 	screen_reset();
 	if(field) next_line();
 
+	field = !field;
 	return 0;
 }
 int ih_sync(char *data){ next_line(); next_line(); return 0;}
-
-int v_sync(char *data){ screen_reset(); return 0;}
-int h_sync(char *data){ next_line();    return 0;}
+int v_sync (char *data){ screen_reset(); return 0;}
+int h_sync (char *data){ next_line();    return 0;}
 
 /******************************************************************************/
 // VPI hooks

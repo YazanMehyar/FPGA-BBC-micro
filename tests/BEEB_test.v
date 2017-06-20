@@ -8,27 +8,29 @@ module BEEB_test();
 		$dumpvars(0, BEEB_test);
 	end
 
-	reg CLK100MHZ = 0;
-	always #(`CLKPERIOD/2) CLK100MHZ = ~CLK100MHZ;
-
+	reg CLK16MHZ = 0;
+	always #(`CLKPERIOD) CLK16MHZ = ~CLK16MHZ;
 
 	// Simulate PS2_CLK
-	reg [11:0] PS2_COUNT = 0;
-	always @ (posedge CLK100MHZ) PS2_COUNT <= PS2_COUNT + 1;
-	wire PS2_CLK = PS2_COUNT[11];
-
-	// Simulate 16MHz enable from 100 MHz clock
-	reg [2:0] COUNT6 = 0;
-	always @ (posedge CLK100MHZ) 
-		if(COUNT6 == 3'h5)	COUNT6 <= 0;
-		else				COUNT6 <= COUNT6 + 1;
+	reg [8:0] PS2_COUNT = 0;
+	always @ (posedge CLK16MHZ) PS2_COUNT <= PS2_COUNT + 1;
+	wire PS2_CLK = PS2_COUNT[8];
 		
-	// Simulate 6MHz enable from 100MHz clock
+	// Simulate 6MHz enable from 16MHz clock
 	reg [3:0] COUNT16 = 0;
-	always @ (posedge CLK100MHZ) COUNT16 <= COUNT16 + 1;
+	always @ (posedge CLK16MHZ or negedge CLK16MHZ)
+		COUNT16 <= COUNT16 + 1;
 	
-	wire CLK_16en = COUNT6  == 0;
-	wire CLK_6en  = COUNT16 == 0;
+	wire CLK_16en = 1'b1;
+	reg  CLK_6en;
+	
+	always @ (*) case (COUNT16)
+		4'h0,4'hF,
+		4'h4,4'h5,
+		4'h9,4'hA:  CLK_6en = 1;
+		default:	CLK_6en = 0;
+	endcase
+		
 
 	// input
 	reg nRESET;
@@ -39,7 +41,6 @@ module BEEB_test();
 	wire [2:0] RGB;
 	wire HSYNC;
 	wire VSYNC;
-	wire FIELD;
 	wire SCK;
 	wire MOSI;
 	wire MISO;
@@ -50,7 +51,7 @@ module BEEB_test();
 	end
 
 	BBC_MICRO beeb(
-		.CLK(CLK100MHZ),
+		.CLK(CLK16MHZ),
 		.CLK_16en(CLK_16en),
 		.CLK_6en(CLK_6en),
 		.nRESET(nRESET),
@@ -61,7 +62,6 @@ module BEEB_test();
 		.RGB(RGB),
 		.HSYNC(HSYNC),
 		.VSYNC(VSYNC),
-		.FIELD(FIELD),
 		
 		.DISPLAY_DEBUGGER(1'b1),
 		.DISABLE_INTERRUPTS(1'b0),
@@ -78,7 +78,8 @@ module BEEB_test();
 		.MISO(MISO),
 		.MOSI(MOSI),
 		
-		.DEBUG_CLK(1'b0),
+		.DEBUG_CLK_en(1'b0),
+		.DBUTTON_en(1'b0),
 		.DEBUG_ENABLE(1'b0),
 		.DEBUG_NEWLINE(1'b0)
 	);
@@ -89,19 +90,19 @@ module BEEB_test();
 	task PS2_SEND;
 		input [7:0] DATA;
 		begin
-			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (150) @(posedge CLK16MHZ);
 			PS2_DATA <= 1'b0;
 
 			repeat (8) begin
-				@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+				@(posedge PS2_CLK); repeat (150) @(posedge CLK16MHZ);
 				PS2_DATA <= DATA[0];
 				DATA <= {DATA[0],DATA[7:1]};
 			end
 
-			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (150) @(posedge CLK16MHZ);
 			PS2_DATA <= ^DATA;
 
-			@(posedge PS2_CLK); repeat (1000) @(posedge CLK100MHZ);
+			@(posedge PS2_CLK); repeat (150) @(posedge CLK16MHZ);
 			PS2_DATA <= 1'b1;
 			@(posedge PS2_CLK);
 		end
@@ -139,6 +140,7 @@ module BEEB_test();
 				4: PRESS_KEY(8'h25);
 				5: PRESS_KEY(8'h2E);
 				6: PRESS_KEY(8'h36);
+				7: PRESS_KEY(8'h3D);
 				default: $display("UNSUPPORTED MODE");
 			endcase
 			PRESS_KEY(8'h5A);
@@ -148,11 +150,11 @@ module BEEB_test();
 /******************************************************************************/
 
 	initial begin
-		$start_screen;
+		$start_screen(640,576);
 		-> START_LOG;
 		nRESET <= 0;
 		PS2_DATA <= 1;
-		repeat (100) @(posedge CLK100MHZ);
+		repeat (20) @(posedge CLK16MHZ);
 		nRESET <= 1;
 		repeat (20) @(posedge VSYNC);
 		$stop;
@@ -201,16 +203,16 @@ module BEEB_test();
 	initial forever begin
 		@(negedge VSYNC)
 		repeat (24) @(negedge HSYNC);
-		repeat (176) @(posedge CLK_16en);
-		$iv_sync(FIELD);
+		repeat (170) @(posedge CLK16MHZ);
+		$iv_sync;
 	end
 
 	initial forever begin
 		@(negedge HSYNC)
-		repeat (176) @(posedge CLK_16en);
+		repeat (170) @(posedge CLK16MHZ);
 		$ih_sync;
 	end
 
-	always @(negedge CLK_16en) $pixel_scan(colour);
+	always @(negedge CLK16MHZ) $pixel_scan(colour);
 
 endmodule

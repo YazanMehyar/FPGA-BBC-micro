@@ -70,6 +70,7 @@ module TOP_test();
 				4: PRESS_KEY(8'h25);
 				5: PRESS_KEY(8'h2E);
 				6: PRESS_KEY(8'h36);
+				7: PRESS_KEY(8'h3D);
 				default: $display("UNSUPPORTED MODE");
 			endcase
 			PRESS_KEY(8'h5A);
@@ -112,7 +113,7 @@ module TOP_test();
 /**************************************************************************************************/
 
 	initial begin
-		$start_screen;
+		$start_screen(800,600);
 		CPU_RESETN <= 0;
 		repeat (100) @(posedge CLK50MHZ);
 		CPU_RESETN <= 1;

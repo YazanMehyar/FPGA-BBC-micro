@@ -25,6 +25,7 @@ module TELETEXT_5050(
 	wire HSYNC_DROP;
     wire NEW_ROW = HSYNC_DROP && SA_row == 9;
 	Edge_Trigger #(0) hsync_neg(.CLK(CLK),.IN(HSYNC),.En(SA_F1),.EDGE(HSYNC_DROP));
+	wire CONTROL_CODE = ~|SA_code[6:5];
 	
 	reg [19:0] FLASH_COUNTER = 0;
 	always @ (posedge CLK) if(SA_F1) begin
@@ -41,21 +42,30 @@ module TELETEXT_5050(
 	end
 	
 	always @ (posedge CLK) if(SA_F1) begin
-		if(NEW_ROW) begin
-			SA_acolour     <= 3'b111;
-			SA_gcontiguous <= 1;
-			SA_flash       <= 0;
-			SA_doubleA	   <= 0;
-			SA_bcolour	   <= 0;
-			SA_GRAPHICS	   <= 0;
-		end else if(LOSE)
-			if(~|SA_code[6:5]) casex(SA_code[4:0])
-			5'b0_0xxx: if(|SA_code[2:0]) SA_acolour <= SA_code[2:0];
+		if(NEW_ROW) SA_GRAPHICS <= 0;
+		else if(LOSE&CONTROL_CODE) casex(SA_code[4:0])
+			5'bx_0xxx: if(|SA_code[2:0]) SA_GRAPHICS <= SA_code[4];
+			5'b1_1001: SA_GRAPHICS <= 1;
+			5'b1_1010: SA_GRAPHICS <= 1;
+			5'b1_110x: SA_GRAPHICS <= 1;
+		endcase
+	end
+	
+	always @ (posedge CLK) if(SA_F1) begin
+		if(HSYNC_DROP) begin
+			if(NEW_ROW) begin
+				SA_acolour     <= 3'b111;
+				SA_gcontiguous <= 1;
+				SA_flash       <= 0;
+				SA_doubleA	   <= 0;
+			end	SA_bcolour	   <= 0;
+		end else if(LOSE&CONTROL_CODE) casex(SA_code[4:0])
+			5'b0_0xxx: if(|SA_code[2:0]) SA_acolour  <= SA_code[2:0];
 			5'b0_100x: SA_flash   <= ~SA_code[0];
 			5'b0_110x: SA_doubleA <=  SA_code[0];
-			5'b1_0xxx: if(|SA_code[2:0]) SA_gcolour <= SA_code[2:0];
-			5'b1_1001: begin SA_gcontiguous <= 1; SA_GRAPHICS <= 1; end
-			5'b1_1010: begin SA_gcontiguous <= 0; SA_GRAPHICS <= 1; end
+			5'b1_0xxx: if(|SA_code[2:0]) SA_gcolour  <= SA_code[2:0];
+			5'b1_1001: SA_gcontiguous <= 1;
+			5'b1_1010: SA_gcontiguous <= 0;
 			5'b1_1100: SA_bcolour <= 3'b000;
 			5'b1_1101: SA_bcolour <= SA_acolour;
 		endcase
@@ -73,6 +83,7 @@ module TELETEXT_5050(
     reg  [1:0] SA_G2;
     reg  [2:0] SA_alphaC;
     reg  [2:0] SA_graphicC;
+    reg  [2:0] SA_backC;
 	reg  [1:0] g_segment;
     reg  [3:0] SA_line;
      
@@ -112,6 +123,7 @@ module TELETEXT_5050(
         SA_G2   <= {SA_G2[0],SA_GRAPHICS&SA_code[5]};
         SA_alphaC   <= SA_acolour;
         SA_graphicC <= SA_gcolour;
+        SA_backC	<= SA_bcolour;
     end
     
     always @ (posedge CLK) begin
@@ -125,8 +137,8 @@ module TELETEXT_5050(
         else if(HSYNC_DROP)
         	SA_row <= (SA_row == 9)? 0 : SA_row + 1;
     end
-    wire FLASH = |FLASH_COUNTER[19:18] & SA_flash;
+    wire FLASH = ~|FLASH_COUNTER[19:18] & SA_flash;
 	wire [2:0] SA_fcolour = SA_G2[1]? SA_graphicC : SA_alphaC;
-    assign RGB = SA_LOSE[1]? SA_shifter[5]? FLASH? ~SA_fcolour : SA_fcolour : SA_bcolour:3'b000;
+    assign RGB = SA_LOSE[1]? SA_shifter[5]? FLASH? ~SA_fcolour : SA_fcolour : SA_backC :3'b000;
 
 endmodule
