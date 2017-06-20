@@ -24,6 +24,9 @@ module BBC_MICRO(
 	input  BUTTON_LEFT,
 	input  BUTTON_STEP,
 	
+	input [3:0] CH,
+	input [1:0] PB,
+	
 	output AUDIO_PWM,
 	
 	inout  SCK,
@@ -98,6 +101,8 @@ module BBC_MICRO(
 	wire COLUMN_MATCH;
 	wire nBREAK_KEY;
 	wire SOUND;
+	wire nEOC;
+	wire [1:0] I;
 
 	wire SHEILA		= &pADDRESSBUS[15:9] & ~pADDRESSBUS[8];
 	wire OSBANKen	= &pADDRESSBUS[15:14] & ~SHEILA;
@@ -292,8 +297,7 @@ wire [1:0] PROC_VCC = 2'b11;
 		.DEBUG_TAG(DISP_tag)
 	);
 
-wire [2:0] SYS_VCC = 3'b111;
-wire [3:0] VCC_4   = 4'hF;
+wire [3:0] SYS_VCC = 4'hF;
 // System VIA
 	MOS6522 #(`SYSVIA) sys_via(
 		.CLK(CLK),
@@ -305,11 +309,11 @@ wire [3:0] VCC_4   = 4'hF;
 		.RS(pADDRESSBUS[3:0]),
 		.CA1(VSYNC),
 		.CA2(COLUMN_MATCH),
-		.CB1(SYS_VCC[1]),
-		.CB2(SYS_VCC[2]),
+		.CB1(nEOC),
+		.CB2(SYS_VCC[1]),
 		.DATA(pDATABUS),
 		.PORTA(PORTA),
-		.PORTB({VCC_4,LS259_D,LS259_A}),
+		.PORTB({SYS_VCC[3:2],I,LS259_D,LS259_A}),
 		.nIRQ(sys_nIRQ),
 		.DEBUG_SEL(SVIA_sel),
 		.DEBUG_VAL(SVIA_val),
@@ -361,13 +365,27 @@ wire [2:0] USR_VCC = 3'b111;
 		.DATA(PORTA),
 		.PWM(SOUND)
 	);
+	
+// ADC
+	ADC adc(
+		.CLK(CLK),
+		.CLK_en(IO_en),
+		.nRESET(nRESET),
+		.nCS(nADC),
+		.RnW(RnW),
+		.A10(pADDRESSBUS[1:0]),
+		.CH(CH),
+		.FIRE(PB),
+		.nEOC(nEOC),
+		.I(I),
+		.DATA(pDATABUS)
+	);
 
 // Extra (MOCK) Peripherals
 	Extra_Peripherals extra(
 		.RnW(RnW),
 		.nRESET(nRESET),
 		.nFDC(nFDC),
-		.nADC(nADC),
 		.nTUBE(nTUBE),
 		.nACIA(nACIA),
 		.nADLC(nADLC),

@@ -105,7 +105,7 @@ module MOS6522 (
 
 /****************************************************************************************/
 
-	assign CB1 = nRESET&~&ACR[3:2]&|ACR[4:2]?   CB1_out : 1'bz;
+	assign CB1 = (TYPE==`SYSVIA)? 1'bz : nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : 1'bz;
 	assign CB2 = nRESET&PCR[7]|ACR[4]?			CB2_out : 1'bz;
 	// Implementation struggles to assign a driven wire to CA2
 	assign CA2 = (TYPE==`SYSVIA)? 1'bz : nRESET&PCR[3]?	CA2_out : 1'bz;
@@ -316,11 +316,14 @@ module MOS6522 (
 					DDRA[3]? OUTA[3]: 1'bz, DDRA[2]? OUTA[2]: 1'bz,
 					DDRA[1]? OUTA[1]: 1'bz, DDRA[0]? OUTA[0]: 1'bz} : 8'hzz;
 
-	assign PORTB = nRESET?
+	assign PORTB = (TYPE==`SYSVIA)? 
+					  nRESET?
+					{4'hz,OUTB[3:0]} : 8'hzz
+					: nRESET?
 					{ACR[7]? PB7: DDRB[7]? OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
 					DDRB[5]? OUTB[5]:1'bz, DDRB[4]? OUTB[4]:1'bz,
 					DDRB[3]? OUTB[3]:1'bz, DDRB[2]? OUTB[2]:1'bz,
-					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;
+					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;;
 
 
 	assign nIRQ = ~|(IFR&IER);

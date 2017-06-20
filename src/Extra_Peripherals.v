@@ -2,7 +2,6 @@ module Extra_Peripherals (
 	input nRESET,
 	input RnW,
 	input nFDC,
-	input nADC,
 	input nTUBE,
 	input nADLC,
 	input nACIA,
@@ -11,7 +10,7 @@ module Extra_Peripherals (
 	);
 
 	assign DATABUS = (RnW&nRESET)? (~nACIA)?	ACIA_status
-											: (~(nADLC&nFDC&nTUBE&nADC))?	8'h00
+											: (~(nADLC&nFDC&nTUBE))?	8'h00
 											: 8'hzz : 8'hzz;
 
 // MOCK MC6850 ACIA

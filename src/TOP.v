@@ -25,6 +25,8 @@ module TOP(
 	input BTNL,
 	input BTNC,
 	
+	input [8:1] JB,
+	
 	output AUD_SD,
 	output AUD_PWM,
 
@@ -111,6 +113,9 @@ module TOP(
 		.BUTTON_LEFT(BTNL),
 		.BUTTON_RIGHT(BTNR),
 		.BUTTON_STEP(BTNC),
+		
+		.CH({JB[1],JB[4],JB[2],JB[3]}),
+		.PB(JB[8:7]),
 		
 		.SCK(JC[7]),
 		.MISO(JC[9]),
