@@ -106,9 +106,9 @@ module MOS6522 (
 /****************************************************************************************/
 
 	assign CB1 = (TYPE==`SYSVIA)? 1'bz : nRESET&~&ACR[3:2]&|ACR[4:2]? CB1_out : 1'bz;
-	assign CB2 = nRESET&PCR[7]|ACR[4]?			CB2_out : 1'bz;
+	assign CB2 = (TYPE==`SYSVIA)? 1'bz : nRESET&PCR[7]|ACR[4]?		  CB2_out : 1'bz;
 	// Implementation struggles to assign a driven wire to CA2
-	assign CA2 = (TYPE==`SYSVIA)? 1'bz : nRESET&PCR[3]?	CA2_out : 1'bz;
+	assign CA2 = (TYPE==`SYSVIA||TYPE==`USRVIA)? 1'bz : nRESET&PCR[3]?	CA2_out : 1'bz;
 
 	wire INT_ACK = CLK_en & ~CS;
 
