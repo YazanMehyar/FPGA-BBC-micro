@@ -107,6 +107,7 @@ module TOP_test();
 		.BTNR(1'b0),
 		.BTNL(1'b0),
 		.BTNC(1'b0),
+		.JB(8'hFF),
 		.JC(JC)
 	);
 

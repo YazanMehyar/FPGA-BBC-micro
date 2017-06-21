@@ -16,21 +16,6 @@ module BEEB_test();
 	always @ (posedge CLK16MHZ) PS2_COUNT <= PS2_COUNT + 1;
 	wire PS2_CLK = PS2_COUNT[8];
 		
-	// Simulate 6MHz enable from 16MHz clock
-	reg [3:0] COUNT16 = 0;
-	always @ (posedge CLK16MHZ or negedge CLK16MHZ)
-		COUNT16 <= COUNT16 + 1;
-	
-	wire CLK_16en = 1'b1;
-	reg  CLK_6en;
-	
-	always @ (*) case (COUNT16)
-		4'h0,4'hF,
-		4'h4,4'h5,
-		4'h9,4'hA:  CLK_6en = 1;
-		default:	CLK_6en = 0;
-	endcase
-		
 
 	// input
 	reg nRESET;
@@ -52,8 +37,7 @@ module BEEB_test();
 
 	BBC_MICRO beeb(
 		.CLK(CLK16MHZ),
-		.CLK_16en(CLK_16en),
-		.CLK_6en(CLK_6en),
+		.CLK_16en(1'b1),
 		.nRESET(nRESET),
 		
 		.PS2_CLK(PS2_CLK),
@@ -73,6 +57,9 @@ module BEEB_test();
 		.BUTTON_LEFT(1'b0),
 		.BUTTON_RIGHT(1'b0),
 		.BUTTON_STEP(1'b0),
+		
+		.CH(4'hF),
+		.PB(2'b11),
 		
 		.SCK(SCK),
 		.MISO(MISO),

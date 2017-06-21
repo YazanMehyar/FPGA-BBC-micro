@@ -323,7 +323,7 @@ module MOS6522 (
 					{ACR[7]? PB7: DDRB[7]? OUTB[7]:1'bz, DDRB[6]? OUTB[6]:1'bz,
 					DDRB[5]? OUTB[5]:1'bz, DDRB[4]? OUTB[4]:1'bz,
 					DDRB[3]? OUTB[3]:1'bz, DDRB[2]? OUTB[2]:1'bz,
-					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;;
+					DDRB[1]? OUTB[1]:1'bz, DDRB[0]? OUTB[0]:1'bz} : 8'hzz;
 
 
 	assign nIRQ = ~|(IFR&IER);

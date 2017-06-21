@@ -3,7 +3,6 @@
 module BBC_MICRO(
 	input  CLK,
 	input  CLK_16en,
-	input  CLK_6en,
 	input  nRESET,
 
 	input  PS2_CLK,
@@ -42,6 +41,7 @@ module BBC_MICRO(
 /*****************************************************************************/
 
 	wire CLK_8en;
+	wire CLK_6en;
 	wire CLK_4en;
 	wire CLK_2en;
 	wire CLK_1en;
@@ -56,6 +56,7 @@ module BBC_MICRO(
 		.CLK(CLK),
 		.CLK_16en(CLK_16en),
 		.CLK_8en(CLK_8en),
+		.CLK_6en(CLK_6en),
 		.CLK_4en(CLK_4en),
 		.CLK_2en(CLK_2en),
 		.CLK_1en(CLK_1en),
