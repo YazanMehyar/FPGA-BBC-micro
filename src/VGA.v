@@ -20,7 +20,6 @@ module VGA(
 			H_COUNTER = 0;
 			V_STATE   = 0;
 			V_COUNTER = 0;
-			VGA_FIELD = 0;
 		end
 	`endif
     
@@ -70,7 +69,6 @@ module VGA(
     reg [9:0] READ_VADR;
     reg [8:0] WRITE_VADR;
     reg [9:0] READ_HADR, WRITE_HADR;
-    reg		  VGA_FIELD;
     
     wire READ_STOP = READ_VADR[9]&READ_VADR[6];
     wire HSYNC_neg, VSYNC_neg;
@@ -81,7 +79,6 @@ module VGA(
         if (NEWSCREEN) begin
         	READ_VADR <= 0;
         	READ_HADR <= 120;
-        	VGA_FIELD <= ~VGA_FIELD;
         end else if(NEWLINE) begin
         	READ_VADR <= READ_VADR + (READ_STOP? 0 : 1);
         	READ_HADR <= 120;
@@ -121,7 +118,7 @@ module VGA(
 		COLOUR <= RGB;
     end
     	
-    assign VGA_RGB = (VGA_FIELD^READ_VADR[0])? 3'b000 : READ_ADDRESS[18]? READ_RGB2 : READ_RGB1;
+    assign VGA_RGB = READ_ADDRESS[18]? READ_RGB2 : READ_RGB1;
     
     always @ (posedge CLK) begin
     	if(READ_en)
