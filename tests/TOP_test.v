@@ -89,7 +89,9 @@ module TOP_test();
 	wire [3:0] VGA_B;
 	wire VGA_HS;
 	wire VGA_VS;
-	wire [2:0] JC;
+	wire SCK;
+	wire MOSI;
+	wire MISO;
 
 	TOP top(
 		.CLK100MHZ(CLK50MHZ),
@@ -107,8 +109,11 @@ module TOP_test();
 		.BTNR(1'b0),
 		.BTNL(1'b0),
 		.BTNC(1'b0),
-		.JB(8'hFF),
-		.JC(JC)
+		.JOYSTICK_D(4'hF),
+		.JOYSTICK_F(2'b11),
+		.SCK(SCK),
+		.MISO(MISO),
+		.MOSI(MOSI)
 	);
 
 /**************************************************************************************************/

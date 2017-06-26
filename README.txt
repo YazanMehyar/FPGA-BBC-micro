@@ -4,7 +4,7 @@
 *
 *	Yazan Mehyar	Email: stcyazanerror@gmail.com
 *
-*	Date 24-03-2017	
+*	Date 26-06-2017	
 *
 ****************************************************************/
 
@@ -15,11 +15,11 @@ on FPGA.
 Currently the state of the project;
 
 	+ Cycle accurate MOS6502
-	+ MODEs 0 - 6 supported
 	+ Sound produced using PWM
 	+ Mapped USB Keyboard (Using PS2 interface provided by uController)
 	+ Live Debug features (Using buttons and switches)
 	+ SD card SPI interface (Using Pmods)
+	+ Joystick emulation
 
 To run tests in the test file type:
 	eg. To simulate TOP_test.v
@@ -30,13 +30,23 @@ A simulation dump will be left in directory 'simdump'
 The above line will cause TOP_test.lx2 to appear in 'simdump'
 You can use 'gtkwave' to see the wave view.
 
-WARNING: The 'docs' directory contains incomplete information.
+The implementation can be made to work on different types of boards
+by changing the relevant user constraint file appropriately. I have
+added support to 2 boards namely [NEXYS4,BASYS3]. Simply define
+the name in TOP.vh in the 'inc' directory to have it accomodate the chosen
+board. You will still have to the modify board's the user constraint file.
+
+WARNING: - The 'docs' directory contains incomplete information.
 		 It was left there in hopes of completing it one day.
+		 
+		 - The pulse width modulated sound expects a pull-up attached to its
+		 output as it will enter a floating state when requiring a rise.
 
 Requirements:
 	iverilog 10.x
+	board xdc file [for bitstream creation]
 	
-	must create the following directories:
+	must create the following directories to run simulations:
 	- simdump
 	- bin
 

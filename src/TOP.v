@@ -2,7 +2,13 @@
 
 module TOP(
 	input CLK100MHZ,
+	
+	`ifdef NEXYS4
 	input CPU_RESETN,
+	output AUD_SD,
+	`endif
+	
+	output AUD_PWM,
 
 	input PS2_CLK,
 	input PS2_DATA,
@@ -25,12 +31,19 @@ module TOP(
 	input BTNL,
 	input BTNC,
 	
-	input [8:1] JB,
+	input [3:0] JOYSTICK_D,
+	input [1:0] JOYSTICK_F,
 	
-	output AUD_SD,
-	output AUD_PWM,
-
-	inout [9:7] JC);
+	inout SCK,
+	inout MISO,
+	inout MOSI);
+	
+	`ifdef NEXYS4
+	assign AUD_SD = 1'b1;
+	`else
+	reg CPU_RESETN = 1'b0;
+	always @ (posedge CLK100MHZ) if(~CPU_RESETN) CPU_RESETN <= CLK_16en;
+	`endif
 	
 	// Simulate 16MHz enable from 100 MHz clock
 	wire DELAY_DEBUG = SW[4];
@@ -62,8 +75,8 @@ module TOP(
 		end
 	
 		assign CLK_50en = COUNT6[0];
-		assign CLK_DBen = COUNT6 == 0;
-		assign CLK_16en = ~DELAY_DEBUG? COUNT6 == 0 : COUNT1280 == 0;
+		assign CLK_DBen = COUNT6==5;
+		assign CLK_16en = ~DELAY_DEBUG? COUNT6==5 : COUNT1280==1279;
 	`endif
 
 
@@ -77,7 +90,7 @@ module TOP(
 	wire VSYNC;
 	wire DISEN;
 	
-	assign LED[0] = ~JC[7];
+	assign LED[0] = ~SCK;
 	assign LED[1] = SW[3];
 
 
@@ -104,12 +117,12 @@ module TOP(
 		.BUTTON_RIGHT(BTNR),
 		.BUTTON_STEP(BTNC),
 		
-		.CH({JB[1],JB[4],JB[2],JB[3]}),
-		.PB(JB[8:7]),
+		.CH(JOYSTICK_D),
+		.PB(JOYSTICK_F),
 		
-		.SCK(JC[7]),
-		.MISO(JC[9]),
-		.MOSI(JC[8]),
+		.SCK(SCK),
+		.MISO(MISO),
+		.MOSI(MOSI),
 		
 		.AUDIO_PWM(AUD_PWM),
 		
@@ -119,8 +132,6 @@ module TOP(
 		.DEBUG_NEWLINE(VGA_NEWLINE),
 		.DEBUG_RGB(DEBUG_RGB)
 	);
-	
-	assign AUD_SD = 1'b1;
 	
 	// output
 	wire [2:0] VGA_RGB;
