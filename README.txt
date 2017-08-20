@@ -4,7 +4,7 @@
 *
 *	Yazan Mehyar	Email: stcyazanerror@gmail.com
 *
-*	Date 26-06-2017	
+*	Date 20-08-2017	
 *
 ****************************************************************/
 
@@ -50,5 +50,19 @@ Requirements:
 	- simdump
 	- bin
 
+Using the SD card:
+    The SD card should be formatted into FAT32 / FAT16 format.
+    The software handling the SD card cannot cope with fragmentation,
+    therfore every time the contents are to be modified, I suggest formatting
+    the SD card. Regarding to the contents, all binary images of tapes/disks
+    are archived in a special .mmb file. There are perl scripts and tools able
+    to create, add and remove contents of said archive. The .mmb file should be
+    the only file on the SD card.
+
+    Link to perl scripts (by Stephen Harris):
+    https://github.com/sweharris/MMB_Utils
+
+    You can find tape and disk images on the following website:
+    https://www.stairwaytohell.com/bbc/index.html?page=sthcollection
 ---------------
 END OF DOCUMENT
