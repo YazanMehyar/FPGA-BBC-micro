@@ -4,7 +4,7 @@ module MOS6502_stest ();
 
 	`define NULL 0
 	`define RESET_VEC	16'hFFFC
-	`define TEST_FILE	"./c_src/test_bin/6502_functional_test.bin"
+	`define TEST_FILE	"./software/BIN/6502_functional_test.bin"
 
 	reg CLK;
 	reg nRESET;

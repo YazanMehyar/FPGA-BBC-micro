@@ -143,7 +143,7 @@ module BEEB_test();
 		PS2_DATA <= 1;
 		repeat (20) @(posedge CLK16MHZ);
 		nRESET <= 1;
-		repeat (20) @(posedge VSYNC);
+		repeat (7) @(posedge VSYNC);
 		$stop;
 		$finish;
 	end

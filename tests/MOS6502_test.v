@@ -3,7 +3,7 @@
 module MOS6502_test ();
 
 	`define STOP_ADR	16'hFFFC
-	`define TEST_FILE	"./c_src/test_bin/6502_functional_test.bin"
+	`define TEST_FILE	"./software/BIN/6502_functional_test.bin"
 	`define NULL 0
 	`define TIME_LIMIT	20000000
 

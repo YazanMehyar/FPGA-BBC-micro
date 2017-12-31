@@ -1,39 +1,79 @@
-SRC=./src/
-TEST=./tests/
-BIN=./bin/
-SIMDMP=./sim_dump/
-INC=./inc
-VPI=./vpi
-VPIm=-m vpi_top -m vpi_6502sim
+################################################################################
+#   Verilog makefile
+################################################################################
+VC      = iverilog
+VCFLAGS = -Wall -Wno-timescale -Wno-implicit-dimensions -I$(HEAD) -t vvp \
+          -y$(SRC) -D SIMULATION
 
-VC=iverilog
-VCFLAGS=-Wall -Wno-timescale -Wno-implicit-dimensions -I$(INC) -t vvp -D SIMULATION
+VI      = vvp
+VI_OUT  = lx2
+VIFLAGS = -s $(addprefix -m,$(VPI_TGT))
 
-VI=vvp
-VIFLAGS=-s -M $(VPI) $(VPIm)
+VPI     = iverilog-vpi
+VPIFLAGS= --name=$(basename $@)
 
-R_OBJ=$(addprefix $(BIN), $(shell ls $(BIN) | grep '.*\.vvp$$'))
-R_DMP=$(addprefix $(SIMDMP), $(shell ls $(SIMDMP) | grep '.*\.lx2$$'))
-SRCF=$(addprefix $(SRC), $(shell ls $(SRC) | grep '.*\.v$$'))
+CC          = gcc
+VPI_CFLAGS := $(shell iverilog-vpi --cflags)
+CFLAGS      = $(VPI_CFLAGS) -I$(VPIHEAD) -c -Wno-strict-prototypes -o $@
 
-bn=$(addsuffix $(2),$(basename $(1)))
+################################################################################
+
+SRC     := ./src
+VVP     := ./vvp
+TESTS   := ./tests
+SIMDMP  := ./sim_dump
+HEAD    := ./head
+VPISRC  := ./vpi_src
+VPIOBJ  := ./vpi_obj
+VPIBIN  := ./vpi_bin
+VPIHEAD	:= ./vpi_head
+
+get_file    =$(basename $(notdir $(1)))
+make_target =$(addprefix $(1)/,$(call get_file,$(wildcard $(2)/*.$(3))))
+get_module  =$(call get_file,$(1))
+
+VPI_TGT := $(addsuffix .vpi,$(call make_target,$(VPIBIN),$(VPISRC),c))
+VPI_OBJ := $(addsuffix .o,  $(call make_target,$(VPIOBJ),$(VPISRC),c))
+VVP_TGT := $(addsuffix .vvp,$(call make_target,$(VVP),$(TESTS),v))
+SIM_TGT := $(addsuffix .$(VI_OUT),$(call make_target,$(SIMDMP),$(TESTS),v))
+HEADERS := $(wildcard $(HEAD)/*.vh)
+SOURCES := $(wildcard $(SRC)/*.v)
+VPI_HEAD:= $(wildcard $(VPIHEAD)/*.h)
+
+################################################################################
+
+.PHONY: clean
 
 .SECONDARY:
 
-.PHONY: clear
+all: $(SIM_TGT)
 
-%.vvp: $(TEST)%.v $(SRCF)
-	$(VC) $(VCFLAGS) -s $(call bn,$@,) -o $(BIN)$@ \
-	$(TEST)$(call bn,$@,.v) $(SRCF)
+$(VVP):
+	mkdir $(VVP)/
 
-%.sim: $(BIN)%.vvp
-	IVERILOG_DUMPER=lxt2 \
-	$(VI) $(VIFLAGS) $< \
-	test -e dump.lx2 && mv dump.lx2 $(SIMDMP)$(call bn,$@,.lx2)
+$(VPIBIN):
+	mkdir $(VPIBIN)/
 
-$(BIN)%.vvp: $(TEST)%.v $(SRCF)
-	$(VC) $(VCFLAGS) -s $(call bn,$(notdir $@),) -o $@ \
-	$(TEST)$(call bn,$(notdir $@),.v) $(SRCF)
+$(VPIOBJ):
+	mkdir $(VPIOBJ)/
 
-clear:
-	$(if $(or $(R_OBJ), $(R_DMP)), rm $(R_OBJ) $(R_DMP))
+$(SIMDMP):
+	mkdir $(SIMDMP)/
+
+%.sim: $(SIMDMP)/%.$(VI_OUT);
+
+$(SIMDMP)/%.$(VI_OUT): $(VVP)/%.vvp $(VPI_TGT) | $(SIMDMP)
+	$(VI) $(VIFLAGS) $< -$(VI_OUT)
+	$(if $(wildcard dump.$(VI_OUT)), mv dump.$(VI_OUT) $@)
+
+$(VVP)/%.vvp: $(TESTS)/%.v $(SOURCES) $(HEADERS) | $(VVP)
+	$(VC) $(VCFLAGS) -s $(call get_module,$<) -o $@ $<
+
+$(VPIBIN)/%.vpi: $(VPIOBJ)/%.o | $(VPIBIN)
+	$(VPI) $(VPIFLAGS) $<
+
+$(VPIOBJ)/%.o: $(VPISRC)/%.c $(VPI_HEAD) | $(VPIOBJ)
+	$(CC) $(CFLAGS) $<
+
+clean:
+	@rm -fv $(VPI_TGT) $(VPI_OBJ) $(VVP_TGT) $(SIM_TGT)

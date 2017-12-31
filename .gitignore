@@ -3,4 +3,5 @@
 *.lxt
 *.vpi
 *.lx2
+*.o
 vivado*

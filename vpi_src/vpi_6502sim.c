@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <vpi_user.h>
-#include "6502_csim.c"
+#include "6502_csim.h"
 
 #define KiB64 65536
 static uint8_t mem[KiB64];
@@ -25,8 +25,7 @@ write6502(uint16_t address, uint8_t val){
 /**************************************************************************************************/
 // VPI system functions
 
-int
-write_mem(char *data) {
+int write_mem() {
     uint16_t addr;
     uint8_t val;
 
@@ -47,8 +46,7 @@ write_mem(char *data) {
 	return 0;
 }
 
-int
-read_mem(char *data) {
+int read_mem() {
 	uint16_t addr;
 
 	vpiHandle args_iter;
@@ -67,14 +65,12 @@ read_mem(char *data) {
 	return 0;
 }
 
-int
-run_step(char *data) {
+int run_step() {
 	step6502();
 	return 0;
 }
 
-int
-get_internal_state(char *date){
+int get_internal_state(){
 	uint8_t reg_sel;
 	uint16_t reg_val;
 
@@ -106,17 +102,15 @@ get_internal_state(char *date){
 	return 0;
 }
 
-int
-print_last_read(char *data){
+int print_last_read(){
 	vpi_printf("Last address read is %04hX\n", last_read_addr);
 	vpi_printf("Memory @ addr is %02hX\n", mem[last_read_addr]);
-	vpi_printf("C model registers:\n");	
+	vpi_printf("C model registers:\n");
 	vpi_printf("A:%02hX, X:%02hX, Y:%02hX, SP:%02hX, PSR:%02hX\n", a,x,y,sp,status);
 	return 0;
 }
 
-int
-reset_6502(char *data){
+int reset_6502(){
 	reset6502();
 	return 0;
 }
@@ -140,7 +134,7 @@ mos6502_register(void){
 	}
 }
 
-void (*vlog_startup_routines[])() = {
+void (*vlog_startup_routines[])(void) = {
     mos6502_register,
     NULL
 };

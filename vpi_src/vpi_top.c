@@ -13,9 +13,9 @@
 static uint32_t PIXELS;
 static uint32_t LINES;
 static uint32_t pixel_pos = 0;
+
 /******************************************************************************/
 // C helper functions
-
 
 static void
 set_pixel(uint32_t colour){
@@ -60,10 +60,9 @@ next_line(void){
 
 /******************************************************************************/
 // VPI system functions
-int
-start_screen(char *data) {
+int start_screen() {
     pid_t scrPid;
-    
+
     /* vpi get argument */
 
 	vpiHandle args_iter;
@@ -93,10 +92,10 @@ start_screen(char *data) {
         nice(10);
         char swidth[7];
         char sheight[7];
-        
+
         sprintf(swidth,"-w%d",PIXELS);
         sprintf(sheight,"-h%d",LINES);
-        
+
         static char *screen_args[7];
         screen_args[0] = "vscreen";
         screen_args[1] = "-c332";
@@ -117,8 +116,7 @@ start_screen(char *data) {
     return 0;
 }
 
-int
-pixel_scan(char *data) {
+int pixel_scan() {
 
 	uint32_t colour;
 
@@ -140,8 +138,7 @@ pixel_scan(char *data) {
 	return 0;
 }
 
-int
-iv_sync(char *data) {
+int iv_sync() {
 
 	static uint8_t field;
 	screen_reset();
@@ -150,9 +147,10 @@ iv_sync(char *data) {
 	field = !field;
 	return 0;
 }
-int ih_sync(char *data){ next_line(); next_line(); return 0;}
-int v_sync (char *data){ screen_reset(); return 0;}
-int h_sync (char *data){ next_line();    return 0;}
+
+int ih_sync(){ next_line(); next_line(); return 0;}
+int v_sync (){ screen_reset(); return 0;}
+int h_sync (){ next_line();    return 0;}
 
 /******************************************************************************/
 // VPI hooks
@@ -165,7 +163,7 @@ top_register(void){
 		{.type=vpiSysTask,.tfname="$v_sync",.calltf=v_sync,.sizetf=0,.user_data=0},
 		{.type=vpiSysTask,.tfname="$h_sync",.calltf=h_sync,.sizetf=0,.user_data=0},
 		{.type=vpiSysTask,.tfname="$ih_sync",.calltf=ih_sync,.sizetf=0,.user_data=0},
-		{.type=vpiSysTask,.tfname="$iv_sync",.calltf=iv_sync,.sizetf=0,.user_data=0}			
+		{.type=vpiSysTask,.tfname="$iv_sync",.calltf=iv_sync,.sizetf=0,.user_data=0}
     };
 
 	for(uint8_t i = 0; i < 6; i++){
@@ -173,7 +171,7 @@ top_register(void){
 	}
 }
 
-void (*vlog_startup_routines[])() = {
+void (*vlog_startup_routines[])(void) = {
     top_register,
     NULL
 };
