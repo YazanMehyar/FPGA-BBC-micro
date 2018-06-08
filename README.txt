@@ -49,7 +49,10 @@ Requirements:
     iverilog 10.x
     gtk-wave       [To view waveforms]
     board xdc file [for bitstream creation]
-    
+	vscreen*       [To run simulations requiring a virtual screen]
+
+*vscreen is a proprietary software by the University of Manchester.
+
 Using the SD card:
     The SD card should be formatted into FAT32 / FAT16 format.
     The software handling the SD card cannot cope with fragmentation,
