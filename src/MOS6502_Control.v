@@ -165,7 +165,7 @@ always @ (posedge CLK)
 		if (READY) case (T_state)
 			`T0:	case(1'b1)
 					PLP: PSR <= iDB[7:0];
-					PLA: begin PSR[7] <= iDB[7]; PSR[1] = ~|iDB; end
+					PLA: begin PSR[7] <= iDB[7]; PSR[1] <= ~|iDB; end
 					BIT: PSR[7:6] <= iDB[7:6];
 					FLAGS: case (IR[7:6])
 						2'b00: PSR[0] <= IR[5];
