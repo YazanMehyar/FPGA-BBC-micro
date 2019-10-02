@@ -15,7 +15,7 @@ module BEEB_test();
 	reg [8:0] PS2_COUNT = 0;
 	always @ (posedge CLK16MHZ) PS2_COUNT <= PS2_COUNT + 1;
 	wire PS2_CLK = PS2_COUNT[8];
-		
+
 
 	// input
 	reg nRESET;
@@ -39,32 +39,32 @@ module BEEB_test();
 		.CLK(CLK16MHZ),
 		.CLK_16en(1'b1),
 		.nRESET(nRESET),
-		
+
 		.PS2_CLK(PS2_CLK),
 		.PS2_DATA(PS2_DATA),
-		
+
 		.RGB(RGB),
 		.HSYNC(HSYNC),
 		.VSYNC(VSYNC),
-		
+
 		.DISPLAY_DEBUGGER(1'b1),
 		.DISABLE_INTERRUPTS(1'b0),
 		.EN_BREAKPOINT(1'b0),
 		.SET_BREAKPOINT(1'b0),
-		
+
 		.BUTTON_UP(1'b0),
 		.BUTTON_DOWN(1'b0),
 		.BUTTON_LEFT(1'b0),
 		.BUTTON_RIGHT(1'b0),
 		.BUTTON_STEP(1'b0),
-		
+
 		.CH(4'hF),
 		.PB(2'b11),
-		
+
 		.SCK(SCK),
 		.MISO(MISO),
 		.MOSI(MOSI),
-		
+
 		.DEBUG_CLK_en(1'b0),
 		.DBUTTON_en(1'b0),
 		.DEBUG_ENABLE(1'b0),

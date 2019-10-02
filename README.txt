@@ -4,7 +4,7 @@
 *
 *   Yazan Mehyar    Email: stcyazanerror@gmail.com
 *
-*   Date 31-12-2017 
+*   Date 31-12-2017
 *
 ******************************************************************************/
 
@@ -23,7 +23,7 @@ Currently the state of the project;
 To run tests in the test file type:
 
     make <base filename>.sim
-    
+
     eg. To simulate TOP_test.v
 
     make TOP_test.sim
@@ -40,7 +40,7 @@ board. You will still have to modify the board's user constraint file (UCF).
 
 WARNING: - The 'docs' directory contains incomplete information.
          It was left there in hopes of completing it one day.
-         
+
          - The pulse width modulated sound expects a pull-up attached to its
          output as it will enter a floating state when requiring a rise.
 
@@ -49,7 +49,7 @@ Requirements:
     iverilog 10.x
     gtk-wave       [To view waveforms]
     board xdc file [for bitstream creation]
-	vscreen*       [To run simulations requiring a virtual screen]
+    vscreen*       [To run simulations requiring a virtual screen]
 
 *vscreen is a proprietary software by the University of Manchester.
 

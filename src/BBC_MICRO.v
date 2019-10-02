@@ -16,22 +16,22 @@ module BBC_MICRO(
 	input  DISABLE_INTERRUPTS,
 	input  EN_BREAKPOINT,
 	input  SET_BREAKPOINT,
-	
+
 	input  BUTTON_UP,
 	input  BUTTON_DOWN,
 	input  BUTTON_RIGHT,
 	input  BUTTON_LEFT,
 	input  BUTTON_STEP,
-	
+
 	input [3:0] CH,
 	input [1:0] PB,
-	
+
 	output AUDIO_PWM,
-	
+
 	inout  SCK,
 	inout  MISO,
 	inout  MOSI,
-	
+
 	input  DEBUG_CLK_en,
 	input  DBUTTON_en,
 	input  DEBUG_ENABLE,
@@ -46,12 +46,12 @@ module BBC_MICRO(
 	wire CLK_2en;
 	wire CLK_1en;
 	wire CLK_2ven;
-	
+
 	wire PIXEL_en = CLK_16en;
 	wire RAM_en   = CLK_4en;
 	wire PROC_en  = CLK_2en;
 	wire IO_en    = CLK_1en;
-	
+
 	Timing_Generator timer(
 		.CLK(CLK),
 		.CLK_16en(CLK_16en),
@@ -209,27 +209,27 @@ module BBC_MICRO(
 	wire [23:0] PROC_tag, DISP_tag, SVIA_tag, UVIA_tag;
 	wire [3:0]  PROC_sel, DISP_sel, SVIA_sel, UVIA_sel;
 	wire DEBUG_PIXEL;
-	
+
 	wire BTN_UP;
 	wire BTN_DN;
 	wire BTN_LT;
 	wire BTN_RT;
 	wire BTN_STEP;
 	wire BTN_CONT;
-	
+
 	Edge_Trigger #(1) POS_BUTTON0(.CLK(CLK),.IN(BUTTON_RIGHT),.En(DBUTTON_en),.EDGE(BTN_RT));
 	Edge_Trigger #(1) POS_BUTTON1(.CLK(CLK),.IN(BUTTON_LEFT), .En(DBUTTON_en),.EDGE(BTN_LT));
 	Edge_Trigger #(1) POS_BUTTON2(.CLK(CLK),.IN(BUTTON_DOWN), .En(DBUTTON_en),.EDGE(BTN_DN));
 	Edge_Trigger #(1) POS_BUTTON3(.CLK(CLK),.IN(BUTTON_UP),   .En(DBUTTON_en),.EDGE(BTN_UP));
-	Edge_Trigger #(1) BRKS_TRIG(.CLK(CLK),.IN(BUTTON_STEP&~SET_BREAKPOINT),.En(PROC_en),.EDGE(BTN_STEP));	
+	Edge_Trigger #(1) BRKS_TRIG(.CLK(CLK),.IN(BUTTON_STEP&~SET_BREAKPOINT),.En(PROC_en),.EDGE(BTN_STEP));
 	Edge_Trigger #(1) BRKC_TRIG(.CLK(CLK),.IN(BUTTON_STEP&SET_BREAKPOINT), .En(PROC_en),.EDGE(BTN_CONT));
-	
+
 	reg  [15:0] BREAKPOINT;
 	reg  [1:0]  BRK_STEP;
 	reg         BRK_STOP;
 	wire [23:0] BREAK_tag = {`dlB,`dlR,`dlK,`dlSP};
 	wire [3:0]  BRK_INC = BTN_UP? 4'h1 : {4{BTN_DN}};
-	
+
 	always @ (posedge CLK) if(DBUTTON_en)
 		if(SET_BREAKPOINT) case(BRK_STEP)
 			0: BREAKPOINT[3:0]   <= BREAKPOINT[3:0]   + BRK_INC;
@@ -240,13 +240,13 @@ module BBC_MICRO(
 
 	always @ (posedge CLK) if(DBUTTON_en)
 		if(SET_BREAKPOINT) BRK_STEP <= BRK_STEP + (BTN_LT? 2'h1 : {2{BTN_RT}});
-		
+
 	always @ (posedge CLK) if(PROC_en)
 		if(BRK_STOP) BRK_STOP <= ~BTN_CONT;
 		else		 BRK_STOP <= EN_BREAKPOINT&(BREAKPOINT == pADDRESSBUS);
-			
+
 	wire BREAK = BRK_STOP & SYNC & ~BTN_STEP;
-	
+
 /******************************************************************************/
 
 wire [1:0] PROC_VCC = 2'b11;
@@ -269,7 +269,7 @@ wire [1:0] PROC_VCC = 2'b11;
 	);
 
 // Video control
-		
+
 	Display_Control dc(
 		.CLK(CLK),
 		.nRESET(nRESET),
@@ -366,7 +366,7 @@ wire [2:0] USR_VCC = 3'b111;
 		.DATA(PORTA),
 		.PWM(SOUND)
 	);
-	
+
 // ADC
 	ADC adc(
 		.CLK(CLK),
@@ -396,7 +396,7 @@ wire [2:0] USR_VCC = 3'b111;
 /**************************************************************************************************/
 	assign AUDIO_PWM = SOUND? 1'bz : 1'b0; // Pull up resistor by FPGA
 	assign DEBUG_RGB = DISPLAY_DEBUGGER? {3{DEBUG_PIXEL}} : 3'b000;
-	
+
 // Debugger
 
 	Debug_Tool dtool(
@@ -426,7 +426,7 @@ wire [2:0] USR_VCC = 3'b111;
 
 
 `ifdef SIMULATION
-	
+
 `endif
 
 endmodule
