@@ -30,16 +30,22 @@ module TOP(
 	input BTNR,
 	input BTNL,
 	input BTNC,
-	
-	input [3:0] JOYSTICK_D,
-	input [1:0] JOYSTICK_F,
-	
+
+	// input [3:0] JOYSTICK_D,
+	// input [1:0] JOYSTICK_F,
+
+	`ifdef NEXYS4
+	output SD_RESET,
+	`endif
+
 	inout SCK,
 	inout MISO,
 	inout MOSI);
 
 	`ifdef NEXYS4
 	assign AUD_SD = 1'b1;
+	assign SD_RESET = 1'b0;
+
 	`else
 	reg CPU_RESETN = 1'b0;
 	always @ (posedge CLK100MHZ) if(~CPU_RESETN) CPU_RESETN <= CLK_16en;
@@ -117,8 +123,8 @@ module TOP(
 		.BUTTON_RIGHT(BTNR),
 		.BUTTON_STEP(BTNC),
 
-		.CH(JOYSTICK_D),
-		.PB(JOYSTICK_F),
+		.CH(4'h5),
+		.PB(2'h0),
 
 		.SCK(SCK),
 		.MISO(MISO),

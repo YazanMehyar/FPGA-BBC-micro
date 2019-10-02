@@ -10,7 +10,7 @@ module TOP_test();
 
 	reg CLK50MHZ = 0;
 	always #(`CLKPERIOD) CLK50MHZ = ~CLK50MHZ;
-	
+
 	// Simulate PS2_CLK
 	reg [10:0] PS2_COUNT = 0;
 	always @ (posedge CLK50MHZ) PS2_COUNT <= PS2_COUNT + 1;
@@ -82,7 +82,7 @@ module TOP_test();
 	// input
 	reg CPU_RESETN;
 	reg PS2_DATA;
-	
+
 	// output
 	wire [3:0] VGA_R;
 	wire [3:0] VGA_G;
@@ -109,8 +109,8 @@ module TOP_test();
 		.BTNR(1'b0),
 		.BTNL(1'b0),
 		.BTNC(1'b0),
-		.JOYSTICK_D(4'hF),
-		.JOYSTICK_F(2'b11),
+//		.JOYSTICK_D(4'hF),
+//		.JOYSTICK_F(2'b11),
 		.SCK(SCK),
 		.MISO(MISO),
 		.MOSI(MOSI)
@@ -155,7 +155,7 @@ module TOP_test();
 		$display("BBC SCREEN No. %d", SCREEN_COUNT);
 		SCREEN_COUNT <= SCREEN_COUNT + 1;
 	end
-	
+
 	integer VGA_SCREEN_COUNT = 0;
 	always @ (negedge VGA_VS) begin
 		$display("VGA SCREEN No. %d", VGA_SCREEN_COUNT);
